@@ -1203,9 +1203,20 @@ version had missed (`dom.txt`, `smokedom.txt`, `probedom.txt`,
 rule against editing it by hand stands — but it is also the artifact a static
 host serves, so it belongs in the repository.
 
-**Still to do, and both need the owner:** a commit identity (`user.name` /
-`user.email` decide how the history is attributed) and the push itself, which
-publishes. Nothing else is in the way.
+**PUSHED 2026-08-13.** `main` is live at
+`https://github.com/gimmeurcode/physics-stuff` — 265 files, verified on the
+remote rather than trusted from an exit code: no `cprof*`, `apptest-*`, `dom-*`,
+`shot-*` or `audit-*.csv` reached it, and `vector-calculus.html` is there.
+Identity is repo-local (`gimmeurcode <micahwilliam1@gmail.com>`); no global Git
+config was touched.
+
+**The website half of this programme is now one setting away**: point any static
+host at the repository and confirm it serves **compressed**. Cloudflare Pages,
+GitHub Pages and Netlify all do by default, which takes the 5.35 MB file to
+~1.35 MB over the wire (measured above). Nothing in the app needs to change.
+
+**What is left in Programme I is the artifact target** — the second build and
+the two open risks below, neither of which should be guessed at.
 
 ### The artifact — two open risks, both testable
 

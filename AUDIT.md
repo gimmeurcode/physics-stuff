@@ -3640,3 +3640,48 @@ caught=0 · `./auditcustom.ps1` bad=0 · `./auditderive.ps1` flagged=0 ·
 `./auditclaims.ps1` 249 bad=0 · `./auditzoom.ps1` findings=0 · `./auditsize.ps1`
 findings=0 · `./auditviewport.ps1` bad=0 · `./auditframe.ps1` cut=4, unchanged
 and previously adjudicated.
+
+### Programme I, the repository half — done, and what the line endings cost
+
+`main` is live at `https://github.com/gimmeurcode/physics-stuff`, two commits,
+265 files. **Verified on the remote, not from an exit code**: `git ls-tree -r
+origin/main` was searched for `cprof*`, `apptest-*`, `dom-*`, `shot-*` and
+`audit-*.csv` and found none, and `vector-calculus.html` is present. Identity is
+repo-local; no global Git config was touched.
+
+**The tree had mixed line endings and nobody knew.** Staging printed "LF will be
+replaced by CRLF" for one set of files and, after `.gitattributes` was added,
+"CRLF will be replaced by LF" for a *different* set — which is what exposed it.
+Measured rather than assumed: **54 of the 234 files under `src/` are CRLF and
+180 are LF**, totalling **15 627 carriage returns**.
+
+That matters here for a reason it would not in most repositories: `build.ps1`
+concatenates the source into the deployable artifact, so **every line ending is
+a byte in the shipped file**. Normalising to LF means a fresh clone builds an
+artifact ~15.6 KB smaller than the one measured on this machine. The app is
+identical — a CR is whitespace between statements — but the number in Part 0 is
+a measurement of one working tree, not a constant, and it now says so.
+
+**I wrote that comment wrong the first time.** `.gitattributes` initially
+claimed the pinning *preserved* the recorded byte count. It does the opposite,
+and the second commit says so with the count measured. Left uncorrected it would
+have been a confident, checkable, false statement sitting in the file whose
+whole job is to explain the convention.
+
+**Why LF and not the Windows default.** `core.autocrlf=true` would rewrite the
+whole tree on checkout and show all 234 source files as modified immediately
+after cloning. LF is what the majority of the tree already uses and what every
+non-Windows checkout gets regardless. PowerShell 5.1 reads LF-only `.ps1` files
+without complaint; the convention it *does* care about is the UTF-8 BOM on
+scripts carrying Unicode patterns (§1.6), and `text` handling never touches a
+BOM.
+
+**`.gitignore` was verified by running it, not by reading it** — `git add
+--dry-run` before the first commit, admitting 264 files and 11.4 MB. Checking it
+line by line against the delete list in `clean.ps1` first found six files a
+from-memory version had missed (`dom.txt`, `smokedom.txt`, `probedom.txt`,
+`audittext-dom.txt`, `audittext-dump.json`, `audittext-findings.csv`). Without
+the ignore list the first commit would have carried ~1.5 GB of Chrome profiles.
+
+`vector-calculus.html` is tracked deliberately: it is generated, the rule
+against hand-editing it stands, and it is also the file a static host serves.
