@@ -218,7 +218,7 @@ no author's function to replace; the "r(θ) region" slot went instead to
 
 ## 1.6 The verification harness
 
-**21 scripts** (`Get-ChildItem *.ps1` — the table below lists them all; the
+**22 scripts** (`Get-ChildItem *.ps1` — the table below lists them all; the
 "nine" this line used to claim was wrong for a long time). What matters is
 **what each one can see that the others cannot** — every one of them exists
 because something shipped through a blind spot.
@@ -232,6 +232,7 @@ because something shipped through a blind spot.
 | `runtests.ps1` | ~30 s | `0 failed` | engine arithmetic (modules 21–49 only) |
 | `runall.ps1` | ~18 min | `caught=0 OK` | every demo × every control actually runs; greps prose for `undefined`/`NaN`/`Infinity` |
 | `auditcustom.ps1` | ~1 min | `bad=0 OK` | the **"type your own" path**, which `runall` never selects. Drives textareas from their `data-audit` attribute |
+| `auditartifact.ps1` | ~1 min | `bad=0` | whether the app survives being **published as a Claude artifact** — nested inside the host's own document, in all three viewer-theme states including the *system* one that stamps no `data-theme` at all. Reads the theme back two ways, the CSS token **and** the array the canvas paints with, because a toggle that moved one and not the other would repaint every picture for the wrong theme |
 | `auditpanel.ps1` | ~20 s | `bad=0` / `auditpanel OK` | whether a stage still has its readout, ladder and chip **after being left and reopened**. `uiSetHtml` skips a write matching what it last wrote, so the panels are stateful and anything clearing them behind its back makes the next identical refresh a silent no-op. On the build that introduced it **145 of 178 stages came back blank and `runall` still said `caught=0`** — it visits each demo once and never returns to one |
 | `auditderive.ps1` | ~40 s | `flagged=0 OK` | every stage's `derive()`, which **nothing else calls**; and whether rungs carry reasoning or restate algebra |
 | `auditclaims.ps1` | ~30 s | `bad=0 OK` | whether the **preset tables tell the truth** — 249 declared claims across 14 tables recomputed by an independent route. Reaches `EIG_PRESETS` (78b) and `NM_FUNCS` (79g), which are outside the window `runtests` extracts |
@@ -1218,10 +1219,44 @@ GitHub Pages and Netlify all do by default, which takes the 5.35 MB file to
 **What is left in Programme I is the artifact target** — the second build and
 the two open risks below, neither of which should be guessed at.
 
-### The artifact — two open risks, both testable
+### The artifact — **DONE 2026-08-13. Both risks measured, and NO second build target is needed.**
 
-Publishing to claude.ai needs a second build target, because the tool wraps the
-file it is given in its own `<!doctype html>…<body>` skeleton.
+The live artifact is
+`https://claude.ai/code/artifact/289811c9-07a8-4419-87cc-b4b55e04a538`, carrying
+this build — verified by fetching it back and finding `uiSetHtml`, `ctHeatBuf`,
+`cxPaintBitmap`, `startLoop` and `CT_HEAT_BUFS` in the served bytes, none of
+which were in the copy it replaced.
+
+**`./auditartifact.ps1` (~1 min, `bad=0`) is the gate.** It wraps the file
+exactly as the publisher does and drives it in **all three viewer-theme states**,
+because the third is the dangerous one: an explicit choice stamps `data-theme`,
+but the default *system* setting stamps **nothing**. Measured, per state — boots
+(40 wings, 178 stages, 41 nav buttons, 0 JS errors), `.app` fills the viewport
+exactly (1662×848 in 1662×848), no horizontal document scroll, canvas intact,
+and the theme button flips the attribute, the CSS **and** the canvas.
+
+| risk as written | what was measured |
+|---|---|
+| `data-theme` ownership — "the failure mode is the theme button does not stick" | **Not a problem.** Host and app use the same attribute and the same two values, so they compose. The palette is defined on bare `:root` with `[data-theme]` as *overrides*, so the no-attribute "system" state has a complete palette rather than none |
+| `html,body{height:100%}` + `height:100dvh` in a host container | **Not a problem.** `.app` matched the viewport to the pixel in every state |
+
+**The reason to keep the gate** is the second route in it: the theme is read back
+both as the CSS custom property `--bg` **and** as `TH.bg`, the array the canvas
+renderer actually paints with. A toggle that moved the CSS but not the canvas
+would leave every picture painted for the wrong theme, and nothing else looks at
+that. Disabling the `MutationObserver` in `90-boot.js` makes it fail in all three
+states; it passes on the clean tree.
+
+**One caveat that is not a defect:** a shared artifact serves a **pinned**
+version, so viewers holding the link keep seeing whatever was pinned until the
+pin is moved from the page's share menu. Publishing updates the artifact; it does
+not move the pin.
+
+The original text of this section is kept below, because its instruction —
+*do not guess, build the variant and test it* — is what produced the answer.
+
+Publishing to claude.ai wraps the file it is given in its own
+`<!doctype html>…<body>` skeleton.
 
 **Nesting itself is a non-issue and was over-stated once already**: every harness
 script has always sandwiched the whole document inside another one's `<body>`,
@@ -1290,6 +1325,7 @@ Then, matched to what you touched:
 | a stage, a demo, the UI | `./runall.ps1` (~18 min, **background it**) |
 | a picker, an accessor, a `pk*` helper, any typed input | `./auditcustom.ps1` |
 | **`uiSetHtml`, `stageExit`, or anything writing a panel** | `./auditpanel.ps1` |
+| **anything before republishing the Claude artifact** | `./auditartifact.ps1` |
 | a `derive()` ladder | `./auditderive.ps1` |
 | **a preset table — or anything it declares** | `./auditclaims.ps1` |
 | **anything in a `frame()`, or any new stage that draws** | `./auditperf.ps1` |

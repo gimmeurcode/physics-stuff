@@ -3685,3 +3685,66 @@ the ignore list the first commit would have carried ~1.5 GB of Chrome profiles.
 
 `vector-calculus.html` is tracked deliberately: it is generated, the rule
 against hand-editing it stands, and it is also the file a static host serves.
+
+### Programme I, the artifact half — and the second build target that turned out not to be needed
+
+§3.9 assumed publishing to claude.ai "needs a second build target". **It does
+not.** The standalone `vector-calculus.html` is publishable as it stands, and
+that is now measured rather than assumed — which was the section's own
+instruction: *do not guess at either risk, build the variant and test it.*
+
+**`./auditartifact.ps1` is the gate.** It wraps the file exactly as the
+publisher does and drives it in **all three viewer-theme states**. The third is
+the one that mattered: an explicit viewer choice stamps `data-theme`, but the
+default *system* setting stamps **nothing at all**. A palette defined only
+inside `[data-theme]` blocks would have had no values whatever in that state —
+an unstyled page. It survives because the tokens are on bare `:root` with
+`[data-theme]` as overrides, which is the correct structure and was already
+right.
+
+Measured, per state: boots (40 wings, 178 stages, 41 nav buttons, 0 JS errors),
+`.app` fills the viewport **to the pixel** (1662×848 in 1662×848), no horizontal
+document scroll, canvas intact at 1268×415, and the theme button flips the
+attribute, the CSS and the canvas.
+
+| risk as written in §3.9 | verdict |
+|---|---|
+| `data-theme` ownership — "the failure mode is the theme button does not stick" | not a problem: host and app use the same attribute and the same two values, so they compose |
+| `html,body{height:100%}` + `height:100dvh` inside a host container | not a problem: `.app` matched the viewport exactly in all three states |
+
+**What makes the gate worth keeping is its second route.** The theme is read
+back both as the CSS custom property `--bg` and as `TH.bg`, the array the canvas
+renderer actually paints with (`readTheme()` re-reads the tokens on the
+`MutationObserver`). A toggle that moved the CSS but not the canvas would leave
+every picture in the laboratory painted for the wrong theme while the page
+around it looked perfect, and nothing else in the harness looks at that. Control:
+disabling the observer in `90-boot.js` fails all three states; the clean tree
+passes.
+
+**The check was wrong before it was right, in the now-familiar way.** The first
+version read `TH.bg` on the line after `btn.click()` and reported all three
+states broken. `MutationObserver` callbacks are delivered as **microtasks after
+the current script finishes**, so it was reading the value from before the
+click, every time. The reads are asynchronous now. That is the fourth
+synchronous-assumption bug in this stretch of work, and the pattern is worth
+stating plainly: **when a probe reports that everything is broken, suspect the
+probe.**
+
+### Publishing
+
+The live artifact is
+`https://claude.ai/code/artifact/289811c9-07a8-4419-87cc-b4b55e04a538`.
+
+The publish was refused first with a freshness check — this session had not seen
+the version on the server. **Resolved by comparing, not by forcing blindly**: the
+served copy was fetched and searched for this session's markers, and contained
+**none** of `uiSetHtml`, `ctHeatBuf`, `cxPaintBitmap`, `startLoop` or
+`CT_HEAT_BUFS`. Strictly older, same repository, so nothing was lost by
+overwriting. After publishing, the artifact was fetched **again** and all five
+markers are present in the served bytes — 5 368 742 of them.
+
+**A shared artifact serves a PINNED version.** Viewers holding the link keep
+seeing whatever was pinned until the pin is moved from the page's share menu.
+Publishing updates the artifact; it does not move the pin. That is not a defect
+and nothing in the repo can change it, but anyone reporting "the link still shows
+the old build" is seeing this and not a failed publish.
