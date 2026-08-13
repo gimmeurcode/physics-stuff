@@ -1,18 +1,25 @@
 # Line endings are pinned to LF, in the repository AND in the working tree.
 #
 # WHY eol=lf AND NOT THE WINDOWS DEFAULT. Git on Windows defaults to
-# core.autocrlf=true: store LF, check out CRLF. That would rewrite all 234
-# source files the next time Git touched them, which has two costs here.
-# `build.ps1` concatenates src/js/*.js into one file, so every line ending is a
-# byte in the deployable artifact — the 5 294 494-character build recorded in
-# MASTER-PLAN Part 0 would silently become a different number on a fresh clone.
-# And every file would show as modified immediately after checkout.
+# core.autocrlf=true: store LF, check out CRLF. Without this file the whole
+# tree would be rewritten the next time Git touched it and every one of the 234
+# source files would show as modified straight after checkout.
 #
-# The whole tree is LF today and the harness has been verified against it, so
-# LF is what gets pinned. PowerShell 5.1 reads LF-only .ps1 files perfectly
-# well; what it does NOT tolerate is a missing UTF-8 BOM on a script carrying
-# Unicode in its patterns (see MASTER-PLAN 1.6) — and `text` handling never
-# touches the BOM, so that convention is unaffected.
+# MEASURED, because the tree turned out to have MIXED endings: 54 of the 234
+# files under src/ carry CRLF today and 180 are LF. Normalising is therefore
+# not a no-op — it removes 15 627 carriage returns, so a fresh clone builds an
+# artifact about 15.6 KB smaller than the one measured on the machine this was
+# committed from. Nothing about the app changes; a CR is whitespace between
+# statements. But it does mean **the byte count in MASTER-PLAN Part 0 is a
+# measurement of one working tree, not a constant** — run ./measure.ps1 rather
+# than trusting it, which is what Part 0 says anyway.
+#
+# LF is the direction chosen because it is what the majority of the tree
+# already uses and what every non-Windows checkout would get regardless.
+# PowerShell 5.1 reads LF-only .ps1 files perfectly well; what it does NOT
+# tolerate is a missing UTF-8 BOM on a script carrying Unicode in its patterns
+# (see MASTER-PLAN 1.6) — and `text` handling never touches the BOM, so that
+# convention is unaffected.
 
 * text=auto eol=lf
 

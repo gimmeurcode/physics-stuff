@@ -61,7 +61,7 @@ given so the next session can re-measure rather than trust.
 | experiments driving a canvas stage | **508** | same (the other 85 drive the field pipeline) |
 | canvas stages | **178** | `./smoke.ps1` → `stages=178`; `./measure.ps1` confirms `unreachablestages=none` |
 | source modules | **230** | `./build.ps1` |
-| deployable size | **5 351 740 bytes** (5.35 MB / 5.1 MiB) | `./measure.ps1`. **`build.ps1` prints ~5 294 000, which is a CHARACTER count** — the Unicode maths symbols cost ~57 KB more as UTF-8 bytes. Both are far inside any upload limit |
+| deployable size | **5 351 740 bytes** (5.35 MB / 5.1 MiB) | `./measure.ps1`. **`build.ps1` prints ~5 294 000, which is a CHARACTER count** — the Unicode maths symbols cost ~57 KB more as UTF-8 bytes. Both are far inside any upload limit. **A fresh `git clone` builds ~15.6 KB smaller**: `.gitattributes` normalises line endings to LF and 54 of the source files carried CRLF when this was measured, which is 15 627 carriage returns. The app is identical — but this is why the row says *measure*, not *quote* |
 | source lines | ~75 930 (all of `src/`) | `./measure.ps1`; `./map.ps1` reports `src/js` alone |
 | unit tests | **4175 passed, 0 failed** | `./runtests.ps1` |
 | declared table claims | **249, bad=0** | `./auditclaims.ps1` |
