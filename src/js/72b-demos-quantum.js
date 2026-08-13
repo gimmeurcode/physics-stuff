@@ -1,0 +1,52 @@
+const QUANTUM_STAGE_GROUPS = [
+{ g:'Wave packets & uncertainty', items:[
+  {n:'A free particle is a spreading packet', ex:'exact ψ(x,t), dispersing live', stage:'qmPacket',
+   opts:{s0:0.55, k0:2.2},
+   out:'The packet translates at k₀ and spreads: Δx(t) = σ₀√(1+(t/2σ₀²)²) grows while Δp = 1/2σ₀ stays fixed. The Δx bracket drawn on the curve is computed from that formula every frame.',
+   note:'A quantum particle with reasonably definite position is a <b>wave packet</b> — a superposition of many momenta. The momenta travel at different speeds (E = p²/2m means v = p), so the packet inevitably smears: the fast components pull ahead, visible as the short wavelengths crowding the leading edge. <b>Click anywhere</b> to read ψ, |ψ|², the phase, and the local momentum at that exact point.'},
+  {n:'Squeeze x, pay in p — Heisenberg live', ex:'ψ(x) and its exact Fourier transform φ(p)', stage:'qmUncertainty',
+   opts:{s0:0.5},
+   out:'Drag σ and watch both plots: Δx·Δp = ħ/2 at every setting, exactly. The bound is saturated because a Gaussian is the minimum-uncertainty state.',
+   note:'This is the uncertainty principle with nothing hidden: φ(p) is the Fourier transform of ψ(x), so a narrow ψ needs many wavelengths — and wavelength is momentum (p = ħk). No measurement disturbance is involved; the trade-off is a theorem about waves. It is why atoms do not collapse: pinning the electron to the nucleus (Δx → 0) would cost unbounded kinetic energy (Δp → ∞).'},
+  {n:'Confinement quantises: the particle in a box', ex:'eigenstates, superpositions, beats', stage:'qmWell',
+   opts:{sel:[1,2]},
+   out:'One selected state: |Ψ|² is frozen (stationary). Two states: the density sloshes at exactly ω = E₂−E₁ — read the beat period in the panel and time it against the animation.',
+   note:'Fitting n half-waves into the box forces kₙ = nπ/L, so energy comes in steps Eₙ ∝ n² — the ladder drawn at the right. All quantum dynamics you can ever see is <b>interference between levels</b>: an atom mid-transition is exactly this sloshing charge, radiating at the beat frequency, and ΔE = ħω is the photon.'}
+]},
+{ g:'Interference, measurement & collapse', items:[
+  {n:'The double slit, one particle at a time', ex:'dots build the fringes — γ = 1', stage:'qmSlit',
+   opts:{gamma:1, rate:120},
+   out:'Each detection is a single whole particle at one random spot — yet the histogram converges on I(y) = env·(1+cos kΔr), the exact two-path interference curve, drawn in blue for comparison.',
+   note:'The central mystery, honestly staged. The particle is never smeared out on the wall — it arrives whole. What interferes is the <b>amplitude</b> for the two paths, and probability = |amplitude|². Put the probe on a dark fringe: the panel shows Δr an odd half-multiple of λ, the two paths cancelling. Feynman: "the only mystery."'},
+  {n:'Watch which slit — the fringes die', ex:'the same slits with γ = 0', stage:'qmSlit',
+   opts:{gamma:0, rate:120},
+   out:'With path information available (γ = 0), the pattern is |ψ₁|² + |ψ₂|² — two overlapping single-slit humps, no fringes. Nothing was blocked; only knowing became possible.',
+   note:'"Observation collapses the wavefunction" made precise: a which-path detector <b>entangles</b> the particle with itself, and once the paths are distinguishable their amplitudes can no longer cancel — probabilities add instead of amplitudes. Slide γ through intermediate values: fringe contrast = γ is the modern, quantitative statement (decoherence is γ decaying to 0 through contact with any environment).'},
+  {n:'Measurement collapse, step by step', ex:'evolve → measure → collapse → re-spread', stage:'qmCollapse',
+   opts:{res:0.35},
+   out:'Between clicks, ψ spreads deterministically. Each "Measure position" returns one random x weighted by the |ψ|² on screen at that instant, and restarts ψ as a narrow packet there.',
+   note:'The two rules of quantum mechanics, side by side. Rule 1 (Schrödinger): smooth, reversible, deterministic evolution of ψ. Rule 2 (Born/collapse): a measurement yields x with probability |ψ(x)|² and leaves the system localised to your detector\'s resolution. Try auto-measure: frequent measurement pins the packet — the quantum Zeno effect. And note what collapse costs: a narrow result means a wide momentum, so it re-spreads faster.'}
+]},
+{ g:'Tunnelling, spin & identical particles', items:[
+  {n:'Tunnelling through a wall', ex:'E < V₀, and T > 0 anyway', stage:'qmTunnel',
+   opts:{E:0.6, V0:1, a:1.4},
+   out:'The exact scattering state: oscillation → exponential decay e^(−κx) inside → smaller oscillation beyond. T + R = 1 to six decimals in the panel, from the matched coefficients.',
+   note:'Classically forbidden ≠ quantum impossible: inside the barrier the kinetic term goes negative and ψ decays instead of oscillating, but it emerges with |ψ|² > 0. The exponential e^(−2κa) is the sun\'s ignition switch (proton–proton fusion), the alpha-decay clock, and the tunnelling microscope\'s ruler. Widen the barrier and watch T collapse; raise E above V₀ and find the resonances where the barrier turns transparent.'},
+  {n:'Spin on the Bloch sphere', ex:'⟨S⟩ precesses — nothing orbits, nothing spins', stage:'qmBloch',
+   opts:{theta:55, B:1.2},
+   out:'The full spin-½ state is one arrow on a sphere: |χ⟩ = cos(θ/2)|↑⟩ + e^(iφ)sin(θ/2)|↓⟩. In a field it precesses at the Larmor frequency ω = γB — the panel tracks φ(t) and the exact probabilities cos²(θ/2), sin²(θ/2).',
+   note:'Spin is intrinsic angular momentum with <b>no rotating matter behind it</b> — the electron is pointlike to every experiment yet carries exactly ħ/2. The θ/2 in the state is why spinors need 720° to return to themselves (measurable in neutron interferometers). Precession here is what runs every MRI scanner: protons in your body doing exactly this at 64 MHz per 1.5 T. Set B = 0 to freeze it; drag θ and check ⟨Sz⟩ = (ħ/2)cosθ in the panel.'},
+  {n:'Stern–Gerlach: spin is a two-valued die', ex:'sequential filters, cos²(θ/2)', stage:'qmSG',
+   opts:{theta:60},
+   out:'Each atom deflects up or down — never in between. The kept fraction converges on cos²(θ/2): 100% at θ=0, 50% at 90°, 0% at 180°. Compare the counter with the prediction.',
+   note:'Spin measurements only ever return ±ħ/2 along whatever axis you choose — quantisation of the answer, not of the question. Turn on the third analyzer: atoms certified spin-up along ẑ, after a θ measurement, fail a second ẑ test — the tilted measurement <b>erased</b> the earlier answer. Position/momentum obey the same algebra; spin just makes it countable.'},
+  {n:'Pauli exclusion: the exchange hole', ex:'two fermions in one box, |Ψ(x₁,x₂)|²', stage:'qmPauli',
+   opts:{fermion:true, na:1, nb:2},
+   out:'The joint density is exactly zero along the whole diagonal x₁ = x₂: identical fermions are never found at the same place in the same state. Set state a = state b and Ψ vanishes identically.',
+   note:'Swapping two identical fermions must flip the sign of Ψ, so Ψ(x,x) = −Ψ(x,x) = 0 — the <b>exchange hole</b>, drawn here with no approximation. Stack this rule up an atom\'s energy ladder (2 electrons per orbital, spins paired — see the shell diagram) and you get the periodic table, chemistry, and the rigidity of matter. White dwarf stars are held up by nothing else.'},
+  {n:'Flip the sign: bosons bunch', ex:'the same two particles, symmetric Ψ', stage:'qmPauli',
+   opts:{fermion:false, na:1, nb:2},
+   out:'Same box, same two states, plus sign instead of minus: now the density is enhanced on the diagonal — bosons prefer to be found together.',
+   note:'One sign, two worlds. Symmetric Ψ piles amplitude onto coincidence — the statistical root of stimulated emission (lasers), Bose–Einstein condensates, and superfluid helium. The spin-statistics theorem ties the choice to spin: integer spin takes +, half-integer takes −. Nothing else in physics does so much with a single bit.'}
+]}];
+

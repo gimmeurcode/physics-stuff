@@ -1,0 +1,730 @@
+<div class="app" id="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="nab" id="brandGlyph">∇</span>
+      <div class="brand-txt">
+        <h1 id="brandTitle">Calculus, Fields &amp; the Atom</h1>
+        <span class="sub" id="brandSub">an interactive laboratory</span>
+      </div>
+    </div>
+
+    <!-- Forty wings will not fit on one row, and a wrapping row of them is what
+         made this hard to navigate. They are grouped into seven menus instead,
+         and the menus run left to right in the order a reader should meet them:
+         each wing's prerequisites are all to its left. #wingNav still contains
+         every button[data-w], so markWingNav() and the boot wiring keep working
+         unchanged. -->
+    <nav class="wingnav" id="wingNav" aria-label="Laboratory wings">
+      <button class="navhome" data-w="home" aria-pressed="false" title="Overview — all forty wings, in order">⌂</button>
+
+      <div class="navgroup" data-g="pre">
+        <button class="navgrp" aria-haspopup="true" aria-expanded="false">Precalculus<i class="caret"></i></button>
+        <div class="menupanel" role="menu">
+          <button data-w="algebra" role="menuitem"><span class="mg">x²</span><span class="mtx"><b>Algebra</b><i>the quadratic formula, derived · factoring · roots</i></span></button>
+          <button data-w="functions" role="menuitem"><span class="mg">ƒ</span><span class="mtx"><b>Functions</b><i>transformations · inverses · exponentials &amp; logs</i></span></button>
+          <button data-w="trig" role="menuitem"><span class="mg">sin</span><span class="mtx"><b>Trigonometry</b><i>the unit circle · identities · waves &amp; phasors</i></span></button>
+        </div>
+      </div>
+
+      <div class="navgroup" data-g="calc">
+        <button class="navgrp" aria-haspopup="true" aria-expanded="false">Calculus<i class="caret"></i></button>
+        <div class="menupanel" role="menu">
+          <button data-w="limits" role="menuitem"><span class="mg">lim</span><span class="mtx"><b>Limits &amp; Continuity</b><i>ε–δ as a game · the four failures · IVT, EVT, MVT</i></span></button>
+          <button data-w="deriv" role="menuitem"><span class="mg">d/dx</span><span class="mtx"><b>Derivatives &amp; Applications</b><i>secant → tangent · optimisation · Newton · L'Hôpital</i></span></button>
+          <button data-w="integral" role="menuitem"><span class="mg">∫</span><span class="mtx"><b>Integration</b><i>Riemann sums · FTC · double, triple, polar, spherical</i></span></button>
+          <button data-w="series" role="menuitem"><span class="mg">Σ</span><span class="mtx"><b>Sequences &amp; Series</b><i>every test run on real terms · Taylor + Lagrange remainder</i></span></button>
+          <button data-w="ode" role="menuitem"><span class="mg">ÿ</span><span class="mtx"><b>Differential Equations</b><i>slope fields · RK4 · resonance · power series</i></span></button>
+        </div>
+      </div>
+
+      <div class="navgroup" data-g="lin">
+        <!-- Probability and numerical methods live here because of what they
+             need, not what they are called: regression is least squares, which
+             is the vector-space wing, and both arrive after elimination. -->
+        <button class="navgrp" aria-haspopup="true" aria-expanded="false">Linear algebra &amp; data<i class="caret"></i></button>
+        <div class="menupanel" role="menu">
+          <button data-w="linsys" role="menuitem"><span class="mg">⊞</span><span class="mtx"><b>Systems, Matrices &amp; Determinants</b><i>elimination step by step · inverses · area factor</i></span></button>
+          <button data-w="vecspace" role="menuitem"><span class="mg">⊕</span><span class="mtx"><b>Vector Spaces &amp; Orthogonality</b><i>span · basis · Gram–Schmidt · least squares</i></span></button>
+          <button data-w="eigen" role="menuitem"><span class="mg">λ</span><span class="mtx"><b>Eigenvalues, Diagonalisation &amp; SVD</b><i>Av = λv · PDP⁻¹ · spectral theorem · UΣVᵀ</i></span></button>
+          <button data-w="prob" role="menuitem"><span class="mg">P</span><span class="mtx"><b>Probability &amp; Statistics</b><i>densities · the CLT, run · regression and r²</i></span></button>
+          <button data-w="numer" role="menuitem"><span class="mg">≈</span><span class="mtx"><b>Numerical Methods</b><i>convergence order · stability · floating point</i></span></button>
+        </div>
+      </div>
+
+      <div class="navgroup" data-g="deq">
+        <button class="navgrp" aria-haspopup="true" aria-expanded="false">Diff. equations<i class="caret"></i></button>
+        <div class="menupanel" role="menu">
+          <button data-w="laplace" role="menuitem"><span class="mg">ℒ</span><span class="mtx"><b>Laplace, Delta &amp; Convolution</b><i>transform by quadrature · impulse response · x ∗ h</i></span></button>
+          <button data-w="systems" role="menuitem"><span class="mg">⇄</span><span class="mtx"><b>Linear Systems of ODEs</b><i>x′ = Ax · nodes, saddles, spirals · trace–det plane</i></span></button>
+          <button data-w="phase" role="menuitem"><span class="mg">∮</span><span class="mtx"><b>Nonlinear Dynamics &amp; Phase Plane</b><i>critical points · limit cycles · bifurcation</i></span></button>
+        </div>
+      </div>
+
+      <div class="navgroup" data-g="mv">
+        <button class="navgrp" aria-haspopup="true" aria-expanded="false">Multivariable<i class="caret"></i></button>
+        <div class="menupanel" role="menu">
+          <button data-w="vectors" role="menuitem"><span class="mg">⟶</span><span class="mtx"><b>Vectors &amp; the Geometry of Space</b><i>dot &amp; cross built, not quoted · lines, planes, quadrics</i></span></button>
+          <button data-w="curves" role="menuitem"><span class="mg">γ</span><span class="mtx"><b>Curves &amp; Motion</b><i>cycloids · polar · conics · the Frenet frame</i></span></button>
+          <button data-w="partial" role="menuitem"><span class="mg">∂</span><span class="mtx"><b>Partial Derivatives</b><i>contours · Clairaut · Hessian · Lagrange · Jacobian</i></span></button>
+          <button data-w="vector" role="menuitem"><span class="mg">∇</span><span class="mtx"><b>Vector Calculus</b><i>line integrals · Green · Stokes · divergence theorem</i></span></button>
+          <button data-w="forms" role="menuitem"><span class="mg">∧</span><span class="mtx"><b>Differential Forms</b><i>one operator · d∘d = 0 · ∫∂Ω ω = ∫Ω dω</i></span></button>
+          <button data-w="potential" role="menuitem"><span class="mg">φ</span><span class="mtx"><b>Potential Theory</b><i>harmonic functions · Green's identities · Helmholtz</i></span></button>
+        </div>
+      </div>
+
+      <div class="navgroup" data-g="phys">
+        <button class="navgrp" aria-haspopup="true" aria-expanded="false">Classical physics<i class="caret"></i></button>
+        <div class="menupanel wide" role="menu">
+          <button data-w="mechanics" role="menuitem"><span class="mg">⇉</span><span class="mtx"><b>Mechanics</b><i>kinematics · free bodies · energy ledger · orbits</i></span></button>
+          <button data-w="rotation" role="menuitem"><span class="mg">↻</span><span class="mtx"><b>Torque &amp; Rotational Dynamics</b><i>∫r²dm · parallel axis · τ = rF sin θ · τ = Iα</i></span></button>
+          <button data-w="rotenergy" role="menuitem"><span class="mg">⟳</span><span class="mtx"><b>Energy &amp; Momentum of Rotating Systems</b><i>½Iω² · the ramp race · L conserved, K not · precession</i></span></button>
+          <button data-w="waves" role="menuitem"><span class="mg">≈</span><span class="mtx"><b>Oscillations &amp; Waves</b><i>SHM as every potential's limit · standing waves · Doppler</i></span></button>
+          <button data-w="fluids" role="menuitem"><span class="mg">≋</span><span class="mtx"><b>Fluids</b><i>Archimedes derived by integrating pressure · Bernoulli</i></span></button>
+          <button data-w="thermo" role="menuitem"><span class="mg">🌡</span><span class="mtx"><b>Thermodynamics</b><i>P–V work by quadrature · Maxwell–Boltzmann · entropy</i></span></button>
+          <button data-w="em" role="menuitem"><span class="mg">⚡</span><span class="mtx"><b>Electromagnetism</b><i>charge sandbox · Maxwell's four, both sides measured</i></span></button>
+          <button data-w="circuit" role="menuitem"><span class="mg">⚙</span><span class="mtx"><b>Circuits</b><i>nodal solver · scope, Bode, phasors · the field between parts</i></span></button>
+          <button data-w="optics" role="menuitem"><span class="mg">◇</span><span class="mtx"><b>Optics</b><i>Fermat → Snell · lenses · double slit · polarisers</i></span></button>
+          <button data-w="relativity" role="menuitem"><span class="mg">⧖</span><span class="mtx"><b>Relativity — Special &amp; General</b><i>light clock · Minkowski · Mercury's 43″ · LIGO's chirp</i></span></button>
+        </div>
+      </div>
+
+      <div class="navgroup" data-g="mod">
+        <button class="navgrp" aria-haspopup="true" aria-expanded="false">Modern<i class="caret"></i></button>
+        <!-- Ordered so each wing has met its tools already: complex analysis is
+             the language Fourier and quantum are both written in, statistical
+             mechanics supplies the Fermi statistics condensed matter opens with,
+             and the atom → nuclear → string chain runs down in scale, with string
+             leaning on the Cornell potential and PDG masses the atom wing built. -->
+        <div class="menupanel" role="menu">
+          <button data-w="complex" role="menuitem"><span class="mg">ℂ</span><span class="mtx"><b>Complex Functions &amp; Contours</b><i>domain colouring · Cauchy–Riemann · residues</i></span></button>
+          <button data-w="fourier" role="menuitem"><span class="mg">∿</span><span class="mtx"><b>Fourier Analysis</b><i>Gibbs · the winding picture · FFT · convolution</i></span></button>
+          <button data-w="quantum" role="menuitem"><span class="mg">ψ</span><span class="mtx"><b>Quantum Mechanics</b><i>packets · which-path · tunnelling · Stern–Gerlach</i></span></button>
+          <button data-w="statmech" role="menuitem"><span class="mg">∑</span><span class="mtx"><b>Statistical Mechanics</b><i>entropy · partition function · Maxwell speeds · Ising</i></span></button>
+          <button data-w="solid" role="menuitem"><span class="mg">◈</span><span class="mtx"><b>Condensed Matter &amp; Semiconductors</b><i>Fermi sea · bands · doping · the p–n junction</i></span></button>
+          <button data-w="atom" role="menuitem"><span class="mg">⚛</span><span class="mtx"><b>The Atom &amp; the Four Forces</b><i>quarks · Yukawa · β decay · binding energy</i></span></button>
+          <button data-w="nuclear" role="menuitem"><span class="mg">☢</span><span class="mtx"><b>Nuclear Physics</b><i>binding curve · decay chains · tunnelling · fission</i></span></button>
+          <button data-w="string" role="menuitem"><span class="mg">α′</span><span class="mtx"><b>String Theory</b><i>Regge slope measured · D = 26 solved for · the swampland · AdS/CFT</i></span></button>
+        </div>
+      </div>
+    </nav>
+
+    <button class="palettebtn" id="btnPalette" aria-label="Search every wing and experiment">
+      <span class="mag" aria-hidden="true">⌕</span><span class="ptxt">Search…</span><kbd id="palKbd">Ctrl K</kbd>
+    </button>
+
+    <div class="seg" id="viewSeg">
+      <button data-v="3d"   aria-pressed="true">3D field</button>
+      <button data-v="surf" aria-pressed="false">Height map</button>
+      <button data-v="2d"   aria-pressed="false">2D map</button>
+    </div>
+    <button class="btn" id="btnTheory">The mathematics</button>
+    <button class="btn iconbtn" id="btnTheme" aria-label="Switch between light and dark theme">◐</button>
+    <button class="btn" id="btnReset">Reset view</button>
+  </header>
+
+  <div class="stage">
+    <canvas id="cv" role="img" aria-label="Interactive visualization. Click or drag to move the probe point; drag to orbit in 3D; scroll to zoom. All numeric readouts appear in the panels beside the canvas."></canvas>
+    <div class="hud">
+      <div class="readout-chip" id="chip"></div>
+      <div class="perf" id="perf"></div>
+      <div class="fit-inset" id="fitBox" style="display:none">
+        <div class="ttl" style="margin-bottom:5px">Least-squares fit — the walker is (slope, intercept)</div>
+        <canvas id="fitCv" width="220" height="150"></canvas>
+        <div class="subst" id="fitLbl"></div>
+      </div>
+      <div class="legend" id="legend"></div>
+      <div class="hint" id="hint">
+        <div><kbd>drag</kbd> orbit &nbsp; <kbd>wheel</kbd> zoom &nbsp; <kbd>shift</kbd>+drag pan</div>
+        <div><kbd>click</kbd> move the probe point</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="split split-v" id="splitRail" role="separator" aria-orientation="vertical"
+       aria-label="Drag to resize the experiments panel" tabindex="0"></div>
+  <div class="split split-h" id="splitDock" role="separator" aria-orientation="horizontal"
+       aria-label="Drag to resize the controls panel" tabindex="0"></div>
+
+  <div class="dock" id="dock" hidden>
+    <details class="sec" id="secStage" open>
+      <summary>Experiment controls <span class="tag" id="tagStage"></span></summary>
+      <div class="body">
+        <div id="stageBody"></div>
+        <div id="stageReadout"></div>
+      </div>
+      <div id="stageLegend" hidden></div>
+    </details>
+
+    <!-- The derivation ladder: the algebra that produces the result, with the
+         reader's current numbers substituted at each step. Shown only for
+         stages that define derive(). -->
+    <details class="sec" id="secDerive2" open>
+      <summary>Where this comes from <span class="tag">the algebra</span></summary>
+      <div class="body"><div class="deriv" id="deriveBody"></div></div>
+    </details>
+
+    <details class="sec" id="secDisplay" open>
+      <summary>Display &amp; layers</summary>
+      <div class="body" id="dispBody"></div>
+    </details>
+
+    <details class="sec" id="secField">
+      <summary>The field <span class="tag" id="tagField"></span></summary>
+      <div class="body">
+        <div class="seg" id="modeSeg" style="align-self:flex-start">
+          <button data-mode="scalar" aria-pressed="false">Scalar &nbsp;f</button>
+          <button data-mode="vector" aria-pressed="true">Vector &nbsp;F</button>
+        </div>
+
+        <div id="scalarInputs" style="display:none;flex-direction:column;gap:7px">
+          <div class="fld"><span class="pre">f =</span><input id="inF" spellcheck="false" autocomplete="off" aria-label="Scalar field expression"></div>
+        </div>
+
+        <div id="vectorInputs" style="display:flex;flex-direction:column;gap:7px">
+          <div class="fld"><span class="pre">P =</span><input id="inP" spellcheck="false" autocomplete="off" aria-label="Vector field P component"></div>
+          <div class="fld"><span class="pre">Q =</span><input id="inQ" spellcheck="false" autocomplete="off" aria-label="Vector field Q component"></div>
+          <div class="fld"><span class="pre">R =</span><input id="inR" spellcheck="false" autocomplete="off" aria-label="Vector field R component"></div>
+        </div>
+
+        <div class="err" id="errMsg" role="alert"></div>
+        <p class="help">Any expression in <b>x, y, z</b> — and <b>t</b> for time. A field that mentions t
+        animates in every view (a Time control appears under Display &amp; layers). Shorthand:
+        r = √(x²+y²+z²), rho = √(x²+y²), implicit products like 2x sin(y).</p>
+
+        <select class="sel" id="presetSel" aria-label="Load a prepared field"></select>
+        <p class="help" id="presetNote"></p>
+
+        <div class="row wrap">
+          <button class="btn sm" id="btnPromoteGrad">Send ∇f to F</button>
+          <button class="btn sm" id="btnPromoteCurl">Send ∇×F to F</button>
+        </div>
+        <p class="help">
+          Those two buttons prove the identities: send a gradient into <b>F</b> and its curl collapses to zero;
+          send a curl into <b>F</b> and its divergence collapses to zero.
+        </p>
+      </div>
+    </details>
+
+    <details class="sec" id="secPhys">
+      <summary>Physics builder <span class="tag" id="tagPhys"></span></summary>
+      <div class="body" id="physBody"></div>
+    </details>
+
+    <details class="sec" id="secProbe" open>
+      <summary>At the probe point <span class="tag" id="tagProbe"></span></summary>
+      <div class="body" id="probeBody"></div>
+    </details>
+
+    <details class="sec" id="secDir">
+      <summary>Directional derivative <span class="tag" id="tagDir"></span></summary>
+      <div class="body" id="dirBody"></div>
+    </details>
+
+    <details class="sec" id="secDeriv">
+      <summary>How it is computed <span class="tag">symbolic</span></summary>
+      <div class="body">
+        <p class="help">
+          Every derivative below is differentiated <b>symbolically</b> from your expression — the same rules you
+          would apply on paper — then evaluated at the probe point.
+        </p>
+        <div class="deriv" id="derivBody"></div>
+      </div>
+    </details>
+
+    <details class="sec" id="secFlux">
+      <summary>Flux box → divergence</summary>
+      <div class="body" id="fluxBody"></div>
+    </details>
+
+    <details class="sec" id="secCirc">
+      <summary>Circulation loop → curl</summary>
+      <div class="body" id="circBody"></div>
+    </details>
+
+    <details class="sec" id="secPart">
+      <summary>Test particle — Newton's 2nd law <span class="tag" id="tagPart"></span></summary>
+      <div class="body" id="partBody"></div>
+    </details>
+
+    <details class="sec" id="secDesc">
+      <summary>Optimization lab</summary>
+      <div class="body" id="descBody"></div>
+    </details>
+  </div>
+
+  <!-- dims the canvas while the experiments drawer is open on tablet/phone -->
+  <div class="rail-scrim" id="railScrim"></div>
+
+  <aside class="rail">
+
+    <details class="sec" id="secDemos" open>
+      <summary>Guided experiments <span class="tag">start here</span></summary>
+      <div class="body">
+        <p class="help" id="demoIntro">Each one loads a complete setup, parks the probe where the point is clearest, and states the outcome you should see — then explains why the mathematics produces it.</p>
+        <div id="demoList"></div>
+        <div id="demoNote"></div>
+      </div>
+    </details>
+
+
+
+  </aside>
+
+  <!-- Phone/tablet only: the three panes stack, so one of them is shown at a
+       time and this bar chooses which. Hidden entirely on desktop, where all
+       three are visible at once. -->
+  <nav class="panebar" id="paneBar" aria-label="Choose panel">
+    <button data-pane="stage" aria-pressed="true"><span>◧</span>View</button>
+    <button data-pane="dock"  aria-pressed="false"><span>⚙</span>Controls</button>
+    <button data-pane="rail"  aria-pressed="false"><span>☰</span>Experiments</button>
+  </nav>
+</div>
+
+<!-- Command palette: one search box over all twenty wings and every guided
+     experiment in them. This is the fastest way to reach anything. -->
+<div class="palette" id="palette" role="dialog" aria-modal="true" aria-label="Search wings and experiments">
+  <div class="palette-box">
+    <div class="palette-in">
+      <span class="mag" aria-hidden="true">⌕</span>
+      <input id="palInput" type="text" autocomplete="off" spellcheck="false"
+             placeholder="Search wings and experiments…" aria-label="Search wings and experiments"
+             role="combobox" aria-expanded="true" aria-controls="palList" aria-autocomplete="list">
+    </div>
+    <div class="palette-list" id="palList" role="listbox" aria-label="Results"></div>
+    <div class="palette-foot">
+      <span><kbd>↑</kbd><kbd>↓</kbd> move</span>
+      <span><kbd>↵</kbd> open</span>
+      <span><kbd>esc</kbd> close</span>
+      <span class="pf-count" id="palCount"></span>
+    </div>
+  </div>
+</div>
+
+<div class="home" id="home">
+  <div class="home-inner">
+    <div class="home-head">
+      <div class="home-glyphs"><span>∫</span><span>∂</span><span>∇</span><span>⚡</span><span>ψ</span><span>⚛</span></div>
+      <h1>Calculus, Fields &amp; the Atom</h1>
+      <p class="home-tag">One laboratory, forty floors, and they are laid out in the order you should
+      climb them: the seven sections below are the seven menus in the top bar, left to right, and every
+      wing's prerequisites are already behind it. Start on the precalculus floor and the quadratic
+      formula gets derived rather than recited; finish on the top floor and a black hole's microstates
+      get counted. In between: single-variable calculus, linear algebra, differential equations, the
+      multivariable half through to the integral theorems, and the physics all of it was invented for.
+      Everything on screen is computed live from the actual mathematics — symbolic derivatives, adaptive
+      quadrature, Maxwell's equations, Lorentz boosts and Schwarzschild geodesics, a full nodal circuit
+      solver, exact wavefunctions and real coupling constants. Every theorem that equates two quantities
+      computes <em>both</em> of them and prints the difference.</p>
+    </div>
+    <h2 class="home-sec">Precalculus  ·  the floor everything else stands on</h2>
+    <div class="home-cards">
+      <button class="home-card" data-w="algebra">
+        <span class="hc-glyph" style="color:var(--c-grad)">x²</span>
+        <span class="hc-title">Algebra</span>
+        <span class="hc-desc">The one place where a formula is genuinely derived rather than met. The
+        quadratic formula is not stored anywhere in this program: completing the square produces it from
+        your own a, b and c every time you move a slider, carrying the letters down every line with your
+        numbers substituted beneath. Then polynomials, where a root and a factor turn out to be the same
+        thing said twice.</span>
+        <span class="hc-foot">the discriminant decides before you solve · factor ⟺ root · end behaviour</span>
+      </button>
+      <button class="home-card" data-w="functions">
+        <span class="hc-glyph" style="color:var(--c-pos)">ƒ</span>
+        <span class="hc-title">Functions</span>
+        <span class="hc-desc">What a function is, what you may do to one, and which ones can be undone.
+        Every transformation of every graph lives in the single form A·f(k(x − h)) + v — and the two
+        operations inside the function behave backwards, for a reason the derivation makes plain rather
+        than asking you to remember it. Then inverses as reflections in y = x, and logarithms as
+        exponentials seen in that mirror.</span>
+        <span class="hc-foot">domain and range · why inside is inverted · one-to-one is the whole condition</span>
+      </button>
+      <button class="home-card" data-w="trig">
+        <span class="hc-glyph" style="color:var(--c-curl)">sin</span>
+        <span class="hc-title">Trigonometry</span>
+        <span class="hc-desc">Sine and cosine are the coordinates of a point going round a circle; the right
+        triangle is what you get by dropping a perpendicular from it. Taking the circle as the definition is
+        what lets angles exceed 90°, go negative and keep going — and it turns sin² + cos² = 1 into
+        Pythagoras rather than a fourth thing to memorise. Unroll the circle and the sine wave appears.</span>
+        <span class="hc-foot">why every oscillation later is a circle seen edge-on · identities, shown</span>
+      </button>
+    </div>
+    <h2 class="home-sec">Single-variable calculus  ·  AP Calculus AB &amp; BC</h2>
+    <div class="home-cards">
+      <button class="home-card" data-w="limits">
+        <span class="hc-glyph" style="color:var(--c-neg)">lim</span>
+        <span class="hc-title">Limits &amp; Continuity</span>
+        <span class="hc-desc">Every limit measured by marching in from both sides, the ε–δ definition played
+        as a game with δ found by bisection, and all four ways a limit can fail — including sin(1/x), which
+        never settles however far you zoom. Then continuity's three conditions checked separately, and the
+        Intermediate, Extreme and Mean Value theorems with their witnesses located numerically.</span>
+        <span class="hc-foot">the squeeze theorem · removable, jump, infinite, essential · Rolle</span>
+      </button>
+      <button class="home-card" data-w="deriv">
+        <span class="hc-glyph" style="color:var(--c-pos)">d/dx</span>
+        <span class="hc-title">Derivatives &amp; Applications</span>
+        <span class="hc-desc">The secant pivoting onto the tangent, with three difference quotients drawn
+        converging on the symbolic answer. Curves analysed by root-finding on their own derivatives,
+        optimisation that takes the endpoints seriously, related rates, Newton's method converging
+        quadratically — and failing — and L'Hôpital's rule shown giving a <em>wrong</em> answer when its
+        hypothesis is not checked.</span>
+        <span class="hc-foot">|x| has no derivative at 0 · inflections need a sign change · quadratic convergence</span>
+      </button>
+      <button class="home-card" data-w="integral">
+        <span class="hc-glyph" style="color:var(--c-warn)">∫</span>
+        <span class="hc-title">Integration</span>
+        <span class="hc-desc">Riemann sums whose convergence order is measured rather than asserted, the
+        Fundamental Theorem with the accumulated area differenced back into the integrand, then up a
+        dimension twice: columns over a rectangle, Type I and II regions, polar wedges, solids peeled one
+        variable at a time, mass and moments of inertia, and the change of variables.</span>
+        <span class="hc-foot">Fubini, verified · r dr dθ, derived · ρ² sin φ · the Gaussian integral</span>
+      </button>
+      <button class="home-card" data-w="series">
+        <span class="hc-glyph" style="color:var(--c-curl)">Σ</span>
+        <span class="hc-title">Sequences &amp; Series</span>
+        <span class="hc-desc">Partial sums drawn converging or not, with every test run on the actual terms —
+        including the many cases where the answer is "inconclusive". The alternating error bound printed
+        beside the error that occurred, Taylor polynomials with a Lagrange remainder computed from a
+        sampled maximum, and radii of convergence measured by the root test.</span>
+        <span class="hc-foot">the harmonic series · absolute vs conditional · termination is quantisation</span>
+      </button>
+      <button class="home-card" data-w="ode">
+        <span class="hc-glyph" style="color:var(--c-warn)">ÿ</span>
+        <span class="hc-title">Differential Equations</span>
+        <span class="hc-desc">Slope fields and the solution curves that follow them, Euler's method against
+        Heun and RK4 with each observed order measured, separable equations, exponential and logistic
+        growth — then second order: the characteristic roots colliding as damping crosses critical, the
+        resonance peak that is <em>not</em> at ω₀, and power series generated by their own recurrence.</span>
+        <span class="hc-foot">every closed form checked against RK4 · Abel's formula · Airy, Hermite, Legendre</span>
+      </button>
+    </div>
+    <h2 class="home-sec">Linear algebra &amp; data</h2>
+    <div class="home-cards">
+      <button class="home-card" data-w="linsys">
+        <span class="hc-glyph" style="color:var(--c-grad)">⊞</span>
+        <span class="hc-title">Systems, Matrices &amp; Determinants</span>
+        <span class="hc-desc">Type your own matrix and step through the elimination one legal move at a
+        time, with the equations drawn as lines beside it. Then matrices as maps — multiplication as
+        composition, the inverse checked by multiplying back — and the determinant as the factor by which
+        area is multiplied, with the image collapsing to a segment exactly when it hits zero.</span>
+        <span class="hc-foot">rank + nullity, as bookkeeping · Cramer vs elimination · orientation</span>
+      </button>
+      <button class="home-card" data-w="vecspace">
+        <span class="hc-glyph" style="color:var(--c-neg)">⊕</span>
+        <span class="hc-title">Vector Spaces &amp; Orthogonality</span>
+        <span class="hc-desc">Drag one vector onto another and watch the span collapse from a plane to a
+        line. Gram–Schmidt run one vector at a time, with the dot products measured rather than asserted.
+        Then least squares on data points you place yourself — and the residual shown to be perpendicular
+        to the column space, which is the whole reason the fit is best.</span>
+        <span class="hc-foot">the four subspaces · projection is the closest point · outliers pull hard</span>
+      </button>
+      <button class="home-card" data-w="eigen">
+        <span class="hc-glyph" style="color:var(--c-curl)">λ</span>
+        <span class="hc-title">Eigenvalues, Diagonalisation &amp; the SVD</span>
+        <span class="hc-desc">Drag an arrow until v × Av reads zero and you have found an eigenvector by
+        hand. The characteristic polynomial plotted so the eigenvalues are visibly its roots, a rotation
+        with no real eigenvector at all, and the shear that refuses to diagonalise. Then the spectral
+        theorem, definiteness decided two independent ways, and the SVD — which always exists.</span>
+        <span class="hc-foot">the circle always maps to an ellipse · σ₁/σₙ · A = UΣVᵀ, rebuilt</span>
+      </button>
+      <button class="home-card" data-w="prob">
+        <span class="hc-glyph" style="color:var(--c-pos)">P</span>
+        <span class="hc-title">Probability &amp; Statistics</span>
+        <span class="hc-desc">A distribution is a density, and every summary of it is an integral of that
+        density — so the mean is a centre of mass and the variance is a moment of inertia, computed here
+        rather than quoted. The central limit theorem is run rather than asserted: draw samples, average
+        them, histogram the averages, and watch any starting shape become a bell whose width falls as
+        σ/√n. Then regression, where a line is always returned and only r² notices whether there was
+        anything there to find.</span>
+        <span class="hc-foot">least squares is the vector-space wing again · correlation is not causation</span>
+      </button>
+      <button class="home-card" data-w="numer">
+        <span class="hc-glyph" style="color:var(--c-neg)">≈</span>
+        <span class="hc-title">Numerical Methods</span>
+        <span class="hc-desc">Most of this laboratory computes rather than quotes, so this wing turns the
+        machinery around and studies it. Root finders are compared by the shape of their error — bisection
+        halves it, Newton squares it, the secant method sits at the golden ratio between them — and Newton
+        is shown running away when started too far out, because quadratic convergence is a local promise
+        rather than a guarantee. Then the measured order of a quadrature rule, and the floor floating point
+        puts under every numerical derivative.</span>
+        <span class="hc-foot">orders measured by halving h, never quoted · why 1e−16 is a wall</span>
+      </button>
+    </div>
+    <h2 class="home-sec">Differential equations</h2>
+    <div class="home-cards">
+      <button class="home-card" data-w="laplace">
+        <span class="hc-glyph" style="color:var(--c-curl)">ℒ</span>
+        <span class="hc-title">Laplace, Delta &amp; Convolution</span>
+        <span class="hc-desc">The transform computed by quadrature from whatever you supply — picked from
+        the table, typed, or drawn on the strip with the pointer — so the standard pairs are checked
+        rather than trusted. Then the impulse response, which characterises a linear system completely,
+        and convolution as the sliding overlap that produces the output.</span>
+        <span class="hc-foot">differentiation becomes algebra · poles are stability · −90° at resonance</span>
+      </button>
+      <button class="home-card" data-w="systems">
+        <span class="hc-glyph" style="color:var(--c-grad)">⇄</span>
+        <span class="hc-title">Linear Systems of ODEs</span>
+        <span class="hc-desc">Substitute x = e^(λt)v and the requirement is Av = λv — so a system of
+        differential equations is an eigenvalue problem. Click anywhere to launch a trajectory, edit the
+        matrix and watch the portrait reorganise, and follow the marker across the trace–determinant
+        plane where the entire classification lives on one chart.</span>
+        <span class="hc-foot">nodes, saddles, spirals, centres · the stray t of the defective case</span>
+      </button>
+      <button class="home-card" data-w="phase">
+        <span class="hc-glyph" style="color:var(--c-pos)">∮</span>
+        <span class="hc-title">Nonlinear Dynamics &amp; the Phase Plane</span>
+        <span class="hc-desc">None of these systems has a closed-form solution and none needs one. Critical
+        points are located by Newton, the Jacobian is taken numerically, and its eigenvalues classify each
+        point. Click to launch trajectories forwards and backwards; type your own equations. Limit cycles,
+        separatrices and bifurcations are things no linear system can do.</span>
+        <span class="hc-foot">Van der Pol · predator–prey · Hopf · Hartman–Grobman and its exception</span>
+      </button>
+    </div>
+    <h2 class="home-sec">Multivariable calculus</h2>
+    <div class="home-cards">
+      <button class="home-card" data-w="vectors">
+        <span class="hc-glyph" style="color:var(--c-grad)">⟶</span>
+        <span class="hc-title">Vectors &amp; the Geometry of Space</span>
+        <span class="hc-desc">The two products, built rather than quoted: drag two arrows and watch the dot
+        product cast its shadow and the cross product sweep its area. Then lines that miss each other in
+        space, planes and their normals, the six quadric surfaces traced from their own cross-sections, and
+        the cylindrical and spherical coordinates the integration wing runs on.</span>
+        <span class="hc-foot">projections · skew-line distance · triple products · coordinate Jacobians</span>
+      </button>
+      <button class="home-card" data-w="curves">
+        <span class="hc-glyph" style="color:var(--c-curl)">γ</span>
+        <span class="hc-title">Curves &amp; Motion</span>
+        <span class="hc-desc">Cycloids with real cusps where r′ actually vanishes, polar roses and
+        cardioids with the swept area accumulating live, and the conic sections as one definition with one
+        number turned. Then into space: the Frenet frame built vector by vector, curvature and torsion, and
+        acceleration split into the part that speeds you up and the part that turns you.</span>
+        <span class="hc-foot">arc length · osculating circles · a_T and a_N · Kepler's equal areas</span>
+      </button>
+      <button class="home-card" data-w="partial">
+        <span class="hc-glyph" style="color:var(--c-pos)">∂</span>
+        <span class="hc-title">Partial Derivatives</span>
+        <span class="hc-desc">Contour maps and traces, limits that fail along a parabola while passing on
+        every line, Clairaut's theorem checked along two chains of algebra, and tangent planes whose error
+        is measured falling as h². Critical points found by search and classified by the Hessian, Lagrange
+        multipliers as tangency, and the Jacobian as an area scale.</span>
+        <span class="hc-foot">symbolic partials · the discriminant test · λ as a shadow price</span>
+      </button>
+      <button class="home-card" data-w="vector">
+        <span class="hc-glyph" style="color:var(--c-grad)">∇</span>
+        <span class="hc-title">Vector Calculus — the Integral Theorems</span>
+        <span class="hc-desc">Line integrals accumulating in real time, conservative fields tested along
+        three different routes, Green's theorem with both sides measured separately, surface integrals and
+        flux, Stokes' theorem with four different caps giving one answer, and the divergence theorem on a
+        sphere and a cylinder. Plus the field engine itself: type any expression and watch it differentiated.</span>
+        <span class="hc-foot">the punctured plane · planimeters · ∇·(∇×F) = 0 · flux boxes</span>
+      </button>
+      <button class="home-card" data-w="forms">
+        <span class="hc-glyph" style="color:var(--c-warn)">∧</span>
+        <span class="hc-title">Differential Forms</span>
+        <span class="hc-desc">Gradient, curl and divergence are not three operators but one — the exterior
+        derivative — acting on objects of different degree. Then d∘d = 0 contains both curl(grad) = 0 and
+        div(curl) = 0, measured for whatever you type, and the four integral theorems collapse into the
+        single line ∫∂Ω ω = ∫Ω dω.</span>
+        <span class="hc-foot">why the cross product needs three dimensions · closed vs exact · Hodge</span>
+      </button>
+      <button class="home-card" data-w="potential">
+        <span class="hc-glyph" style="color:var(--c-grad)">φ</span>
+        <span class="hc-title">Potential Theory</span>
+        <span class="hc-desc">A harmonic function equals its own average over every circle — drag the circle
+        and watch the two numbers stay locked. That forbids interior maxima, which is the maximum principle.
+        Then the Helmholtz decomposition, solved for rather than quoted: two Poisson equations relaxed on a
+        grid, differentiated back, and checked.</span>
+        <span class="hc-foot">why B = ∇×A exists · Green's identities · harmonic = Re of analytic</span>
+      </button>
+    </div>
+    <h2 class="home-sec">Classical physics  ·  AP Physics 1, 2 &amp; C</h2>
+    <div class="home-cards">
+      <button class="home-card" data-w="mechanics">
+        <span class="hc-glyph" style="color:var(--c-grad)">⇉</span>
+        <span class="hc-title">Mechanics</span>
+        <span class="hc-desc">Three kinematic graphs that are one motion, with the displacement computed
+        both from the formula and by integrating the area. Projectiles with and without air, free bodies
+        drawn to scale, an energy ledger that stays flat while friction eats into it, collisions where Δp
+        reads zero at every elasticity, and orbits integrated from F = GMm/r² alone.</span>
+        <span class="hc-foot">the centre of mass never notices a collision · L conserved to 10⁻⁹ · virial theorem</span>
+      </button>
+      <button class="home-card" data-w="rotation">
+        <span class="hc-glyph" style="color:var(--c-curl)">↻</span>
+        <span class="hc-title">Rotation</span>
+        <span class="hc-desc">Moments of inertia obtained by integrating r²dm and printed beside the table
+        value, the parallel-axis theorem verified the same way, a race down a ramp decided by shape alone
+        with mass and radius cancelling exactly, and a skater who speeds up because L is conserved while
+        kinetic energy is not.</span>
+        <span class="hc-foot">static friction does no work · c = I/MR² decides everything · precession at τ/L</span>
+      </button>
+      <button class="home-card" data-w="rotenergy">
+        <span class="hc-glyph" style="color:var(--c-grad)">⟳</span>
+        <span class="hc-title">Energy &amp; Momentum of Rotating Systems</span>
+        <span class="hc-desc">The AP framework separates the dynamics of rotation from its conserved
+        quantities, and they really are different lessons. A rolling body divides its energy between
+        translation and spin in a ratio set by shape alone — mass and radius cancel exactly. Then angular
+        momentum: the skater whose L is conserved while K is not, with the difference shown to be the work
+        her arms did, and the gyroscope that turns instead of falling because a perpendicular torque
+        rotates a vector rather than shortening it.</span>
+        <span class="hc-foot">½Iω² · the ramp race · where the skater's extra energy came from</span>
+      </button>
+      <button class="home-card" data-w="waves">
+        <span class="hc-glyph" style="color:var(--c-neg)">≈</span>
+        <span class="hc-title">Oscillations &amp; Waves</span>
+        <span class="hc-desc">SHM as the universal small-amplitude limit — the lab fits U″ to any potential
+        well and predicts its period. The pendulum's exact period from an elliptic integral, running 18%
+        slow at 90°. Then standing waves quantised by their boundaries, beats, and a Doppler shift whose
+        asymmetry between source and observer betrays the medium.</span>
+        <span class="hc-foot">a/x = −ω² always · why a clarinet is not a flute · the sonic cone</span>
+      </button>
+      <button class="home-card" data-w="fluids">
+        <span class="hc-glyph" style="color:var(--c-pos)">≋</span>
+        <span class="hc-title">Fluids</span>
+        <span class="hc-desc">Archimedes derived by integrating pressure over a surface rather than quoted,
+        and Bernoulli with both totals computed and compared — the static pressure falling by exactly as
+        much as the dynamic pressure rises. The Reynolds number is printed alongside, because past about
+        4000 the streamlines stop being well defined and the equation stops applying.</span>
+        <span class="hc-foot">ice floats 91.7% under · why a shower curtain pulls inwards</span>
+      </button>
+      <button class="home-card" data-w="thermo">
+        <span class="hc-glyph" style="color:var(--c-warn)">🌡</span>
+        <span class="hc-title">Thermodynamics</span>
+        <span class="hc-desc">The gas laws with the work taken as the area under the actual P–V path by
+        quadrature, the first law checked rather than used, the Maxwell–Boltzmann distribution integrated
+        to recover its own averages, and an entropy ledger that explains exactly why no real engine reaches
+        the Carnot bound.</span>
+        <span class="hc-foot">ΔU = Q − W, checked · S = k ln W · why helium leaks and argon does not</span>
+      </button>
+      <button class="home-card" data-w="em">
+        <span class="hc-glyph" style="color:var(--c-warn)">⚡</span>
+        <span class="hc-title">Electromagnetism</span>
+        <span class="hc-desc">A sandbox where you place charges, set them moving, drop in bar magnets and
+        pickup loops, and watch the fields and forces they make — plus Maxwell's four equations, each with
+        both sides of the law measured live from the fields themselves.</span>
+        <span class="hc-foot">Gauss · no monopoles · Faraday · displacement current · light, deduced</span>
+      </button>
+      <button class="home-card" data-w="circuit">
+        <span class="hc-glyph" style="color:var(--c-warn)">⚙</span>
+        <span class="hc-title">Circuits</span>
+        <span class="hc-desc">A real simulator: place resistors, capacitors, inductors, transformers, diodes,
+        switches and op amps, wire them up and run them in time. Oscilloscope, Bode plotter, DC sweep,
+        spectrum, power budget and rotating phasors — and an overlay that solves for the actual electric
+        field between the parts.</span>
+        <span class="hc-foot">modified nodal analysis · trapezoidal integration · Newton for the nonlinear parts</span>
+      </button>
+      <button class="home-card" data-w="optics">
+        <span class="hc-glyph" style="color:var(--c-warn)">◇</span>
+        <span class="hc-title">Optics</span>
+        <span class="hc-desc">Snell's law <em>produced</em> by scanning for the least-time path and then
+        checked, total internal reflection and why a diamond sparkles, ray diagrams that meet where the lens
+        equation says. Then the double slit with its missing orders, gratings sharpening by a factor of N,
+        and the three-polariser puzzle where adding a filter lets more light through.</span>
+        <span class="hc-foot">Fermat's principle · the diffraction limit is an uncertainty relation · Malus</span>
+      </button>
+      <button class="home-card" data-w="relativity">
+        <span class="hc-glyph" style="color:var(--c-neg)">⧖</span>
+        <span class="hc-title">Relativity — Special &amp; General</span>
+        <span class="hc-desc">Einstein's thought experiments, each drawn in both frames at once: the train
+        and the lightning, the light clock, the ladder that fits in the barn only from one side, the falling
+        lift, the spinning disk whose geometry stops being flat. Then Minkowski diagrams you can drag,
+        the wire whose magnetism turns out to be electrostatics seen from the wrong frame, Mercury's
+        43 arcseconds integrated from the geodesic, and LIGO's chirp.</span>
+        <span class="hc-foot">s² invariant · E ↔ B under boosts · 1.75″ at the solar limb · 38 μs/day</span>
+      </button>
+    </div>
+    <h2 class="home-sec">Modern physics &amp; analysis</h2>
+    <div class="home-cards">
+      <button class="home-card" data-w="complex">
+        <span class="hc-glyph" style="color:var(--c-neg)">ℂ</span>
+        <span class="hc-title">Complex Functions &amp; Contour Integrals</span>
+        <span class="hc-desc">A complex function cannot be graphed, so it is domain-coloured: hue is the
+        argument, brightness bands the modulus, and zeros and poles show their order as colour cycles. The
+        Cauchy–Riemann residual is measured at a draggable probe. Then contour integrals — draw any closed
+        loop and watch the answer depend only on which poles you enclosed. This is the language the two
+        wings after it are written in.</span>
+        <span class="hc-foot">∮dz/z = 2πi · winding numbers · residues by limit, not by rule</span>
+      </button>
+      <button class="home-card" data-w="fourier">
+        <span class="hc-glyph" style="color:var(--c-curl)">∿</span>
+        <span class="hc-title">Fourier Analysis</span>
+        <span class="hc-desc">Build a square wave out of sines and watch Gibbs refuse to go away. See the
+        winding picture that shows why an integral can pick one frequency out of a mixture. Then duality and
+        uncertainty, sampling and aliasing, the FFT timed against the definition it replaces, and the
+        convolution theorem that makes filtering easy.</span>
+        <span class="hc-foot">orthogonality · Nyquist &amp; leakage · N² → ½N log₂N · x ∗ h ⟷ X · H</span>
+      </button>
+      <button class="home-card" data-w="quantum">
+        <span class="hc-glyph" style="color:var(--c-curl)">ψ</span>
+        <span class="hc-title">Quantum Mechanics</span>
+        <span class="hc-desc">Exact wave packets spreading in real time, the double slit with a which-path
+        knob, measurement collapse, tunnelling, Stern–Gerlach spin filters, hydrogen orbitals whose
+        eigenvalues you can verify with the probe.</span>
+        <span class="hc-foot">Δx·Δp = ħ/2 live · single-particle interference · Planck's ridge</span>
+      </button>
+      <button class="home-card" data-w="statmech">
+        <span class="hc-glyph" style="color:var(--c-warn)">∑</span>
+        <span class="hc-title">Statistical Mechanics</span>
+        <span class="hc-desc">One assumption — every accessible microstate is equally likely — and everything
+        else is counting. Entropy is the logarithm of that count, temperature is the slope where two entropy
+        curves match, and the second law is the observation that the peak is sharp and gets sharper as
+        1/√N. The Boltzmann factor is then forced rather than assumed, by a Taylor expansion that can only
+        produce an exponential. The wing ends with a phase transition found by simulation and checked
+        against Onsager's exact answer.</span>
+        <span class="hc-foot">S = k ln Ω · the partition function · Ising, simulated then checked</span>
+      </button>
+      <button class="home-card" data-w="solid">
+        <span class="hc-glyph" style="color:var(--c-pos)">◈</span>
+        <span class="hc-title">Condensed Matter &amp; Semiconductors</span>
+        <span class="hc-desc">Copper conducts 10²³ times better than diamond, and explaining that ratio needs
+        only two ideas. The first is Fermi statistics — the wing before this one — which stacks electrons to
+        several electronvolts at absolute zero and lets only those within kT of the surface do anything.
+        The second is periodicity, which opens band gaps all by itself, with no chemistry involved. Then
+        doping, the p–n junction, and the phonons that make cold solids stop absorbing heat.</span>
+        <span class="hc-foot">metals, semiconductors and insulators from one picture · Debye's T³</span>
+      </button>
+      <button class="home-card" data-w="atom">
+        <span class="hc-glyph" style="color:var(--c-pos)">⚛</span>
+        <span class="hc-title">The Atom &amp; the Four Forces</span>
+        <span class="hc-desc">Fly from the electron cloud to the quarks. Photons, gluons, pions and W bosons
+        animated where they act; all four potentials on one chart; β decay with its real 0.782 MeV budget;
+        the curve of binding energy.</span>
+        <span class="hc-foot">Yukawa ranges · colour confinement · gravitons flagged as the conjecture they are</span>
+      </button>
+      <button class="home-card" data-w="nuclear">
+        <span class="hc-glyph" style="color:var(--c-curl)">☢</span>
+        <span class="hc-title">Nuclear Physics</span>
+        <span class="hc-desc">One curve carries this whole wing: binding energy per nucleon against mass
+        number, built here term by term from the liquid-drop model and scored against fourteen measured
+        nuclides. Fusion climbs its left slope and fission its right, and both release energy because both
+        move towards the peak near iron — which is also why stars stop there. Then decay, derived from the
+        single assumption that a nucleus has no memory, and the Coulomb barrier whose exponential turns a
+        factor of two in energy into twenty-four orders of magnitude in half-life.</span>
+        <span class="hc-foot">the semi-empirical mass formula, fitted · decay chains · why iron</span>
+      </button>
+      <button class="home-card" data-w="string">
+        <span class="hc-glyph" style="color:var(--c-grad)">α′</span>
+        <span class="hc-title">String Theory</span>
+        <span class="hc-desc">Built to let you argue rather than to reassure. The Regge slope fitted to real
+        PDG meson masses, giving a tension that agrees with the atom wing's Cornell potential to 2%. The
+        graviton that appears whether or not anyone wanted it. D = 26 solved for twice by routes with
+        nothing in common, with the regularisation behind it checked against a measured Casimir force. Then
+        extra dimensions against what torsion balances and the LHC have actually excluded, the landscape and
+        the swampland set against the measured bound on r, and a black hole's microstates counted.</span>
+        <span class="hc-foot">every claim labelled: theorem, checked conjecture, disputed construction, or hope</span>
+      </button>
+    </div>
+    <p class="home-foot">Built for keyboard and pointer · light and dark theme · every visualization is checked
+    against its formula by the test suite, and every wing has a full long-form essay behind
+    <b>The mathematics</b> in the top bar. Choose a wing, then work through its guided experiments top to
+    bottom — they are ordered so each one uses what the last one established.</p>
+  </div>
+</div>
+
+<div class="sheet" id="sheet" role="dialog" aria-label="The mathematics in full">
+  <div class="sheet-inner">
+    <div class="sheet-head">
+      <h2 id="sheetTitle">The mathematics, in full</h2>
+      <button class="btn" id="btnCloseSheet">Close</button>
+    </div>
+    <div class="sheet-body"><div class="prose" id="theoryProse"></div></div>
+  </div>
+</div>

@@ -1,0 +1,65 @@
+const ATOM_GROUPS = [
+{ g:'The atom, live', items:[
+  {n:'The whole atom: cloud, nucleus, photons', ex:'hydrogen 1s, sampled honestly', stage:'atomSim',
+   opts:{zoom:0},
+   out:'The dots are genuine samples of |ψ₁ₛ|² — densest near one Bohr radius (probe the radial P(r) and find its maximum at r = a₀ exactly). Wavy lines: virtual photons, the EM binding in person.',
+   note:'No orbits anywhere: the electron is a stationary probability pattern, 10⁵ times wider than the nucleus that anchors it. The atom is empty by volume and utterly rigid by mathematics — squeeze the cloud and Δx·Δp raises the kinetic cost faster than Coulomb pays it. The probe slider reads |ψ|², P(r) and the Coulomb potential at any radius, live.'},
+  {n:'Into the nucleus: the strong force at work', ex:'nucleons, pion exchange, Coulomb strain', stage:'atomSim',
+   opts:{zoom:1},
+   out:'Nucleons huddle at ~1 fm spacing, exchanging pions (the Yukawa carrier of the residual strong force) while every proton pushes on every other. Probe r: strong wins inside ~2 fm, then vanishes exponentially.',
+   note:'The nucleus is a truce: pion-mediated attraction (range ħ/m_π c ≈ 1.4 fm, from the pion mass alone) versus Coulomb repulsion that never turns off. Add protons and the truce strains — why heavy nuclei need extra neutrons and why the periodic table ends. Press the β button: a neutron converts, a W⁻ flashes, an electron and antineutrino leave. That is the weak force\'s entire day job.'},
+  {n:'Inside a proton: quarks, gluons, confinement', ex:'uud + gluons swapping colour', stage:'atomSim',
+   opts:{zoom:2},
+   out:'Three quarks joined by flux tubes, trading gluons; each exchange swaps the two quarks\' colours, and red+green+blue stays white throughout — watch the bookkeeping never fail.',
+   note:'Gluons carry colour themselves, so the field lines between quarks collapse into a <b>string</b> with tension σ ≈ 0.9 GeV/fm. Pulling quarks apart stores energy linearly — Cornell potential in the probe — until it is cheaper to create a fresh quark–antiquark pair than to stretch further. That is confinement: nobody has ever seen a lone quark, and this is why. Most of your mass is this field energy, not the quarks (u+u+d ≈ 9 MeV of a 938 MeV proton).'}
+]},
+{ g:'The cast: every particle we know', items:[
+  {n:'The Standard Model, tile by tile', ex:'12 fermions · 5 bosons · 1 conjecture', stage:'atomSM',
+   opts:{sel:12},
+   out:'Click any tile: mass, charge, spin, and which forces it feels appear in the probe panel — real measured values throughout. The dashed graviton is the only occupant physics has not confirmed.',
+   note:'The census of reality. <b>Fermions</b> (spin ½, antisymmetric, Pauli-obeying) are matter: three generations of quark pairs and lepton pairs, of which only the first — u, d, e, νₑ — builds anything stable. <b>Bosons</b> (integer spin, symmetric, stackable) are the forces: γ for EM, 8 gluons for strong, W±/Z for weak, and the Higgs, whose field\'s vacuum value is why the others weigh anything. Antiparticles mirror the fermions with flipped charges. It takes 19 measured parameters in its minimal form — and at least 26 once neutrino masses and mixing are included, which the oscillation data now require. No laboratory experiment contradicts it, and yet it is certainly incomplete: it says nothing about dark matter, the matter–antimatter asymmetry, or gravity.'}
+]},
+{ g:'The four forces, measured', items:[
+  {n:'All four potentials on one chart', ex:'V(r) between two protons, 10⁻³–10 fm', stage:'atomForces',
+   opts:{},
+   out:'Strong: deep Yukawa well dying at ~1.4 fm. EM: 1/r forever. Weak: dead beyond 0.0025 fm (the W range). Gravity: drawn ×10³⁴ and still flat on zero. Probe any r for the exact values.',
+   note:'The hierarchy in one picture. Ranges are carrier masses read through Yukawa\'s e^(−mr·c/ħ)/r: massless photon → infinite range; 140 MeV pion → 1.4 fm; 80 GeV W → 2.5×10⁻³ fm. The weak force is weak at low energy <b>because its carrier is heavy</b>, not because its coupling is small. And gravity, 36 orders down between two protons, rules the universe anyway — it is the only force with no opposite charge to cancel it.'},
+  {n:'β decay: the weak force changes identity', ex:'n → p + e⁻ + ν̄ₑ through a virtual W⁻', stage:'atomBeta',
+   opts:{},
+   out:'Q = m(n) − m(p) − m(e) = 0.782 MeV, shared randomly between e⁻ and ν̄. Decay 200 times and the electron spectrum fills the exact allowed shape p·E·(Q−K)² — continuous, not a spike.',
+   note:'Only the weak force changes quark flavour: d → u + W⁻ at the first vertex, W⁻ → e⁻ + ν̄ₑ at the second, both drawn in the diagram. The continuous spectrum was the 1914 crisis that made Pauli postulate an invisible accomplice (1930); Fermi built the theory (1934); the W was finally seen at CERN in 1983 at 80 GeV — the mass this stage uses. The same vertex run sideways powers the sun\'s p+p → d step.'},
+  {n:'Name a nuclide, and find out whether it can decay', ex:'Q summed from masses, not looked up', stage:'atomBeta',
+   opts:{ own:true, sheet:'H3\nn\nP32' },
+   out:'Tritium\'s Q comes out at 0.01858 MeV from two measured binding energies — the endpoint KATRIN exists to weigh a neutrino against. The same Q is computed twice: by subtracting two atomic masses near 2809 MeV, and by adding a difference of binding energies to a constant. They agree to 10⁻¹³, and the panel prints how many significant figures the first route spends.',
+   note:'The neutron panel is handed Q = 0.782 MeV as a constant. Naming a nuclide instead makes it a result — and the constant turns out not to be independent at all. Substituting M(Z, A) = Z·m<sub>H</sub> + (A−Z)·m<sub>n</sub> − B(Z, A) into Q = M(Z, A) − M(Z+1, A) cancels every large term symbolically and leaves <b>Q = (m<sub>n</sub> − m<sub>H</sub>) + ΔB</b>. Set both binding energies to zero — a free neutron has nothing to unbind — and what is left is m<sub>n</sub> − m<sub>H</sub> = 0.78235 MeV, which <i>is</i> the neutron\'s Q value. Below that, the isobaric chain is walked from both ends: where the two walks stop in different places, the lower one is a nucleus that cannot reach the bottom by any single β step, because the pairing term has raised the odd–odd nucleus between them. Getting down requires two decays at once, which is double β decay — the rarest process ever observed. And every row is labelled with where its binding energies came from, because a Q with one measured end and one modelled one settles nothing: taken at face value it reports ⁵⁶Fe as an electron capturer, which it is not.'},
+  {n:'The curve of binding energy', ex:'B/A vs A — why fusion and fission both pay', stage:'atomBinding',
+   opts:{},
+   out:'B/A climbs steeply (surface term fading), peaks near ⁵⁶Fe at ~8.8 MeV, then sags under Coulomb\'s Z² growth. Probe any A for the exact SEMF term-by-term breakdown at the best Z.',
+   note:'The four-force ledger, integrated over a nucleus. Volume term: the saturating strong force (each nucleon binds only its neighbours). Coulomb term: EM\'s long reach taxing every proton pair. Asymmetry term: Pauli charging rent for lopsided n/p ratios. Uphill is exothermic from both ends — fusion powers stars up to iron, fission pays from uranium down — and the iron peak is where stellar burning stops and supernovae take over.'},
+  {n:'Write your own mass formula, and have it scored', ex:'five coefficients, against AME2020', stage:'atomBinding',
+   opts:{ own:true },
+   out:'Your five coefficients are scored against the measured binding energies: RMS residual per nucleon, printed beside Wapstra\'s 0.0576 and beside the least-squares best possible, 0.0161. The red sticks on the plot are the residuals. Press <b>Fit it to the data</b> and watch the predicted peak move from A = 58 to A = 62 — onto ⁶²Ni, which is the measured champion.',
+   note:'The curve on the panel next door matches nature because somebody fitted it in the 1960s; drawing it over the measured points and observing that it passes through them is the fit being displayed, not evidence. Handed the five numbers, three assertions become measurements. The <b>agreement</b> becomes an RMS residual you can make worse or better. The <b>coefficients</b> stop being given: B is linear in all five, so the best possible set is a 5×5 linear solve, and it beats the standard one by 3.6× on this data — while returning a pairing coefficient of 51 MeV where the real one is 11, because the table holds almost no odd–odd nuclei and nothing in it constrains that term. The panel measures exactly that, by moving each coefficient a tenth and watching the residual, and reports which of the five the fit has earned. And the <b>iron peak</b> stops being a fact about iron: delete the surface term and there is no maximum at all, so no fission and no reason for stars to stop; halve the Coulomb term and the most bound nucleus moves to A ≈ 118. Underneath, Z*(A) from dB/dZ = 0 is checked against a search over every Z — they agree to within a proton, and the residue is the pairing term the derivative could not see.'}
+]},
+{ g:'Force fields you can probe (field engine)', items:[
+  {n:'Yukawa vs Coulomb: mass gives a force a range', ex:'f = −5e^(−r/1.4)/r · the screened potential', mode:'scalar',
+   f:'-5 exp(-r/1.4)/r',
+   probe:[1.2,0.5,0.4], show:{arrows:1,stream:0,slice:1,level:1,axes:1,flux:0,circ:0,probe:1,dirderiv:0,curlarrows:0}, dens:5, extent:4, sliceOf:'auto',
+   out:'Near the origin this looks like Coulomb (−5/r); by r ≈ 3 it is an order of magnitude weaker than 1/r would be. The gradient arrows — the force — die with it.',
+   note:'Yukawa\'s potential with the pion range in the exponent, in the same units the atom stages use. Type <span style="font-family:var(--f-mono)">-5/r</span> into f to strip the exponential and compare: same singularity, infinite reach. The probe\'s ∇f readout is the force vector at that exact point — verify the exponential strangling it as you drag outward.'},
+  {n:'The nuclear Coulomb wall', ex:'V = +2.88/r — what fusion must tunnel through', mode:'scalar',
+   f:'2.88/r',
+   probe:[1.5,0.3,0.2], show:{arrows:1,stream:0,slice:1,level:1,axes:1,flux:0,circ:0,probe:1,dirderiv:0,curlarrows:0}, dens:5, extent:4, sliceOf:'auto',
+   out:'The repulsive potential seen by a proton approaching a helium nucleus (Z=2): a 1/r wall that reaches ~1 MeV at nuclear distances. Fusion happens only because tunnelling cuts through it.',
+   note:'Connect the wings: this is the barrier from the quantum tunnelling stage, worn by every star. At the sun\'s core temperature, classical protons almost never clear this wall — Gamow\'s tunnelling factor e^(−2κa), the one you explored in the quantum wing, is the only reason sunlight exists.'},
+  {n:'Two charges: the field between them', ex:'physics builder: +2 and −1', phys:[{type:'charge', q:2, pos:{x:-1,y:0,z:0}}, {type:'charge', q:-1, pos:{x:1.2,y:0,z:0}}],
+   probe:[0.2,0.6,0], show:{arrows:1,stream:0,slice:0,level:0,axes:1,flux:1,circ:0,probe:1,dirderiv:0,curlarrows:0,fieldlines:1}, dens:6, extent:3, fluxH:0.5,
+   out:'Field lines leave the +2 charge (twice as many), and either land on −1 or escape to infinity. Put the flux box around either charge and Gauss\'s law reads its charge back to you.',
+   note:'The photon-exchange picture from the atom stage, drawn as its classical limit: the electromagnetic field. Every derivative here is symbolic — open "How it is computed" to see the inverse-square law differentiated by the quotient rule, live.'},
+  {n:'A magnetic dipole — matter\'s elementary magnet', ex:'physics builder: point dipole m ẑ', phys:[{type:'dipole', m:1.4, axis:'z', pos:{x:0,y:0,z:0}}],
+   probe:[1.2,0,0.8], show:{arrows:1,stream:1,slice:0,level:0,axes:1,flux:0,circ:0,probe:1,dirderiv:0,curlarrows:0,fieldlines:0}, dens:5, extent:3,
+   out:'The exact point-dipole field (3(m·r̂)r̂ − m)/r³: loops from pole to pole, falling as 1/r³. Its divergence is identically zero — magnetic charge has never been found.',
+   note:'Electron spin makes every electron this object; iron is 10²³ of them agreeing. The dipole pattern is also the shape of the sloshing charge in the quantum wing\'s superposition demo — the bridge between "orbital" and "antenna".'}
+]}];
+
+

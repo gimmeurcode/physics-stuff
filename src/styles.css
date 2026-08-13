@@ -1,0 +1,926 @@
+/* ============================================================
+   TOKENS
+   ============================================================ */
+:root{
+  --bg:#0A0E18; --bg2:#111726; --bg3:#182032; --bg4:#1E273C;
+  --line:#242E45; --line2:#2E3A55;
+  --text:#E4E9F2; --dim:#94A1BA; --faint:#848EA2;
+  --accent:#7FA8DC; --accent-dim:#3E5A80;
+  --accent-soft:rgba(127,168,220,.14);
+  --shadow:0 10px 34px rgba(0,0,0,.5);
+  --mid:#858EA4;
+
+  --c-grad:#35BE92;
+  --c-pos:#F08A3C;
+  --c-neg:#4C93E0;
+  --c-curl:#C57BE0;
+  --c-warn:#E0B341;
+
+  --f-ui:"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+  --f-mono:"Cascadia Mono",Consolas,ui-monospace,"SF Mono",Menlo,monospace;
+  --f-math:"Cambria Math",Cambria,"Latin Modern Math","STIX Two Math",Georgia,"Times New Roman",serif;
+
+  --rail:388px;
+  --dockh:330px;
+  --r:7px;
+}
+@media (prefers-color-scheme: light){
+  :root{
+    --bg:#F5F7FA; --bg2:#FFFFFF; --bg3:#EDF1F7; --bg4:#E3E9F2;
+    --line:#D6DEEA; --line2:#C3CEDF;
+    --text:#141B29; --dim:#586278; --faint:#626977;
+    --accent:#2C66A8; --accent-dim:#A8C2E2;
+    --accent-soft:rgba(47,107,175,.10);
+    --shadow:0 10px 30px rgba(24,36,60,.14);
+    --mid:#808590;
+    --c-grad:#0E7656; --c-pos:#A8500E; --c-neg:#296AB3; --c-curl:#9249AF; --c-warn:#7E5E10;
+  }
+}
+:root[data-theme="light"]{
+  --bg:#F5F7FA; --bg2:#FFFFFF; --bg3:#EDF1F7; --bg4:#E3E9F2;
+  --line:#D6DEEA; --line2:#C3CEDF;
+  --text:#141B29; --dim:#586278; --faint:#626977;
+  --accent:#2C66A8; --accent-dim:#A8C2E2;
+  --accent-soft:rgba(47,107,175,.10);
+  --shadow:0 10px 30px rgba(24,36,60,.14);
+  --mid:#808590;
+  --c-grad:#0E7656; --c-pos:#A8500E; --c-neg:#296AB3; --c-curl:#9249AF; --c-warn:#7E5E10;
+}
+:root[data-theme="dark"]{
+  --bg:#0A0E18; --bg2:#111726; --bg3:#182032; --bg4:#1E273C;
+  --line:#242E45; --line2:#2E3A55;
+  --text:#E4E9F2; --dim:#94A1BA; --faint:#848EA2;
+  --accent:#7FA8DC; --accent-dim:#3E5A80;
+  --accent-soft:rgba(127,168,220,.14);
+  --shadow:0 10px 34px rgba(0,0,0,.5);
+  --mid:#858EA4;
+  --c-grad:#35BE92; --c-pos:#F08A3C; --c-neg:#4C93E0; --c-curl:#C57BE0; --c-warn:#E0B341;
+}
+
+/* ============================================================
+   BASE
+   ============================================================ */
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:var(--f-ui); font-size:14px; line-height:1.5;
+  -webkit-font-smoothing:antialiased; overflow:hidden;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+
+/* ============================================================
+   SHELL
+   ============================================================ */
+/* minmax(0,…) rather than a bare 1fr, on both axes.
+
+   A `1fr` track is `minmax(auto, 1fr)`, and that `auto` minimum is the track's
+   MIN-CONTENT width — so a grid column cannot shrink below the widest thing
+   inside it, however much it is told to flex. The dock's control panels have a
+   min-content width around 1200px, and that number was silently propagating up
+   through the stage column into `.app` and then into the document: between 900
+   and 1179 pixels the whole page, header and all, was pinned at 1229px wide and
+   scrolled sideways. minmax(0,1fr) lets the track shrink and leaves the
+   overflow to be handled where it belongs, inside the panel that scrolls. */
+.app{
+  height:100dvh; display:grid;
+  grid-template-columns:minmax(0,1fr) 6px var(--rail);
+  grid-template-rows:auto minmax(0,1fr) 6px var(--dockh);
+  grid-template-areas:
+    "top   top top"
+    "stage sv  rail"
+    "sh    sv  rail"
+    "dock  sv  rail";
+}
+/* both panels are resizable by dragging the border between them and the canvas */
+.split{
+  background:var(--line); position:relative; z-index:5;
+  touch-action:none; user-select:none;
+}
+.split::after{
+  content:""; position:absolute; background:var(--line2); border-radius:2px;
+  opacity:0; transition:opacity .13s;
+}
+.split:hover::after,.split.drag::after{opacity:1}
+.split:hover,.split.drag{background:var(--accent-dim)}
+.split-v{grid-area:sv; cursor:col-resize}
+.split-v::after{left:1px; right:1px; top:50%; height:34px; margin-top:-17px}
+.split-h{grid-area:sh; cursor:row-resize}
+.split-h::after{top:1px; bottom:1px; left:50%; width:34px; margin-left:-17px}
+.split:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.app.nodock{grid-template-rows:auto minmax(0,1fr) 0 0}
+.app.nodock .split-h{display:none}
+/* Every control panel lives under the canvas rather than in the rail: controls
+   belong to the picture, not to the reading matter beside it. The rail keeps
+   the guided experiments and their commentary. A wide strip also lets a toolbar
+   be a toolbar instead of a column of stacked buttons. */
+.dock{
+  grid-area:dock; min-height:0;
+  background:var(--bg2);
+  overflow-y:auto; overflow-x:hidden;
+  display:flex; flex-wrap:wrap; align-items:flex-start;
+}
+.dock[hidden]{display:none}
+.dock::-webkit-scrollbar{width:9px;height:9px}
+.dock::-webkit-scrollbar-thumb{background:var(--line2);border-radius:5px}
+.dock::-webkit-scrollbar-track{background:transparent}
+/* each panel is a column of the strip, scrolling inside itself if it is long */
+.dock > .sec{
+  flex:1 1 330px; min-width:290px; max-width:640px;
+  border-bottom:none; border-right:1px solid var(--line);
+  align-self:stretch;
+}
+.dock > .sec[open]{max-height:100%; overflow-y:auto}
+.dock > .sec > summary{padding:8px 13px}
+.dock > .sec > .body{padding:0 13px 11px}
+/* the stage panel is the widest: its controls and its readout sit side by side */
+.dock > #secStage{flex:3 1 700px; max-width:none}
+.dock #stageBody{display:flex; flex-direction:column; gap:7px}
+.dock > #secStage > .body{
+  display:grid; grid-template-columns:minmax(280px,360px) minmax(0,1fr); gap:10px 18px; align-items:start;
+}
+.dock #stageReadout{
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(min(255px,100%),1fr));
+  gap:10px; align-items:start;
+}
+.dock #stageReadout .card{margin:0}
+@media (max-width:1100px){
+  .dock > #secStage > .body{grid-template-columns:minmax(0,1fr)}
+  .dock{max-height:48dvh}
+}
+.topbar{
+  grid-area:top; display:flex; align-items:center; gap:10px 14px;
+  padding:8px 14px; min-height:50px; flex-wrap:wrap;
+  background:var(--bg2); border-bottom:1px solid var(--line);
+}
+.brand{display:flex;align-items:center;gap:10px;min-width:0;flex:none}
+.brand .nab{font-family:var(--f-math);font-size:21px;color:var(--accent);line-height:1;flex:none}
+.brand-txt{display:flex;flex-direction:column;min-width:0;gap:1px}
+.brand h1{
+  margin:0;font-size:14.5px;font-weight:650;letter-spacing:.005em;line-height:1.2;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.brand .sub{
+  font-size:12px;color:var(--faint);letter-spacing:.09em;text-transform:uppercase;
+  white-space:nowrap;line-height:1.2;
+}
+/* the nav takes the slack so the tools stay pinned to the right edge */
+.wingnav{margin-right:auto}
+.iconbtn{padding:5px 9px;line-height:1.35}
+@media(max-width:1340px){.brand .sub{display:none}}
+
+/* ============================================================
+   CONTROLS — shared atoms
+   ============================================================ */
+.btn{
+  background:var(--bg3);border:1px solid var(--line2);border-radius:var(--r);
+  padding:5px 11px;font-size:12.5px;cursor:pointer;color:var(--text);
+  transition:background .13s,border-color .13s;white-space:nowrap;
+}
+.btn:hover{background:var(--bg4);border-color:var(--accent-dim)}
+.btn:active{transform:translateY(.5px)}
+.btn.pri{background:var(--accent-soft);border-color:var(--accent-dim);color:var(--accent)}
+.btn.wide{width:100%;text-align:center}
+.btn.sm{padding:3px 8px;font-size:12.5px}
+
+.seg{display:inline-flex;background:var(--bg3);border:1px solid var(--line2);border-radius:var(--r);padding:2px;gap:2px}
+.seg button{
+  background:none;border:0;border-radius:5px;padding:4px 11px;font-size:12.5px;
+  cursor:pointer;color:var(--dim);transition:background .13s,color .13s;white-space:nowrap;
+}
+.seg button:hover{color:var(--text)}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent);font-weight:600}
+
+/* ============================================================
+   STAGE
+   ============================================================ */
+.stage{grid-area:stage;position:relative;overflow:hidden;background:var(--bg)}
+#cv{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+#cv.drag{cursor:grabbing}
+
+.hud{position:absolute;inset:0;pointer-events:none}
+.legend{
+  position:absolute;left:12px;bottom:12px;
+  background:color-mix(in srgb,var(--bg2) 86%,transparent);
+  border:1px solid var(--line);border-radius:var(--r);
+  padding:9px 11px;font-size:12.5px;backdrop-filter:blur(7px);
+  display:flex;flex-direction:column;gap:5px;max-width:230px;
+}
+.lg-row{display:flex;align-items:center;gap:7px;color:var(--dim)}
+.sw{width:15px;height:3px;border-radius:2px;flex:none}
+.hint{
+  position:absolute;right:12px;bottom:12px;font-size:12px;color:var(--faint);
+  text-align:right;line-height:1.65;
+}
+.hint kbd{
+  font-family:var(--f-mono);font-size:12px;background:var(--bg3);
+  border:1px solid var(--line2);border-radius:3px;padding:0 4px;color:var(--dim);
+}
+.readout-chip{
+  position:absolute;left:12px;top:12px;
+  background:color-mix(in srgb,var(--bg2) 88%,transparent);
+  border:1px solid var(--line);border-radius:var(--r);
+  padding:8px 11px;font-family:var(--f-mono);font-size:12.5px;
+  backdrop-filter:blur(7px);font-variant-numeric:tabular-nums;
+  display:flex;flex-direction:column;gap:3px;
+}
+.readout-chip .k{color:var(--faint);font-family:var(--f-ui);font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+.perf{position:absolute;right:12px;top:12px;font-family:var(--f-mono);font-size:12px;color:var(--faint)}
+.fit-inset{
+  position:absolute;right:12px;top:34px;
+  background:color-mix(in srgb,var(--bg2) 90%,transparent);
+  border:1px solid var(--line);border-radius:var(--r);padding:9px 11px;
+  backdrop-filter:blur(7px);
+}
+.fit-inset canvas{display:block;border-radius:4px}
+
+/* ============================================================
+   RAIL
+   ============================================================ */
+.rail{
+  grid-area:rail;background:var(--bg2);border-left:1px solid var(--line);
+  overflow-y:auto;overflow-x:hidden;
+}
+.rail::-webkit-scrollbar{width:9px}
+.rail::-webkit-scrollbar-thumb{background:var(--line2);border-radius:5px}
+.rail::-webkit-scrollbar-track{background:transparent}
+
+.sec{border-bottom:1px solid var(--line)}
+.sec > summary{
+  list-style:none;cursor:pointer;padding:11px 14px;
+  display:flex;align-items:center;gap:9px;
+  font-size:12px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--dim);font-weight:650;user-select:none;
+}
+.sec > summary::-webkit-details-marker{display:none}
+.sec > summary:hover{color:var(--text);background:var(--bg3)}
+.sec > summary::before{
+  content:"";width:5px;height:5px;border-right:1.5px solid currentColor;
+  border-bottom:1.5px solid currentColor;transform:rotate(-45deg);
+  transition:transform .16s;flex:none;margin-left:1px;
+}
+.sec[open] > summary::before{transform:rotate(45deg)}
+.sec > summary .tag{
+  margin-left:auto;font-size:12px;letter-spacing:.04em;text-transform:none;
+  color:var(--faint);font-weight:400;font-family:var(--f-mono);
+}
+.body{padding:2px 14px 15px;display:flex;flex-direction:column;gap:11px}
+
+.row{display:flex;align-items:center;gap:9px}
+.row.wrap{flex-wrap:wrap}
+.grow{flex:1;min-width:0}
+label.lb{font-size:12.5px;color:var(--dim);flex:none}
+.help{font-size:12.5px;color:var(--faint);line-height:1.55;margin:0}
+.help b{color:var(--dim);font-weight:600}
+
+/* fields */
+.fld{
+  display:flex;align-items:center;gap:8px;background:var(--bg3);
+  border:1px solid var(--line2);border-radius:var(--r);padding:0 9px;
+  transition:border-color .13s;
+}
+.fld:focus-within{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.fld .pre{
+  font-family:var(--f-math);font-style:italic;color:var(--accent);
+  font-size:14px;flex:none;user-select:none;
+}
+.fld input{
+  background:none;border:0;outline:0;padding:7px 0;width:100%;
+  font-family:var(--f-mono);font-size:12.5px;
+}
+.fld.bad{border-color:var(--c-pos)}
+.err{color:var(--c-pos);font-size:12.5px;font-family:var(--f-mono);min-height:0}
+
+select.sel{
+  background:var(--bg3);border:1px solid var(--line2);border-radius:var(--r);
+  padding:6px 8px;font-size:12.5px;width:100%;cursor:pointer;
+}
+input[type=range]{
+  -webkit-appearance:none;appearance:none;background:none;flex:1;min-width:0;height:18px;cursor:pointer;
+}
+input[type=range]::-webkit-slider-runnable-track{height:3px;background:var(--line2);border-radius:2px}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:13px;height:13px;border-radius:50%;
+  background:var(--accent);margin-top:-5px;border:0;
+}
+input[type=range]::-moz-range-track{height:3px;background:var(--line2);border-radius:2px}
+input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--accent);border:0}
+.num{
+  width:62px;flex:none;background:var(--bg3);border:1px solid var(--line2);
+  border-radius:5px;padding:4px 6px;font-family:var(--f-mono);font-size:12.5px;
+  text-align:right;font-variant-numeric:tabular-nums;
+}
+.val{
+  font-family:var(--f-mono);font-size:12.5px;color:var(--dim);
+  font-variant-numeric:tabular-nums;min-width:44px;text-align:right;flex:none;
+}
+/* Every slider carries a box holding the plain number, so a reader can set a
+   value the track cannot reach. It sits between the track and the formatted
+   reading; the reading stays a span because it grows to fit "0.5 c · γ = 1.1547"
+   where a fixed-width input would clip it. */
+.sldnum{width:58px;color:var(--text)}
+.sldnum:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+/* a value the physics refused: marked here, explained in the panel status line */
+.sldnum.clamped{border-color:var(--c-pos);color:var(--c-pos)}
+/* three things share a slider row now, so let it wrap rather than crush the
+   track to a stub in a narrow dock column */
+.row.rowsl{flex-wrap:wrap;row-gap:3px}
+.row.rowsl input[type=range]{flex:1 1 96px}
+.ctlwhy{margin:0;line-height:1.5}
+.ctlwhy:empty{display:none}
+.chk{display:flex;align-items:center;gap:7px;font-size:12.5px;cursor:pointer;user-select:none}
+.chk input{
+  appearance:none;-webkit-appearance:none;width:15px;height:15px;flex:none;
+  border:1px solid var(--line2);border-radius:4px;background:var(--bg3);
+  cursor:pointer;position:relative;transition:background .13s,border-color .13s;
+}
+.chk input:checked{background:var(--accent);border-color:var(--accent)}
+.chk input:checked::after{
+  content:"";position:absolute;left:4.5px;top:1.5px;width:3.5px;height:7.5px;
+  border:solid var(--bg2);border-width:0 1.9px 1.9px 0;transform:rotate(42deg);
+}
+.chkgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:7px 9px}
+
+/* ---- the View panel: pan, zoom and what the picture shows ----
+   Appended to every stage's controls, so it is separated by a rule rather than
+   by a gap — it is about the picture rather than about the experiment, and a
+   reader scanning for the experiment's own controls should be able to stop at
+   the line. minmax(0,…) on the toggle grid for the reason in §3: a bare 1fr
+   floors at min-content and a long label would push the dock column wide. */
+.pvpanel{border-top:1px solid var(--line);margin-top:10px;padding-top:9px;display:grid;gap:7px}
+.pvpanel .hd{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);font-weight:600}
+.pvrow{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.pvrow.pvnum .lb{width:auto;flex:none;font-size:12.5px}
+.pvrow.pvnum .num{width:74px;flex:0 1 74px}
+.pvrow.pvtog{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:6px 10px}
+.pvhint{font-size:12px;line-height:1.5}
+.pvpanel .btn.sm:disabled{opacity:.42;cursor:default}
+.pvpanel .num:disabled{opacity:.42;cursor:default}
+
+/* ============================================================
+   DATA READOUTS
+   ============================================================ */
+.card{
+  background:var(--bg3);border:1px solid var(--line);border-radius:var(--r);
+  padding:10px 11px;display:flex;flex-direction:column;gap:7px;
+}
+.card.tight{gap:4px}
+.kv{
+  display:flex;align-items:baseline;gap:8px;font-family:var(--f-mono);
+  font-size:12px;font-variant-numeric:tabular-nums;
+}
+.kv .k{color:var(--faint);font-family:var(--f-ui);font-size:12.5px;flex:none}
+.kv .v{margin-left:auto;text-align:right;letter-spacing:-.01em}
+.stripe{border-left:2px solid var(--line2);padding-left:9px}
+.stripe.grad{border-color:var(--c-grad)}
+.stripe.div{border-color:var(--c-pos)}
+.stripe.curl{border-color:var(--c-curl)}
+.ttl{
+  font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);
+  font-weight:650;display:flex;align-items:center;gap:7px;
+}
+.ttl .dot{width:7px;height:7px;border-radius:2px;flex:none}
+
+.mat{
+  border-collapse:collapse;font-family:var(--f-mono);font-size:12px;
+  font-variant-numeric:tabular-nums;width:100%;
+}
+.mat td{padding:2.5px 5px;text-align:right;border:1px solid var(--line)}
+.mat td.hd{color:var(--faint);border:0;font-family:var(--f-ui);font-size:12px;text-align:center}
+.mat-wrap{overflow-x:auto}
+
+/* editable matrix grid — the linear-algebra wings' main input */
+.mxed{border-collapse:separate;border-spacing:3px;font-family:var(--f-mono)}
+.mxed td.hd{color:var(--faint);font-family:var(--f-ui);font-size:12px;text-align:center;padding:0 3px}
+.mxed input.mxc{
+  width:58px;background:var(--bg3);border:1px solid var(--line2);border-radius:5px;
+  padding:4px 6px;font-family:var(--f-mono);font-size:12px;text-align:right;
+  font-variant-numeric:tabular-nums;color:var(--text);
+}
+.mxed input.mxc:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+/* the sketch strip advertises that it is drawable */
+.sketchable{cursor:crosshair}
+
+.bar{height:4px;background:var(--bg4);border-radius:2px;overflow:hidden;position:relative}
+.bar > i{position:absolute;top:0;bottom:0;border-radius:2px;transition:left .12s,width .12s}
+
+/* ============================================================
+   MATH TYPESETTING (no library — hand-rolled)
+   ============================================================ */
+.mth{font-family:var(--f-math);font-size:14.5px;line-height:1.9;letter-spacing:.005em}
+.mth i{font-style:italic;padding-right:.02em}
+.mth .fn{font-style:normal;font-family:var(--f-ui);font-size:.88em;letter-spacing:.01em}
+.mth .op{padding:0 .16em}
+.mth .num{font-variant-numeric:tabular-nums}
+.frac{display:inline-block;vertical-align:middle;text-align:center;margin:0 .2em;position:relative;top:-.05em}
+.frac > span{display:block;padding:0 .3em;font-size:.9em;line-height:1.35}
+.frac > .den{border-top:1px solid currentColor}
+.rad{display:inline-block;border-top:1px solid currentColor;padding:0 .18em 0 .1em;margin-left:-.06em}
+.mth sup{font-size:.68em;vertical-align:.55em;line-height:0}
+.mth .pl{color:var(--faint)}
+
+.deriv{display:flex;flex-direction:column;gap:9px}
+.dstep{
+  background:var(--bg3);border:1px solid var(--line);border-radius:var(--r);
+  padding:8px 11px;overflow-x:auto;
+}
+.dstep .lbl{
+  font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);
+  margin-bottom:3px;font-weight:650;
+}
+.dstep .eq{white-space:nowrap}
+/* the derivation ladder: numbered rungs, with prose rungs set apart */
+.drv-n{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:16px;height:16px;border-radius:50%;margin-right:7px;
+  background:var(--accent-soft);color:var(--accent);
+  font-family:var(--f-mono);font-size:12px;font-weight:700;
+}
+.drv-say{background:none;border-style:dashed}
+.drv-say .lbl{color:var(--accent)}
+
+.subst{color:var(--dim);font-family:var(--f-mono);font-size:12.5px;margin-top:4px;font-variant-numeric:tabular-nums}
+.subst b{color:var(--text);font-weight:600}
+
+/* ============================================================
+   THEORY OVERLAY
+   ============================================================ */
+.sheet{
+  position:fixed;inset:0;z-index:40;display:none;
+  background:color-mix(in srgb,var(--bg) 72%,transparent);backdrop-filter:blur(4px);
+}
+.sheet.open{display:block}
+.sheet-inner{
+  position:absolute;top:0;right:0;bottom:0;width:min(860px,100%);
+  background:var(--bg2);border-left:1px solid var(--line);box-shadow:var(--shadow);
+  display:flex;flex-direction:column;
+}
+.sheet-head{
+  display:flex;align-items:center;gap:12px;padding:13px 22px;
+  border-bottom:1px solid var(--line);flex:none;
+}
+.sheet-head h2{margin:0;font-size:15px;font-weight:650;margin-right:auto}
+.sheet-body{overflow-y:auto;padding:24px 30px 70px}
+.prose{max-width:66ch}
+.prose h3{
+  font-size:12px;letter-spacing:.11em;text-transform:uppercase;color:var(--accent);
+  margin:30px 0 9px;font-weight:700;
+}
+.prose h3:first-child{margin-top:0}
+.prose h4{font-size:14px;margin:19px 0 6px;font-weight:650}
+.prose p{margin:0 0 11px;color:var(--dim);line-height:1.72}
+.prose ul{margin:0 0 12px;padding-left:19px;color:var(--dim);line-height:1.72}
+.prose li{margin-bottom:5px}
+.prose strong{color:var(--text);font-weight:620}
+.prose .eqb{
+  background:var(--bg3);border:1px solid var(--line);border-left:2px solid var(--accent-dim);
+  border-radius:var(--r);padding:13px 16px;margin:13px 0;overflow-x:auto;
+}
+.prose .note{
+  border-left:2px solid var(--c-warn);padding:2px 0 2px 13px;margin:13px 0;
+  color:var(--dim);font-size:13px;
+}
+.prose code{font-family:var(--f-mono);font-size:12.5px;background:var(--bg3);padding:1px 5px;border-radius:4px;color:var(--text)}
+/* ---- formal statements: definition / theorem / proof ----
+   A card has to be scannable from the left edge, because the reader is usually
+   looking for one specific thing — the hypotheses of a theorem they are about
+   to apply. Hence the coloured spine, the kind and number set apart from the
+   name, and "If"/"then" as labels in the margin rather than words in a
+   sentence. The proof is a <details> so the page still reads as an essay until
+   someone wants the argument. */
+.stmt{
+  border:1px solid var(--line);border-left:3px solid var(--accent-dim);
+  border-radius:var(--r);background:var(--bg2);
+  padding:13px 16px;margin:18px 0;
+}
+.stmt.st-def{border-left-color:var(--c-grad)}
+.stmt.st-thm{border-left-color:var(--accent)}
+.stmt[data-kind="Lemma"]{border-left-color:var(--c-curl)}
+.stmt[data-kind="Corollary"]{border-left-color:var(--c-neg)}
+.st-h{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:9px}
+.st-k{
+  font-size:12px;letter-spacing:.1em;text-transform:uppercase;
+  font-weight:700;color:var(--accent);
+}
+.st-def .st-k{color:var(--c-grad)}
+.stmt[data-kind="Lemma"] .st-k{color:var(--c-curl)}
+.stmt[data-kind="Corollary"] .st-k{color:var(--c-neg)}
+.st-n{
+  font-family:var(--f-mono);font-size:12px;font-weight:700;color:var(--faint);
+  margin-left:-4px;
+}
+.st-t{font-size:14px;font-weight:650;color:var(--text)}
+.st-b{color:var(--dim);line-height:1.72}
+.st-b > p{margin:0 0 8px}
+.st-row{display:flex;gap:10px;align-items:baseline;margin:0 0 6px}
+.st-lbl{
+  flex:none;min-width:34px;text-align:right;
+  font-size:12px;font-style:italic;color:var(--faint);
+}
+.st-eq{
+  background:var(--bg3);border:1px solid var(--line);border-radius:5px;
+  padding:9px 13px;margin:9px 0;overflow-x:auto;text-align:center;
+}
+.st-proof{margin-top:10px;border-top:1px dashed var(--line);padding-top:8px}
+.st-proof > summary{
+  cursor:pointer;list-style:none;
+  font-size:12px;letter-spacing:.1em;text-transform:uppercase;
+  font-weight:700;color:var(--faint);
+}
+.st-proof > summary::-webkit-details-marker{display:none}
+.st-proof > summary::before{content:'▸ ';color:var(--accent)}
+.st-proof[open] > summary::before{content:'▾ '}
+.st-proof > summary:hover{color:var(--accent)}
+.st-pb{color:var(--dim);line-height:1.72;margin-top:8px;font-size:13.5px}
+.st-pb > p{margin:0 0 8px}
+.st-pb ol{margin:0 0 8px;padding-left:20px}
+.st-pb li{margin-bottom:5px}
+.st-qed{float:right;color:var(--accent);font-size:15px;line-height:1}
+.st-note{
+  margin:9px 0 0;padding-left:11px;border-left:2px solid var(--c-warn);
+  color:var(--dim);font-size:13px;line-height:1.6;
+}
+.st-see{margin-top:10px}
+.st-go{
+  background:var(--bg3);border:1px solid var(--line2);border-radius:20px;
+  padding:4px 13px;font-size:12.5px;color:var(--dim);cursor:pointer;
+  display:inline-flex;align-items:center;gap:7px;
+  transition:border-color .13s,color .13s;
+}
+.st-go:hover{color:var(--accent);border-color:var(--accent)}
+/* a decorative affordance rather than text, so it scales with its label
+   instead of carrying a fixed size below the 12px floor */
+.st-play{color:var(--accent);font-size:.8em}
+
+.toc{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:22px}
+.toc a{
+  font-size:12.5px;color:var(--dim);text-decoration:none;background:var(--bg3);
+  border:1px solid var(--line);border-radius:20px;padding:3px 11px;
+}
+.toc a:hover{color:var(--accent);border-color:var(--accent-dim)}
+
+/* ============================================================
+   WORKED EXAMPLES
+   ============================================================ */
+.demo-g{margin-bottom:9px}
+.demo-g > .ttl{margin-bottom:5px}
+.dgrp{margin-bottom:7px;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.dgrp > summary{
+  list-style:none;cursor:pointer;user-select:none;padding:7px 10px;
+  font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);
+  font-weight:650;display:flex;align-items:center;gap:7px;background:var(--bg3);
+}
+.dgrp > summary::-webkit-details-marker{display:none}
+.dgrp > summary::before{
+  content:"";width:5px;height:5px;border-right:1.5px solid currentColor;
+  border-bottom:1.5px solid currentColor;transform:rotate(-45deg);transition:transform .16s;flex:none;
+}
+.dgrp[open] > summary::before{transform:rotate(45deg)}
+.dgrp > summary:hover{color:var(--text)}
+/* the step number in a wing's progression */
+.dgrp > summary .gnum{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:17px;height:17px;border-radius:50%;flex:none;
+  background:var(--accent-soft);color:var(--accent);
+  font-family:var(--f-mono);font-size:12px;font-weight:700;letter-spacing:0;
+}
+.dgrp > summary .cnt{
+  margin-left:auto;font-family:var(--f-mono);font-size:12px;font-weight:400;
+  background:var(--bg4);border-radius:9px;padding:1px 7px;
+}
+.dgrp > .demo-b{border-radius:0;border-left:2px solid transparent;margin-bottom:0;border-top:1px solid var(--line)}
+.dgrp > .demo-b:first-of-type{border-top:0}
+.dgrp > .demo-b[aria-pressed="true"]{border-left-color:var(--accent)}
+.demo-b{
+  display:block;width:100%;text-align:left;background:var(--bg3);
+  border:1px solid var(--line);border-left:2px solid var(--line2);
+  border-radius:var(--r);padding:6px 10px;font-size:12.5px;cursor:pointer;
+  margin-bottom:4px;transition:background .13s,border-color .13s,color .13s;
+}
+.demo-b:hover{background:var(--bg4);border-left-color:var(--accent)}
+.demo-b[aria-pressed="true"]{background:var(--accent-soft);border-left-color:var(--accent);color:var(--accent);font-weight:600}
+.demo-b .ex{display:block;font-family:var(--f-mono);font-size:12px;color:var(--faint);margin-top:1px}
+.demo-b[aria-pressed="true"] .ex{color:var(--accent)}
+.callout{
+  border:1px solid var(--line);border-left:2px solid var(--accent);
+  background:var(--bg3);border-radius:var(--r);padding:9px 11px;
+  font-size:12.5px;line-height:1.6;color:var(--dim);
+}
+.callout b{color:var(--text);font-weight:620}
+.callout .hd{
+  font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);
+  font-weight:700;margin-bottom:4px;
+}
+
+/* ============================================================
+   WING NAVIGATION — four menus instead of twenty wrapped buttons
+   ============================================================ */
+.wingnav{display:flex;align-items:center;gap:2px;background:var(--bg3);border:1px solid var(--line2);border-radius:var(--r);padding:3px}
+.navhome{
+  background:none;border:0;border-radius:5px;padding:6px 11px;font-size:15px;line-height:1;
+  cursor:pointer;color:var(--dim);transition:background .13s,color .13s;
+}
+.navhome:hover{color:var(--text);background:var(--bg4)}
+.navhome[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent)}
+
+.navgroup{position:relative}
+.navgrp{
+  display:flex;align-items:center;gap:6px;background:none;border:0;border-radius:5px;
+  padding:6px 12px;font-size:13px;font-weight:500;cursor:pointer;color:var(--dim);
+  white-space:nowrap;transition:background .13s,color .13s;
+}
+.navgrp:hover{color:var(--text);background:var(--bg4)}
+.navgroup.active > .navgrp{color:var(--accent);font-weight:650}
+.navgroup.open  > .navgrp{background:var(--bg4);color:var(--text)}
+.caret{
+  width:5px;height:5px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;
+  transform:rotate(45deg) translate(-1px,-1px);transition:transform .16s;opacity:.7;
+}
+.navgroup.open .caret{transform:rotate(225deg) translate(-2px,-2px)}
+
+/* the dropdown itself: a described list, so a wing is chosen on what it covers
+   rather than on a two-word label */
+.menupanel{
+  position:absolute;top:calc(100% + 7px);left:0;z-index:60;display:none;
+  min-width:340px;padding:6px;
+  background:var(--bg2);border:1px solid var(--line2);border-radius:10px;box-shadow:var(--shadow);
+}
+.menupanel.wide{min-width:390px;columns:1}
+.navgroup.open .menupanel{display:block}
+.menupanel button{
+  display:flex;align-items:flex-start;gap:11px;width:100%;text-align:left;
+  background:none;border:0;border-radius:7px;padding:9px 11px;cursor:pointer;color:var(--text);
+  transition:background .12s;
+}
+.menupanel button:hover{background:var(--bg3)}
+.menupanel button[aria-pressed="true"]{background:var(--accent-soft)}
+.menupanel .mg{
+  font-family:var(--f-math);font-size:19px;line-height:1.15;color:var(--accent);
+  flex:none;width:34px;text-align:center;
+}
+.menupanel button[aria-pressed="true"] .mg{color:var(--accent)}
+.menupanel .mtx{display:flex;flex-direction:column;gap:2px;min-width:0}
+.menupanel .mtx b{font-size:13px;font-weight:650;letter-spacing:.005em}
+.menupanel .mtx i{font-style:normal;font-size:12.5px;color:var(--faint);line-height:1.45}
+
+/* ============================================================
+   COMMAND PALETTE
+   ============================================================ */
+.palettebtn{
+  display:flex;align-items:center;gap:8px;background:var(--bg3);
+  border:1px solid var(--line2);border-radius:var(--r);padding:5px 9px;
+  font-size:12.5px;color:var(--faint);cursor:pointer;transition:border-color .13s,color .13s;
+  min-width:150px;
+}
+.palettebtn:hover{border-color:var(--accent-dim);color:var(--dim)}
+.palettebtn .mag{font-size:14px;line-height:1}
+.palettebtn .ptxt{margin-right:auto}
+.palettebtn kbd,.palette-foot kbd{
+  font-family:var(--f-mono);font-size:12px;background:var(--bg4);
+  border:1px solid var(--line2);border-radius:3px;padding:1px 5px;color:var(--faint);
+}
+.palette{position:fixed;inset:0;z-index:80;display:none;background:color-mix(in srgb,var(--bg) 66%,transparent);backdrop-filter:blur(4px)}
+.palette.open{display:block}
+.palette-box{
+  position:absolute;left:50%;top:11vh;transform:translateX(-50%);
+  width:min(680px,calc(100vw - 28px));max-height:74vh;display:flex;flex-direction:column;
+  background:var(--bg2);border:1px solid var(--line2);border-radius:12px;box-shadow:var(--shadow);overflow:hidden;
+}
+.palette-in{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--line);flex:none}
+.palette-in .mag{font-size:17px;color:var(--faint)}
+.palette-in input{background:none;border:0;outline:0;width:100%;font-size:15.5px}
+.palette-in input::placeholder{color:var(--faint)}
+.palette-list{overflow-y:auto;padding:6px;min-height:0}
+.palette-list .pgrp{
+  font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);
+  font-weight:650;padding:9px 11px 4px;
+}
+.pitem{
+  display:flex;align-items:center;gap:11px;width:100%;text-align:left;
+  background:none;border:0;border-radius:7px;padding:8px 11px;cursor:pointer;color:var(--text);
+}
+.pitem:hover{background:var(--bg3)}
+.pitem.sel{background:var(--accent-soft);outline:1px solid var(--accent-dim)}
+.pitem .pg{font-family:var(--f-math);font-size:16px;color:var(--accent);flex:none;width:30px;text-align:center}
+.pitem .pmain{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}
+.pitem .pname{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pitem .pwhere{font-size:12px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pitem .pkind{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);flex:none}
+.pitem mark{background:none;color:var(--accent);font-weight:650}
+.palette-empty{padding:26px 14px;text-align:center;color:var(--faint);font-size:13px}
+.palette-foot{
+  display:flex;align-items:center;gap:14px;padding:8px 14px;border-top:1px solid var(--line);
+  font-size:12px;color:var(--faint);flex:none;
+}
+.palette-foot .pf-count{margin-left:auto;font-family:var(--f-mono)}
+
+/* ============================================================
+   HOME / LANDING
+   ============================================================ */
+.home{
+  position:fixed;inset:0;z-index:30;overflow-y:auto;
+  background:var(--bg);display:none;
+}
+.home.open{display:block}
+.home-inner{max-width:1080px;margin:0 auto;padding:5vh 28px 56px}
+.home-glyphs{display:flex;gap:22px;justify-content:center;margin-bottom:14px}
+.home-glyphs span{font-family:var(--f-math);font-size:44px;line-height:1}
+/* the strip mirrors the cards below it, so each glyph keeps its wing's colour */
+.home-glyphs span:nth-child(1){color:var(--c-grad)}
+.home-glyphs span:nth-child(2){color:var(--c-warn)}
+.home-glyphs span:nth-child(3){color:var(--c-neg)}
+.home-glyphs span:nth-child(4){color:var(--c-curl)}
+.home-glyphs span:nth-child(5){color:var(--c-pos)}
+.home-head{text-align:center;margin-bottom:40px}
+.home-head h1{margin:0 0 14px;font-size:34px;font-weight:700;letter-spacing:-.01em}
+.home-tag{max-width:64ch;margin:0 auto;color:var(--dim);font-size:15.5px;line-height:1.7}
+.home-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-bottom:34px}
+@media(max-width:900px){.home-cards{grid-template-columns:minmax(0,1fr)}}
+.home-sec{
+  font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);
+  font-weight:650;margin:0 0 14px;padding-bottom:8px;border-bottom:1px solid var(--line);
+}
+.home-card{
+  display:flex;flex-direction:column;gap:10px;text-align:left;
+  background:var(--bg2);border:1px solid var(--line);border-radius:12px;
+  padding:24px 22px;cursor:pointer;color:var(--text);
+  transition:transform .16s,border-color .16s,box-shadow .16s;
+}
+.home-card:hover{transform:translateY(-3px);border-color:var(--accent-dim);box-shadow:var(--shadow)}
+.home-card:focus-visible{outline:2.5px solid var(--accent);outline-offset:3px}
+.hc-glyph{font-family:var(--f-math);font-size:38px;line-height:1}
+.hc-title{font-size:18px;font-weight:700}
+.hc-desc{font-size:13.5px;color:var(--dim);line-height:1.65}
+.hc-foot{font-size:12px;color:var(--faint);font-family:var(--f-mono);margin-top:auto;padding-top:8px;border-top:1px solid var(--line)}
+.home-foot{text-align:center;color:var(--faint);font-size:12.5px;max-width:70ch;margin:0 auto;line-height:1.7}
+
+/* ============================================================
+   ACCESSIBILITY POLISH
+   ============================================================ */
+.btn:focus-visible,.seg button:focus-visible,.wingnav button:focus-visible,
+.demo-b:focus-visible,.chk input:focus-visible{outline:2.5px solid var(--accent);outline-offset:2px}
+.demo-b{padding:8px 11px;font-size:13px;line-height:1.45}
+.sec > summary{padding:12px 14px;font-size:12.5px}
+input[type=range]{height:22px}
+input[type=range]::-webkit-slider-thumb{width:15px;height:15px;margin-top:-6px}
+.help{font-size:12px;line-height:1.6}
+.callout{font-size:13px;line-height:1.62}
+.kv{font-size:12.5px}
+@media(max-width:1420px){:root{--rail:352px}}
+
+/* ============================================================
+   RESPONSIVE
+   Three rungs. Desktop keeps the three panes side by side. Tablet drops the
+   right rail to a slide-over drawer but keeps canvas and controls together.
+   Phone shows one pane at a time, chosen from a bottom bar — the controls
+   arrive as a bottom sheet over the canvas so you can see what you are
+   changing while you change it.
+   ============================================================ */
+/* The pane bar is shared by tablet and phone, so its appearance lives here
+   rather than inside either breakpoint — it was invisible on tablet when the
+   button styling sat in the phone-only block. */
+.panebar{display:none;z-index:75}
+.panebar button{
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  background:none;border:0;cursor:pointer;color:var(--faint);
+  font-size:12.5px;letter-spacing:.03em;
+}
+.panebar button span{font-size:15px;line-height:1}
+.panebar button[aria-pressed="true"]{color:var(--accent)}
+.rail-scrim{display:none}
+
+/* ---- tablet: rail becomes a drawer ---- */
+@media(max-width:1179px){
+  .app{
+    grid-template-columns:minmax(0,1fr);
+    grid-template-rows:auto minmax(0,1fr) 6px var(--dockh);
+    grid-template-areas:"top" "stage" "sh" "dock";
+  }
+  .split-v{display:none}
+  .rail{
+    position:fixed;top:0;right:0;bottom:0;width:min(410px,86vw);z-index:70;
+    border-left:1px solid var(--line2);box-shadow:var(--shadow);
+    transform:translateX(100%);transition:transform .22s ease;
+  }
+  .app.rail-open .rail{transform:none}
+  .rail-scrim{
+    display:block;position:fixed;inset:0;background:rgba(4,8,16,.5);z-index:69;
+    opacity:0;pointer-events:none;transition:opacity .22s;
+  }
+  .app.rail-open .rail-scrim{opacity:1;pointer-events:auto}
+  .brand .sub{display:none}
+  .palettebtn .ptxt,.palettebtn kbd{display:none}
+  .palettebtn{min-width:0;padding:6px 9px}
+  /* The top bar must stay one row: wrapping pushed Reset onto a second line.
+     But a nowrap flex row is only as narrow as its least shrinkable child, and
+     every wing button carries white-space:nowrap — so the bar had an intrinsic
+     floor of about 1229px and the whole DOCUMENT inherited it. Between 900 and
+     1179 pixels the page simply scrolled sideways, header and dock included.
+     Giving the nav min-width:0 and its own horizontal scroll makes it the part
+     that yields, which is the right part: the buttons stay full size and slide
+     under the thumb instead of shrinking into unreadable stubs. */
+  .topbar{flex-wrap:nowrap;gap:8px;padding:8px 10px}
+  .brand{flex:0 1 auto;min-width:0}
+  .brand h1{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #wingNav{
+    flex:1 1 0;min-width:0;
+    overflow-x:auto;overflow-y:hidden;
+    scrollbar-width:none;-ms-overflow-style:none;
+  }
+  #wingNav::-webkit-scrollbar{display:none}
+  #btnReset{font-size:0;padding:6px 9px}
+  #btnReset::after{content:"⟲";font-size:14px}
+  #btnTheory{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px}
+  /* only the experiments rail is hidden at this size, so the bar is a single
+     floating toggle rather than a full-width switcher */
+  .panebar{
+    display:flex;position:fixed;right:16px;bottom:16px;
+    background:var(--bg2);border:1px solid var(--line2);border-radius:22px;
+    box-shadow:var(--shadow);padding:8px 15px;
+  }
+  .panebar button[data-pane="stage"],.panebar button[data-pane="dock"]{display:none}
+}
+
+/* ---- phone: one pane at a time, controls as a bottom sheet ---- */
+@media(max-width:899px){
+  .app{grid-template-rows:auto minmax(0,1fr);grid-template-areas:"top" "stage"}
+  .split-h{display:none}
+  .app.nodock{grid-template-rows:auto minmax(0,1fr)}
+  .stage{padding-bottom:0}
+  .dock{
+    position:fixed;left:0;right:0;bottom:54px;z-index:66;
+    max-height:min(64dvh,520px);height:auto;
+    border-top:1px solid var(--line2);box-shadow:var(--shadow);
+    transform:translateY(115%);transition:transform .24s ease;
+    display:flex;
+  }
+  .dock[hidden]{display:none}
+  .app[data-pane="dock"] .dock{transform:none}
+  .dock > .sec{flex:1 1 100%;max-width:none;border-right:0;border-bottom:1px solid var(--line)}
+  .dock > #secStage{flex:1 1 100%}
+  .dock > #secStage > .body{grid-template-columns:minmax(0,1fr)}
+  .rail{width:100%;max-width:none}
+  /* full-width switcher again, overriding the tablet pill above */
+  .panebar{
+    left:0;right:0;bottom:0;height:54px;padding:0;
+    border:0;border-top:1px solid var(--line2);border-radius:0;
+    background:var(--bg2);box-shadow:none;align-items:stretch;
+  }
+  .panebar button,
+  .panebar button[data-pane="stage"],.panebar button[data-pane="dock"]{
+    display:flex;flex:1;flex-direction:column;gap:2px;font-size:12px;
+  }
+  .panebar button span{font-size:16px}
+  .panebar button[aria-pressed="true"]{background:var(--accent-soft)}
+  /* At this width the four menus cannot share a row with the tools, and the
+     overflow pushed Search and The mathematics off-screen entirely. The menus
+     go — search and the home overview both reach any wing in fewer taps on a
+     phone anyway — and the view switcher stays, because field wings need it. */
+  .topbar{padding:6px 8px;gap:6px;min-height:46px;overflow:hidden;flex-wrap:nowrap}
+  .brand{flex:0 1 auto;min-width:0}
+  .brand h1{font-size:12.5px}
+  .brand .nab{font-size:17px}
+  .wingnav{flex:none;margin-right:auto}
+  .navgroup{display:none}
+  .palettebtn,#btnTheory,#btnTheme,#viewSeg{flex:none}
+  .palettebtn{min-width:0;width:34px;justify-content:center;padding:6px 0}
+  #btnTheory{font-size:0;padding:6px 9px;max-width:none}
+  #btnTheory::after{content:"∑";font-size:15px;font-family:var(--f-math)}
+  /* the view labels are the widest thing in the bar; abbreviate rather than
+     let the header overflow on a 390 px screen */
+  #viewSeg button{font-size:0;padding:5px 9px}
+  #viewSeg button[data-v="3d"]::after{content:"3D";font-size:12.5px}
+  #viewSeg button[data-v="surf"]::after{content:"Map";font-size:12.5px}
+  #viewSeg button[data-v="2d"]::after{content:"2D";font-size:12.5px}
+  #btnReset{display:none}
+  .hint{display:none}
+  .readout-chip{font-size:12px;padding:6px 8px;max-width:60vw}
+  .legend{max-width:52vw;font-size:12px}
+  .menupanel{
+    position:fixed;left:8px;right:8px;top:auto;min-width:0;width:auto;
+    max-height:66dvh;overflow-y:auto;
+  }
+  .sheet-inner{width:100%}
+  .sheet-body{padding:18px 16px 60px}
+  .palette-box{top:6vh;max-height:84vh}
+  .home-inner{padding:3vh 16px 40px}
+  .home-head h1{font-size:25px}
+  .home-cards{grid-template-columns:minmax(0,1fr);gap:13px}
+  .home-card{padding:18px 16px}
+}
+
+/* touch pointers get larger hit targets than a mouse needs */
+@media(pointer:coarse){
+  .btn,.seg button,.navgrp,.menupanel button{min-height:38px}
+  .demo-b{padding:11px 12px}
+  input[type=range]{height:30px}
+  input[type=range]::-webkit-slider-thumb{width:19px;height:19px;margin-top:-8px}
+  input[type=range]::-moz-range-thumb{width:19px;height:19px}
+  .chk input{width:19px;height:19px}
+  .chk input:checked::after{left:6px;top:2.5px;width:4.5px;height:9.5px}
+}
+
+@media(prefers-reduced-motion:reduce){
+  *{transition-duration:0s !important;animation-duration:0s !important}
+}

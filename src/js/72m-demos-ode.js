@@ -1,0 +1,42 @@
+const ODE_GROUPS = [
+{ g:'Homogeneous equations', items:[
+  {n:'The characteristic equation, and its three cases', ex:'ar² + br + c = 0 decides everything', stage:'odLinear',
+   opts:{b:0.6, c:4},
+   out:'Slide the damping through b = 2√(ac) and watch the two roots collide on the real axis and split apart. That collision is the boundary between ringing and not ringing.',
+   note:'Try y = e^(rt): every term picks up a factor that never vanishes, so it divides out and a differential equation becomes a quadratic. Complex roots are not a pathology — Euler\'s formula turns e^((α±iω)t) into decaying sines and cosines, with α the decay rate and ω the ringing frequency.'},
+  {n:'The repeated root, and the stray t', ex:'why the second solution is t·e^(rt)', stage:'odLinear',
+   opts:{b:4, c:4, y0:0, v0:1},
+   out:'When the roots collide, e^(rt) supplies only one solution and a second copy would be useless. The missing one is t·e^(rt), and RK4 confirms it exactly.',
+   note:'The t is forced on us: two initial conditions need two independent solutions, and independence is measured by the <b>Wronskian</b>. The panel checks Abel\'s formula W(t) = W₀e^(−bt/a), which says the Wronskian obeys its own first-order equation and so is either never zero or identically zero. There is no middle case, which is why testing at a single point suffices.'},
+  {n:'Overdamped, critical, underdamped', ex:'the phase portrait tells them apart at a glance', stage:'odLinear',
+   opts:{b:0.2, c:6, y0:1, v0:0, show:{phase:true}},
+   out:'ζ < 1 spirals into the origin, ζ = 1 comes straight in, ζ > 1 creeps in along an eigendirection. The closed form and the RK4 integration lie exactly on top of each other in every case.',
+   note:'Critical damping is the fastest return to equilibrium without overshoot, which is why it is the target for a car\'s shock absorbers, a galvanometer needle and a door closer. It is a knife edge: a hair either side and you are ringing or crawling.'}
+]},
+{ g:'Forcing, resonance and series', items:[
+  {n:'y = y_c + y_p — transient plus steady state', ex:'undetermined coefficients, checked by substitution', stage:'odNonhom',
+   opts:{forcing:'cosine'},
+   out:'The proposed particular solution is substituted back into the equation numerically and the residual printed as zero. Variation of parameters reaches the same answer by an entirely different route, and the panel compares both with RK4.',
+   note:'The general solution is any one particular solution plus the whole homogeneous family — because linearity means the difference of two solutions of the forced equation solves the unforced one. With damping the homogeneous part decays, so <b>y_c is the transient and y_p is the steady state</b>: the initial conditions have no effect at all on where the system ends up.'},
+  {n:'Resonance — the peak is not at ω₀', ex:'amplitude F₀/|Z|, and a 90° phase lag', stage:'odSpring',
+   opts:{view:'response', gam:0.25},
+   out:'The peak sits at √(ω₀² − γ²/2m²), marked on the curve, and only reaches ω₀ when the damping vanishes. The phase runs from 0 through exactly 90° at ω₀ to 180° above it — drive a mass fast enough and it moves opposite to the force pushing it.',
+   note:'At ω₀ the stiffness and inertia terms cancel exactly and only the damping holds the system back, so the peak height goes as 1/γ. The Tacoma Narrows bridge, a wine glass shattered by a singer and every radio tuner ever built are this one curve. The panel measures the steady-state amplitude from a long RK4 run and compares it with F₀/|Z|.'},
+  {n:'The mass and the circuit are the same equation', ex:'m ↔ L, γ ↔ R, k ↔ 1/C', stage:'odSpring',
+   opts:{view:'time', gam:0.35},
+   out:'Both vocabularies are printed side by side from the same three numbers, and they give the same ω₀ and the same Q. Watch the transient die and the motion settle onto the green steady-state curve.',
+   note:'Inductance is inertia, resistance is friction, and the reciprocal of capacitance is stiffness. The circuits wing solves this system with a nodal solver and draws its Bode plot; this wing solves it as a differential equation. Neither is more fundamental — they are one object seen twice.'},
+  {n:'Beats', ex:'two nearby frequencies, one slow envelope', stage:'odSpring',
+   opts:{view:'beats', gam:0.02, w:1.85},
+   out:'Drive a lightly damped oscillator near its natural frequency and the amplitude swells and collapses at the <i>difference</i> frequency. The drawn envelope is |sin(Δω t/2)| from the trigonometric identity, laid over the integrated motion.',
+   note:'This is how a piano is tuned by ear, how a radio\'s intermediate-frequency stage works, and — in the quantum wing — how a two-level superposition sloshes at ω = (E₂−E₁)/ħ. Nothing is beating in the system; the beat is interference between two frequencies that are both present.'},
+  {n:'Series solutions, and what termination means', ex:'a recurrence instead of a formula', stage:'odSeries',
+   opts:{key:'airy', N:12},
+   out:'Substituting y = Σaₙxⁿ turns the equation into a recurrence linking aₙ₊₂ back to earlier coefficients. Two of them are never determined — and those are exactly the two arbitrary constants a second-order equation must have.',
+   note:'The coefficients here are generated by running the recurrence, and the partial sum is drawn against an RK4 integration of the original equation. The radius of convergence is <b>measured</b> from the coefficients by the root test, and it reaches as far as the nearest point where the equation itself misbehaves — Fuchs\' theorem, which lets you predict it before computing a single coefficient.'},
+  {n:'Quantisation as a convergence condition', ex:"Hermite's equation terminates only for integer λ", stage:'odSeries',
+   opts:{key:'hermite', N:14},
+   out:'With λ = 4 the recurrence hits zero at a₆ and the series stops: it is a polynomial. For non-integer λ it never terminates and the solution blows up like e^(x²).',
+   note:'That truncation <i>is</i> quantisation. The harmonic-oscillator energies in the quantum wing are exactly the λ values that make this series stop before it destroys normalisability — an energy spectrum arriving as a condition for a power series to converge, rather than as a postulate. Legendre\'s equation does the same thing for the integer angular-momentum numbers of the atom wing.'}
+]}];
+

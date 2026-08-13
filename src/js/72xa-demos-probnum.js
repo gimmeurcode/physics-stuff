@@ -1,0 +1,81 @@
+const PROB_GROUPS = [
+{ g:'Distributions, and what a density is', items:[
+  {n:'A density is not a probability', ex:'only its integral is', stage:'pbDist',
+   opts:{ key:'normal' },
+   out:'The total integrates to 1, and the mean and variance obtained by integrating the density are printed beside their closed forms.',
+   note:'Start here, because the distinction trips people for years. For a continuous distribution f(x) has units of "per x" and can happily exceed 1; only the area under it over an interval is a probability. Drag the marker and watch the shaded area — the CDF is the running integral, not a second idea.'},
+  {n:'Expectation is a centre of mass', ex:'μ = ∫x f(x) dx', stage:'pbDist',
+   opts:{ key:'expo' },
+   out:'The exponential is strongly skewed, and its mean sits well to the right of its peak — exactly where a plate of that shape would balance.',
+   note:'This is literally the centroid integral of the multivariable wing with the density of a lamina replaced by a probability density. And the variance is the second moment about that centre — the moment of inertia of the distribution, which is why variances add for independent variables just as inertias add for disjoint bodies.'},
+  {n:'Discrete distributions: the bars are the probabilities', ex:'binomial', stage:'pbDist',
+   opts:{ key:'binom' },
+   out:'Each bar is itself a probability, so none can exceed 1 and they sum to exactly 1 — unlike a continuous density.',
+   note:'Slide n upwards with p fixed and watch the binomial turn into a bell. That is the central limit theorem in its original 18th-century form, and it is the next group.'},
+  {n:'When mean and variance coincide', ex:'the Poisson signature', stage:'pbDist',
+   opts:{ key:'poisson' },
+   out:'Both integrals return λ. A distribution whose variance equals its mean is the fingerprint of rare independent events.',
+   note:'That equality is a real diagnostic: count data whose variance exceeds its mean is <i>overdispersed</i> and something has correlated the events. Radioactive decay counts, photon arrivals and typing errors per page are all Poisson to good accuracy.'}
+]},
+{ g:'The central limit theorem, run rather than quoted', items:[
+  {n:'Average anything and it goes normal', ex:'start from a skewed exponential', stage:'pbCLT',
+   opts:{ key:'expo', n:1 },
+   out:'At n = 1 the histogram is the exponential itself, skew and all. The orange curve is the normal the theorem predicts, with nothing fitted to the bars.',
+   note:'Slide n up slowly. By about 10 the skew has largely gone; by 30 the fit is hard to fault. The remarkable part is that the starting shape does not matter — this works for the uniform, the binomial and the Poisson too, and you can switch between them and watch the same thing happen.'},
+  {n:'The spread falls as 1/√n', ex:'why data is expensive', stage:'pbCLT',
+   opts:{ key:'uniform', n:16 },
+   out:'The observed standard deviation of the sample means matches σ/√n, and the ratio of the two is printed.',
+   note:'The derivation needs only that variances add for independent variables. The consequence is economic: to halve your uncertainty you need four times the data, and for one more decimal place, a hundred times. That single square root sets the cost of every poll, experiment and measurement ever made.'},
+  {n:'Averaging a binomial', ex:'the original form of the theorem', stage:'pbCLT',
+   opts:{ key:'binom', n:8 },
+   out:'Averages of binomial draws are already very close to normal at small n.',
+   note:'De Moivre proved this case first, in 1733, for exactly the reason it is easy to see here: a binomial is <i>already</i> a sum of independent things, so averaging it is averaging a sum, and the convergence is fast.'}
+]},
+{ g:'Regression and what it cannot tell you', items:[
+  {n:'The least-squares line, and where its formula comes from', ex:'set both partial derivatives to zero', stage:'pbRegress',
+   opts:{},
+   out:'The slope, intercept, r and r² are recomputed from whatever points are on the plot, and the line always passes through the centroid of the data.',
+   note:'The derivation is the critical-point method of the partial-derivatives wing: minimise the squared error, set the gradient to zero, solve two equations. The vector-spaces wing reaches the identical line by projecting orthogonally onto the column space. Three routes, one line — which is worth seeing, because it explains why least squares feels both algebraic and geometric.'},
+  {n:'r² is a ratio of variances, not a verdict', ex:'SS_tot = SS_reg + SS_res', stage:'pbRegress',
+   opts:{},
+   out:'The decomposition is printed and the two pieces are shown adding back to the whole exactly. r² is the explained fraction.',
+   note:'That identity is what makes r² interpretable as a fraction at all. Add an outlier far from the rest and watch the line swing towards it — least squares minimises <i>squared</i> error, so one distant point counts far more than several near ones.'},
+  {n:'A line through noise is still a line', ex:'press "no relationship"', stage:'pbRegress',
+   opts:{},
+   out:'With pure scatter the slope, intercept and centroid are all still computed perfectly well, and only r² notices that there is nothing there.',
+   note:'This is the most important demo in the wing. A fitted line is not evidence that a relationship exists; the software will always return one. And even a high r² says nothing about causation, about whether a line was the right model, or about anything outside the range of the data.'}
+]}];
+
+const NUMER_GROUPS = [
+{ g:'Root finding, and the price of speed', items:[
+  {n:'Bisection: slow, and unconditional', ex:'one binary digit per step', stage:'nmRoot',
+   opts:{ key:'cubic', method:'bisect', steps:10 },
+   out:'The error ratio sits at exactly ½ every step — linear convergence, and it cannot fail once a sign change has been bracketed.',
+   note:'Bisection needs only that f is continuous and changes sign. It knows nothing about derivatives and cannot be fooled. Ten steps buy about three decimal digits, which is slow — but it is the only method here that comes with a guarantee.'},
+  {n:'Newton: the error squares', ex:'the digits double each step', stage:'nmRoot',
+   opts:{ key:'cubic', method:'newton', x0:3, steps:6 },
+   out:'The ratio e/e² settles on a constant while e/e keeps shrinking. A settled second ratio <b>is</b> quadratic convergence, measured rather than claimed.',
+   note:'The derivation shows exactly where the square comes from: Newton solves the Taylor expansion with the quadratic term dropped, so the leftover error is precisely what that term was worth — f″/2f′ times the old error squared.'},
+  {n:'And Newton running away', ex:'atan x, started too far out', stage:'nmRoot',
+   opts:{ key:'steep', method:'newton', x0:2, steps:8 },
+   out:'Each tangent overshoots further than the last and the iterates diverge, even though the function is smooth and has exactly one root.',
+   note:'Quadratic convergence is a <i>local</i> promise. Start too far away and the Taylor expansion the method rests on is worthless. This is why serious solvers bracket first with bisection and only switch to Newton once they are close — fast and fragile is worth having only with a safety net.'},
+  {n:'The secant method, and the golden ratio', ex:'order 1.618, and no derivative needed', stage:'nmRoot',
+   opts:{ key:'cosx', method:'secant', x0:0.2, steps:8 },
+   out:'Slower per step than Newton but needing no derivative, and each step costs one function evaluation instead of two.',
+   note:'Its order is the golden ratio, which falls out of the same Taylor argument with the derivative replaced by a difference of the last two points. When f′ is expensive or unavailable — which is common — the secant method is usually the better trade.'}
+]},
+{ g:'How fast, and how accurate at best', items:[
+  {n:'Measuring the order of a quadrature rule', ex:'halve h and take log₂ of the ratio', stage:'nmQuad',
+   opts:{ mode:'order', rule:'trap' },
+   out:'The order column settles on 2 for the trapezoid rule — the textbook value, arrived at by measurement.',
+   note:'This is the procedure the integration wing uses throughout, and the reason it can say "measured" rather than "asserted". It is also a diagnostic: on √x at the origin the derivatives are unbounded and Simpson quietly drops from order 4 to about 1.5, which no amount of quoting would reveal.'},
+  {n:'Simpson, and why it is so much better', ex:'order 4 for one extra evaluation', stage:'nmQuad',
+   opts:{ mode:'order', rule:'simpson' },
+   out:'Doubling the panels divides the error by roughly sixteen rather than four.',
+   note:'Simpson fits a parabola through each pair of panels instead of a straight line, and the symmetry of the fit makes the cubic term cancel for free — which is why it achieves order 4 rather than the 3 you would expect from a quadratic.'},
+  {n:'Where numerical differentiation stops working', ex:'the error rises again as h shrinks', stage:'nmQuad',
+   opts:{ mode:'float' },
+   out:'The error falls as h², bottoms out near h = 10⁻⁵, and then <b>rises</b> — smaller steps make the answer worse.',
+   note:'Mathematics says the limit as h → 0 is exact; arithmetic says there is a floor. Subtracting two nearly equal numbers keeps their error and discards their agreement, and dividing by a tiny h amplifies what is left. This is why the field engine differentiates symbolically wherever it can, and why the relativity wing computes several quantities in closed form with tests asserting the naive route is wrong.'}
+]}];
