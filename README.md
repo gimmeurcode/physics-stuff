@@ -427,6 +427,13 @@ Published copy: https://claude.ai/code/artifact/289811c9-07a8-4419-87cc-b4b55e04
   meaningless without the scale it is read against: one work-energy row printed a
   genuine 7.8% gap as "difference 0 J" in the affirmative colour, and a settled
   circuit printed 29.7 fA of pure round-off as a finding.
+- `auditsides.ps1` — the other half of that question. `auditresid` checks a
+  difference is printed *with* its scale; this one reads the number and asks
+  whether the two routes **agree**, driving the real controls over every preset
+  a reader can select — 791 combinations, 134 two-route claims, none of which
+  anything had read before. It found ten places where two routes agree to
+  round-off and the panel announces a 100% disagreement, because the scale it
+  derived was the round-off itself.
 - `auditmarks.ps1` — asks whether the key points drawn on a plot are real. The
   break test compared a step against 12× the curve's *median* step, which asks
   whether this part of the curve is steeper than the rest rather than whether it

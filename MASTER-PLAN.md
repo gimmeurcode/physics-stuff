@@ -90,7 +90,7 @@ given so the next session can re-measure rather than trust.
 | experiments driving a canvas stage | **508** | same (the other 85 drive the field pipeline) |
 | canvas stages | **178** | `./smoke.ps1` → `stages=178`; `./measure.ps1` confirms `unreachablestages=none` |
 | source modules | **231** | `./build.ps1` |
-| harness scripts | **26** | `Get-ChildItem *.ps1`. Every one must appear in §1.6 and §4.2 — `./auditdocs.ps1` checks |
+| harness scripts | **27** | `Get-ChildItem *.ps1`. Every one must appear in §1.6 and §4.2 — `./auditdocs.ps1` checks |
 | deployable size | **5 409 933 bytes** (5.41 MB / 5.16 MiB) | `./measure.ps1`. **`build.ps1` prints a smaller figure, which is a CHARACTER count** — the Unicode maths symbols cost ~57 KB more as UTF-8 bytes. Both are far inside any upload limit. **A fresh `git clone` builds ~15.6 KB smaller**: `.gitattributes` normalises line endings to LF and 54 of the source files carried CRLF when this was measured, which is 15 627 carriage returns. The app is identical — but this is why the row says *measure*, not *quote* |
 | source lines | ~77 044 (all of `src/`) | `./measure.ps1`; `./map.ps1` reports `src/js` alone |
 | unit tests | **4249 passed, 0 failed** | `./runtests.ps1` |
@@ -266,7 +266,7 @@ no author's function to replace; the "r(θ) region" slot went instead to
 
 ## 1.6 The verification harness
 
-**26 scripts** (`Get-ChildItem *.ps1` — **that command is the authority, not this
+**27 scripts** (`Get-ChildItem *.ps1` — **that command is the authority, not this
 number**; the table below listed 23 until 2026-08-14, when `auditmarks` and
 `auditresid` turned out to have been missing from it since they were written, and
 the "nine" the line claimed before that was wrong for far longer). What matters
@@ -289,6 +289,7 @@ script exists that this table does not describe.
 | `auditderive.ps1` | ~40 s | `flagged=0 OK` | every stage's `derive()`, which **nothing else calls**; and whether rungs carry reasoning or restate algebra |
 | `auditclaims.ps1` | ~30 s | `bad=0 OK` | whether the **preset tables tell the truth** — 249 declared claims across 14 tables recomputed by an independent route. Reaches `EIG_PRESETS` (78b) and `NM_FUNCS` (79g), which are outside the window `runtests` extracts |
 | `auditresid.ps1` | ~1 min | `findings=0` / `auditresid OK` | whether a **residual is printed as though it were a measurement**. A row promising a difference must carry the scale it is read against, and two ways of failing that both shipped: `fmtNum`'s dead zone at [1e-4, 5×10⁻ˢⁱᵍ) printed `dyForce`'s genuine 7.8% gap as "difference 0 J" in the affirmative colour, and a circuit at steady state printed 29.7 fA of pure round-off as a finding. It reads **rendered panel text**, not source, so a new way of getting it wrong is caught too. **Widened 2026-08-14 after its own blind spots were measured**, and each one was hiding real defects: it read only `readout` and `chip`, so the **derive ladder** (~717 000 rendered characters) and the legend were invisible; it tested "is the scale printed?" against the *whole* panel text, and `SCALED` contains `of\s`, so **any panel containing the word "of" exempted itself**; its round-off pattern matched only the typeset `×10⁻ⁿ` form, so every residual printed through **`toExponential`** was invisible; and with `st.own` false at entry it never rendered the **55 stages' reader-supplied surfaces** at all — where 13 of the defects were. Now also reports an **advisory `noscale=`** count that does not fail the build, because no regex separates a two-route residual from a physical difference (`SITE-RULES` Part 4) |
+| `auditsides.ps1` | ~2 min | `auditsides OK` *(a ratchet)* | whether the two routes a theorem stage computes **actually agree, on every preset the reader can select**. `auditresid` asks whether a difference is printed *with its scale*; this one reads the number. It drives the real segmented controls over the whole preset product — **791 combinations across 78 demos, 5676 panel renders, 134 distinct two-route claims**, none of which anything had ever read — and classifies each claim by the verdict `fmtGap` renders. **FALSE-SCALE**: the routes agree to round-off and the panel reports ~100%, because `fmtAgree` derives its scale as `max(|a|,|b|)` and both routes vanished (`dyMoment` at e = 1 printed `1.78×10⁻¹⁵ (100% — agreeing to 0 figures)` under prose promising they "match exactly"; `smBoltz` managed it at **1.81×10⁻¹⁷⁰**). **PRESET-GAP**: the same claim is exact on one preset and poor on another — the cylinder-normal detector, and it needs no hand-chosen tolerance because the stage's own best preset sets the standard. **weak** rows are advisory: a 14-slice Riemann sum is *supposed* to disagree. It is a **ratchet on `$BASE_FALSE`/`$BASE_PRESET`**, not a threshold — see §3.4 for why, and lower them as the backlog clears |
 | `auditmarks.ps1` | ~1 min | *(old → new scores)* | whether the **key points drawn on a plot are real**. `pvFeatures` marked a break wherever a step beat 12× the curve's *median* step — which asks whether this part is steeper than the rest, not whether the curve is broken — so any curve with a long flat tail grew a picket fence of false poles. **2303 → 20 markers** across the stages, with controls proving `tan` and `1/x` keep their real poles: the first attempt scored 2303 → 10 and **silently dropped tan's pole**, which is the whole argument for having a control |
 | `auditdocs.ps1` | ~1 min | `bad=0 OK` | whether **these documents still describe the site**. It re-measures wings, experiments, groups, stages, modules, tests, see-links, scripts and artifact size, then reads every live `.md` and fails on a contradiction; checks that every `*.ps1` on disk is described in §1.6 and §4.2 and listed in `AI-GUIDE.md`; and that every file path a document names exists. **An undated number is a live claim; a number on a line carrying a `YYYY-MM-DD`, or under a dated heading, is a record and is exempt** — that is the only escape hatch, and it is honest because it says when the figure was true. **`-Fix` rewrites the stale counts** (exactly the digits it verified, printing each substitution — then read the diff). **`-SkipTests` makes the run partial and it says so**, because a `bad=0` from a run that did not look is worse than no gate. Nothing else reads a `.md` at all, and eight false counts had survived every other gate indefinitely |
 | `auditzoom.ps1` | ~1 min | `findings=0` | pan/zoom on all 178 stages, **and mkPlot's identity-at-rest** |
@@ -1078,13 +1079,83 @@ Three pieces of infrastructure would have caught most of the fourteen:
    passes any absolute threshold — what separates it is the *rate* at which the
    error shrinks, which now gets measured). A gate that has never been seen to
    fail is not known to work.
-2. **A both-sides audit.** Every theorem stage computes two sides and prints
-   their difference; assert that difference is small for every preset
-   combination, and the cylinder bug fails the build. **`vcDivergenceCheck` and
-   `igChangeCheck` are already written and are exactly these primitives** —
-   they are the two "unused" functions kept for this reason. Whitelist the one
-   honest exception (an inverse-square field on a region containing its
-   singularity) **with its reason**.
+2. **A both-sides audit.** **BUILT 2026-08-14 — `./auditsides.ps1`. The sweep is
+   done; 24 of its findings are not fixed, and they are listed below.**
+
+   It drives the real segmented controls over the whole preset product —
+   **791 combinations across 78 demos, 5676 renders, 134 distinct two-route
+   claims** — and reads the verdict `fmtGap` renders on each. Nothing had ever
+   read one: `auditresid` (the neighbouring gate) asks whether a difference
+   carries its *scale*, and a row can pass that while reporting a 30%
+   disagreement, because nothing looked at the number.
+
+   **Two things the build of it settled, and neither was the plan above.**
+
+   *First, `vcDivergenceCheck` and `igChangeCheck` were the wrong primitives to
+   build on.* They are engine functions; the defect is in what the **panel
+   prints**, and a gate reading engine returns would not have seen `dyMoment` at
+   all. Reading rendered text instead means a stage that computes its two sides
+   inline — most of them — is covered without being retrofitted.
+
+   *Second, the sweep the neighbouring gate claims to do does not happen.*
+   `auditresid` carries a loop commented "every scene / preset the stage offers,
+   not just the one it opens on", drawing its pool from `S.scenes`. **No stage
+   has ever defined `scenes`**, so the pool is empty on all 178 and the loop body
+   has never once executed; the key names it then tries (`scene`, `mode`,
+   `preset`, `key`, `which`, `view`) are not the names stages use either
+   (`vcStokes` holds its presets in `st.cap` and `st.fld`). The comment is right
+   about why it matters and the code does nothing. **A loop that iterates an
+   empty collection is indistinguishable from a loop that works**, which is the
+   general lesson: assert the sweep visited something.
+
+   **The findings, 2026-08-14 — 10 FALSE-SCALE, 14 PRESET-GAP, 16 advisory.**
+
+   **FALSE-SCALE is one class with one cause, and it is J9 inverted.** There a
+   real gap printed as `0`; here a *zero* gap prints as 100%. `fmtAgree(a, b)`
+   derives its scale as `max(|a|,|b|)`, which is right until both routes
+   legitimately vanish — then the derived scale **is** the round-off, and a
+   perfect result reads as total disagreement in the alarming colour. Ten sites:
+   `dyMoment` (e = 1, gap 1.78×10⁻¹⁵ J against a 9.5 J cancellation),
+   `cxContourInt` (`invsq` — an analytic integrand, so both routes are zero),
+   `igMass`, `vcGreen` (×2), `vcStokes`, `vcDiverg`, `smBoltz` (×2, at
+   **1.81×10⁻¹⁷⁰**).
+
+   **The fix is `fmtAgreeGross(a, b, gross, unit)` — not yet written.** The
+   honest scale is the quantity the cancellation came from, which §2.1 already
+   demands be printed beside a vanishing integral ("∮|B·n̂|dA next to ∮B·dA").
+   Six of the ten need that gross *computed* — an extra quadrature over the
+   absolute integrand in `vcStokesCheck`/`vcDivergenceCheck` and their planar
+   twins — which is why this is the next session's unit rather than this one's.
+   `dyMoment`'s is already in scope (`C.K0`).
+
+   **PRESET-GAP needs attribution before it can be a gate, and that is the
+   expensive half.** The signature — exact on one preset, poor on another — is
+   equally the mark of a real defect *and* of a demo deliberately showing where
+   a theorem's hypothesis fails. `cxMap`'s conjugate preset **must** break
+   Cauchy–Riemann; `vcConserv`'s rotational field **must** fail to have a
+   potential; `igDoubleRect`'s Riemann sum is exact for `f = 1` and nothing else
+   **on purpose**. Those are the lesson. Whitelisting fourteen rows unattributed
+   would be worse than measuring none of them, so none were whitelisted.
+
+   **Hence a ratchet, not a threshold.** `$BASE_FALSE`/`$BASE_PRESET` hold the
+   counts measured that day and the gate fails on any *increase*, so a new
+   defect of either class is caught the moment it lands while the backlog stays
+   visible. **Lower them as rows are cleared.**
+
+   **Its negative control found a defect in the gate itself, which is the
+   argument for having one.** Corrupting `vcGreen`'s planimeter by 5% changed
+   nothing the gate reported: its readout carries **three** rows labelled
+   "difference" — circulation, flux, planimeter — and keying on the label alone
+   merged all three into one claim whose min was already 0 from the row beside
+   it. Keying on the label's ordinal within the surface separated them, the
+   corruption was caught, and **the separation immediately exposed two further
+   real FALSE-SCALE sites** the merge had been hiding (8 → 10).
+
+   Two smaller things found on the way, not yet fixed: `wsRegge` prints its
+   percentage **twice** with an unbalanced bracket
+   (`18.5 MeV/fm ( (2.06% — agreeing to 1 figure)2.06%)`), and `dyEnergy`'s
+   frictionless case reports a **5.82%** gap directly under prose reading "with
+   no friction the two agree".
 3. **Stage-level unit tests.** `runtests.ps1` extracts only 21–49, so none of the
    178 stages' arithmetic is tested. The numeric Fourier path had zero tests,
    which is exactly why a factor of two lived in it.
@@ -1512,6 +1583,7 @@ Then, matched to what you touched:
 | an engine (21–49) | `./runtests.ps1` |
 | **anything that changes a count** — a wing, a demo, a stage, a module, a test, a script | `./auditdocs.ps1`, and fix the documents it names. **This is not optional and not a tidy-up afterwards** — see §4.4 |
 | **anything printing a difference, a residual or a gap** — in a readout, a chip, a **derive rung**, a legend, or a **`*Own` reader-supplied panel**, all five of which it reads | `./auditresid.ps1` |
+| **a preset table, a theorem stage, or either route into a two-route comparison** | `./auditsides.ps1` — `auditresid` checks a difference is printed with its scale; this one checks the two routes actually **agree**, over the whole preset product |
 | **`pvFeatures`, `pvDrawFeatures`, or any marker drawn on a curve** | `./auditmarks.ps1` |
 | a stage, a demo, the UI | `./runall.ps1` (~18 min, **background it**) |
 | a picker, an accessor, a `pk*` helper, any typed input | `./auditcustom.ps1` |

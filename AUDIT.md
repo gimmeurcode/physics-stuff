@@ -4227,3 +4227,72 @@ boxes=134 **bad=0 OK** · `auditlink` 593/593 **findings=0** ·
 
 Coverage moved **2189 → 2683 rendered rows** and **91 → 122 promise rows**; the
 delta is the four blind spots.
+
+## 2026-08-14 — nothing had ever read the number in a "difference" row
+
+`auditresid` had just been widened to five surfaces and reported `findings=0`:
+every residual on the site now prints with the scale it must be read against.
+That is a statement about **formatting**. It says nothing about whether the two
+routes agree, and the two questions turn out to be almost independent — a row
+can carry a perfectly good scale and announce a 30% disagreement, and nothing
+looked.
+
+`./auditsides.ps1` reads the verdict `fmtGap` renders — "agreeing to N figures",
+or "they agree to every digit either route has" — on every panel, driving the
+real segmented controls over the whole preset product.
+
+**Measured:** 78 demos, **791 preset combinations**, 5676 panel renders,
+**134 distinct two-route claims**. 10 FALSE-SCALE, 14 PRESET-GAP, 16 advisory.
+
+**FALSE-SCALE — J9 inverted, and one cause.** `fmtAgree(a, b)` derives its scale
+as `max(|a|,|b|)`. That is right until both routes legitimately vanish, and then
+the derived scale **is** the round-off: a perfect result reads as a 100%
+disagreement, in the affirmative colour, under prose promising the two agree.
+
+| stage | preset | printed | what it is |
+|---|---|---|---|
+| `dyMoment` | e = 1 (default) | `1.78×10⁻¹⁵ (100% — agreeing to 0 figures)` | an elastic collision loses no energy; both routes are zero. The 9.5 J that cancelled is the honest scale |
+| `smBoltz` | `sbK=hydrogen` | gap **1.81×10⁻¹⁷⁰** | both routes underflow; 165 orders below anything physical |
+| `cxContourInt` | `ciK=invsq` | `2.50×10⁻¹⁵` | an analytic integrand, so Cauchy gives zero twice |
+| `igMass` | `cardio`/`edge` | `2.43×10⁻¹⁶` | |
+| `vcGreen` | `grad`/`circle` | `8.88×10⁻¹⁶`, `6.39×10⁻¹⁵` | a gradient field has no circulation |
+| `vcStokes` | `hemisphere`/`shear3` | `5.51×10⁻¹¹` | mesh quadrature, not machine epsilon — its floor is larger |
+| `vcDiverg` | `swirl` | `1.86×10⁻¹³` | |
+
+**Not fixed here.** The fix is `fmtAgreeGross(a, b, gross, unit)`, scaling the
+gap against the quantity the cancellation came from — which §2.1 already demands
+be printed beside a vanishing integral. Six of the ten need that gross
+*computed*: an extra quadrature over the **absolute** integrand. Recorded in
+MASTER-PLAN §3.4 as the next unit rather than half-done here.
+
+**The negative control found a defect in the gate, and the gate then found two
+more real ones.** Corrupting `vcGreen`'s planimeter by 5% changed nothing the
+gate reported. Its readout carries **three** rows labelled "difference" —
+circulation, flux, planimeter — and keying a claim on its label alone merged all
+three, into one whose minimum was already 0 from the row beside it. Keying on the
+label's **ordinal within the surface** separated them; the corruption was then
+caught, and the separation immediately exposed **two further real FALSE-SCALE
+sites** the merge had hidden. 8 → 10. A gate that has never been seen to fail is
+not known to work, and this one was wrong in a way only the control could show.
+
+**`auditresid`'s preset sweep has never executed.** It carries a loop commented
+"every scene / preset the stage offers, not just the one it opens on", drawing
+its pool from `S.scenes`. **No stage has ever defined `scenes`** — the pool is
+empty on all 178, the body has never run once, and the state keys it would then
+have tried (`scene`, `mode`, `preset`, `key`, `which`, `view`) are not the names
+stages use anyway (`vcStokes` keeps its presets in `st.cap` and `st.fld`). The
+comment is right about why it matters. **A loop over an empty collection looks
+exactly like a loop that works**; assert the sweep visited something.
+
+**Why PRESET-GAP does not fail the build.** Its signature — exact on one preset,
+poor on another — is equally the mark of a real defect and of a demo
+*deliberately* showing where a hypothesis fails. `cxMap`'s conjugate preset must
+break Cauchy–Riemann; `vcConserv`'s rotational field must have no potential;
+`igDoubleRect`'s Riemann sum is exact for `f = 1` and nothing else, on purpose.
+Whitelisting fourteen rows unattributed would be worse than measuring none, so
+none were. The script is a **ratchet** on the counts instead: a new defect of
+either class fails the build the moment it lands.
+
+Two smaller things, not fixed: `wsRegge` prints its percentage twice with an
+unbalanced bracket, and `dyEnergy`'s frictionless case reports **5.82%** under
+prose reading "with no friction the two agree".
