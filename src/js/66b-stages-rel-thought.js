@@ -482,7 +482,7 @@ STAGES.rlClock = {
       ${kv('height  h', fmtNum(st.h, 6))}
       ${kv('base² + height²', fmtNum(leg * leg + st.h * st.h, 6))}
       ${kv('hypotenuse²', fmtNum(hyp * hyp, 6))}
-      ${kv('residual', fmtNear(hyp * hyp - leg * leg - st.h * st.h))}
+      ${kv('residual', fmtGap(hyp * hyp - leg * leg - st.h * st.h, hyp * hyp))}
       <p class="help">The residual is zero to machine precision because γ is <i>defined</i> by that
       triangle closing. Rearranged: <b>t²(1 − β²) = t₀²</b>, so <b>t = γt₀</b>. Note what was assumed —
       only that the photon's speed is c in <i>both</i> panes. Everything else is geometry.</p>

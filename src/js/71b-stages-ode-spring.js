@@ -210,7 +210,7 @@ STAGES.odSpring = {
       ${kv('|Z| = √((k−mω²)² + (γω)²)', fmtNum(D.Z, 6))}
       ${kv('amplitude F₀/|Z|', fmtNum(D.amp, 6))}
       ${kv('measured from a long RK4 run', fmtNum(meas, 6))}
-      ${kv('difference', fmtNum(Math.abs(D.amp - meas), 4))}
+      ${kv('difference', fmtAgree(D.amp, meas))}
       ${kv('phase lag δ', fmtNum(D.delta * 180 / Math.PI, 5) + '°')}
       ${kv('in phase / quadrature parts', `${fmtNum(D.A, 5)} cos ωt + ${fmtNum(D.B, 5)} sin ωt`)}
       ${kv('amplitude at resonance, F₀/(γω₀)', gam > 1e-9 ? fmtNum(F0 / (gam * M.w0), 6) : '∞')}

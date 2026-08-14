@@ -208,10 +208,10 @@ STAGES.dyKinem = {
     <div class="card tight"><div class="ttl">Two routes to the answer at t = ${fmtNum(st.T, 4)} s</div>
       ${kv('v(T) by RK4', fmtNum(D.v, 8) + ' m/s')}
       ${kv('v(T) by v₀ + ∫a dt, quadrature', fmtNum(D.vQ, 8) + ' m/s')}
-      ${kv('difference', fmtNum(D.gapV, 3) + ' m/s')}
+      ${kv('difference', fmtAgree(D.v, D.vQ, 'm/s'))}
       ${kv('x(T) by RK4', fmtNum(D.x, 8) + ' m')}
       ${kv('x(T) by x₀ + v₀T + ∫(T−t)a dt', fmtNum(D.xQ, 8) + ' m')}
-      ${kv('difference', fmtNum(D.gapX, 3) + ' m')}
+      ${kv('difference', fmtAgree(D.x, D.xQ, 'm'))}
       <p class="help">The second route to x is a single quadrature, not two. Swapping the order of the
       double integral ∫₀ᵀ∫₀ˢa(u)du ds turns it into one integral with a (T − u) weight — the Cauchy
       formula for a repeated integral — and it shares no code with the stepper.</p>
@@ -257,7 +257,7 @@ STAGES.dyKinem = {
     <div class="card tight"><div class="ttl">The four equations, each checked</div>
       ${kv('displacement from the formula', fmtNum(x - st.x0, 7) + ' m')}
       ${kv('the area under v(t), integrated', fmtNum(area, 7) + ' m')}
-      ${kv('difference', fmtNum(Math.abs(x - st.x0 - area), 3))}
+      ${kv('difference', fmtAgree(x - st.x0, area, 'm'))}
       ${kv('v² = v₀² + 2aΔx  gives |v| =', fmtNum(dyVelFromX(st.v0, st.a, x - st.x0), 6) + ' m/s')}
       ${kv('and v = v₀ + at gives', fmtNum(Math.abs(v), 6) + ' m/s')}
       ${kv('average velocity (v₀+v)/2', fmtNum(dyAvgVel(st.v0, v), 6) + ' m/s')}
@@ -599,7 +599,7 @@ STAGES.dyProj = {
     </div>
     <div class="card tight"><div class="ttl">The range, angle by angle</div>
       ${comp.join('')}
-      ${kv('30° and 60° differ by', fmtNum(Math.abs(dyProjectile(st.v0, Math.PI / 6).range - dyProjectile(st.v0, Math.PI / 3).range), 3) + ' m')}
+      ${kv('30° and 60° differ by', fmtAgree(dyProjectile(st.v0, Math.PI / 6).range, dyProjectile(st.v0, Math.PI / 3).range, 'm'))}
       <p class="help">Complementary angles carry the same distance, because sin2θ is symmetric about 45°.
       A high lob and a flat drive land in the same place — one just takes much longer to get there.</p>
     </div>

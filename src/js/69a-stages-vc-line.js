@@ -495,7 +495,7 @@ STAGES.vcConserv = {
     <div class="card tight"><div class="ttl">① The potential, recovered</div>
       ${kv('f by ∫P dx then ∫Q dy', fmtNum(pot, 7))}
       ${kv('f by ∫Q dy then ∫P dx', fmtNum(potAlt, 7))}
-      ${kv('difference', fmtNum(Math.abs(pot - potAlt), 4))}
+      ${kv('difference', fmtAgree(pot, potAlt))}
       ${V.pot ? kv('the closed form', V.pot) : ''}
       ${kv('work along the straight path', fmtNum(works[0].w, 7))}
       ${kv('f(end) − f(start)', fmtNum(pot, 7))}

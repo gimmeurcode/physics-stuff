@@ -1,9 +1,15 @@
 # Accuracy audit
 
-A claim-by-claim pass over all twenty wings. Every entry records what was wrong,
-what it now says, and how the correction was checked. Verified-correct spot
-checks are recorded too, so a later reader knows what has already been examined
-and does not redo it.
+A claim-by-claim pass over every wing — twenty when this file was started, forty
+now. Every entry records what was wrong, what it now says, and how the correction
+was checked. Verified-correct spot checks are recorded too, so a later reader
+knows what has already been examined and does not redo it.
+
+**This file is append-only and its entries are dated records.** A count inside an
+older entry ("all 39 wings", "3605 passed") was true when written and is left as
+written — that is the point of a record. Live figures live in `MASTER-PLAN.md`
+Part 0, and `./auditdocs.ps1` checks those; it deliberately does not police the
+dated entries here.
 
 Reference data: **CODATA 2022** for physical constants, **PDG 2024** for particle
 properties. Where a number is exact by SI definition (c, h, e, k_B, N_A) that is
@@ -3748,3 +3754,476 @@ seeing whatever was pinned until the pin is moved from the page's share menu.
 Publishing updates the artifact; it does not move the pin. That is not a defect
 and nothing in the repo can change it, but anyone reporting "the link still shows
 the old build" is seeing this and not a failed publish.
+
+---
+
+# 2026-08-13 (later still) · The permalink, and the six defects it found on the way
+
+**Programme F's first item.** The laboratory had zero uses of `location.hash`:
+593 experiments at one address, every control back to its default on reload. The
+work was one new module (`82a-permalink.js`), one gate (`./auditlink.ps1`), and
+six defects in code that had nothing to do with either — which is the part worth
+recording.
+
+## What the permalink is, as measured
+
+`#w=<wing>&d=<group.item>&c.<id>=<value>` — the wing, the demo, and every control
+moved away from what the demo opened with. The diff baseline is captured the
+instant a demo finishes loading, so a link to one changed slider is short and
+says *"β = 0.9651 on this experiment"* rather than listing forty values that
+happened to be on screen.
+
+| measured | value |
+|---|---|
+| round trips exact (copy → navigate away → follow the link → compare) | **593 of 593** |
+| controls driven during the sweep | 7 969 |
+| demos measured **stochastic**, so state text cannot be compared | **11** (`prob` samples and fits, `statmech` Ising lattices) |
+| cold load: controls restored through `plInit()` inside `boot()` | 55 of 55 |
+| cold load: characters of visible panel text identical to copy time | **4 378** |
+
+The address bar tracks the wing and the demo only. Controls are written to the
+URL by **Copy link**, not as they move: a stage refreshes four times a second,
+several browsers throttle history writes, and a URL that rewrites itself under
+the reader is not something anyone can copy with confidence.
+
+## The gate needed two routes, and the first one alone was worthless
+
+`plRead()` reads the controls — and the controls are exactly what a restore
+writes. **Negative control: neutering `plNotify` so the restore filled every box
+and told no stage anything left 586 of 593 round trips still "passing".** The
+boxes were right and the laboratory was untouched.
+
+The second route is the dock's **text**: an `<input>`'s contents live in a
+property, not a text node, so what is left is the formatted reading beside every
+slider, the readout, the chip and the derivation ladder — every one printed by
+the stage *from its own state*. With that route the same corruption fails **505
+of 593**, and the cold-load pass fails too. A second negative control — the
+encoder dropping its `c.` parameters — reports `NOTHING-ENCODED` on every demo.
+
+**Two things the second route had to be taught, both by being wrong first.**
+`applyWingSections()` hides a wing's unused panels with `style.display` and does
+**not** empty them, so `#dock.textContent` still carried the directional
+derivative and the gradient-descent walker left behind by whatever *field* demo
+ran last, under 178 stage demos that never touch either: 119 differences no link
+could restore and no reader could see. And rather than keep a hand-written list
+of which experiments are random, the audit **measures** it — enter the demo
+twice with no link involved and see whether it says the same thing. Eleven do
+not, and they are counted rather than excused.
+
+## The six defects, none of them in the permalink
+
+Every one was found by asking a question none of the other 22 scripts asks:
+*can this control's value be written back?*
+
+1. **`fmtNum` in an editable box** (`80c`, `80e`). û as `du`/`dv`/`dw` and n̂ as
+   `cnx`/`cny`/`cnz` are three boxes holding one unit vector, filled with the
+   **display** formatter — which emits U+2212 — and read back with `parseFloat`.
+   `parseFloat('−0.7')` is `NaN`, which fell through `|| 0`, so **editing any one
+   box silently zeroed every negative component** and the vector swung to a
+   direction nobody asked for. Nothing raised; nothing printed `NaN`. Fixed with
+   `fmtEdit` (`10-math.js`, ASCII, 32 new unit tests pinning **both** directions
+   — that `fmtEdit`'s output survives `parseFloat` *and* the expression engine,
+   and that `fmtNum`'s does not, so nobody tidies one into the other).
+2. **The probe boxes, same shape** (`80c`). `pbxn` was filled by `fmtNear` and
+   read by `parseFloat`; a negative coordinate could not be edited around, and
+   the guard swallowed it, so nothing happened at all. Also two formatters for
+   one number — `.toFixed(2)` on a slider drag, the other on a rebuild — so the
+   same probe position read `-0.90` or `-0.9` depending on how it got there.
+3. **`Dû` never refreshed when û moved** (`80c`). `refreshDirPanel()` is what
+   runs for the angle slider, the three boxes and all five snap buttons, and it
+   updated neither the chip nor the panel's own tag; both were refreshed only by
+   `refreshProbe()`. For a **static** field nothing ever corrected them —
+   `frame()` calls `updateChip()` only for an animated one — so swinging û
+   redrew the arrow while the number beside it belonged to a direction no longer
+   on screen. This is a readout contradicting its own picture, and it had been
+   there as long as the panel.
+4. **A duplicate element id** (`79c` vs `80e`). The complex wing's contour radius
+   and the circulation loop's radius were both `ciR`, both in the dock.
+   `getElementById` is first-wins, so which slider a `wireSlider` call reached
+   depended on nothing but document order. Renamed `cxR`. `auditlink` now fails
+   on any duplicate id under `#dock`, because a permalink's keys *are* element
+   ids and a duplicate makes a key ambiguous.
+5. **The matrix editors were unshareable** (`59-interact.js`). `mxHtml` gives the
+   table an id and identifies cells by `data-i`/`data-j`, so the cells carry no
+   id and nothing keyed on ids could see them — the reader's own matrix, which is
+   the point of three linear-algebra wings, was the one thing a link could not
+   carry. Now keyed `<table>.<i>.<j>`.
+6. **A preset picker that showed no selection** (`78a`). `ctSeg('lsP', '', …)`
+   never marked a choice, and that control decides how many cells the editor
+   has — two lines in two unknowns against three planes in three. A link can
+   restore a cell it can find; it cannot conjure a fourth column. Six more
+   pickers share the pattern (`apP`, `syP`, `egP`, `dgP`, `svP`, `qfP`); the
+   round trip **proves** they are unaffected, because every preset behind them is
+   the same shape, and they were left alone.
+
+## Three things about restoring that were wrong before they were right
+
+- **A coupled group must be assigned before any of it is notified.** û and n̂ are
+  each three boxes read together by one handler that re-normalises, so setting
+  them one at a time — event and all — walks the vector somewhere neither the
+  link nor the reader asked for.
+- **…but a value must still be re-asserted immediately before its own event**,
+  because an earlier notify in the same pass can wipe it: moving the probe runs
+  `refreshDirPanel()`, which rewrites all three û boxes from the û it finds. The
+  two requirements conflict at four significant figures and stop conflicting at
+  eight, which is why those boxes now carry eight. **The controls compared equal
+  while the directional derivative printed beside them moved by 17%** — visible
+  only to the second route.
+- **The target is the demo's defaults with the link's overrides on top, not the
+  overrides alone.** Restoring one control can knock another off its default on
+  purpose — `igFx`, `mvLgt` and `ftWF` each stop the sweep their stage animates —
+  and a control sitting at its default is therefore absent from the diff and
+  still needs setting. Twenty-five experiments came back with the sweep switched
+  off by the very control the link had restored.
+
+## Deliberately not encoded, with reasons
+
+- **The View panel** (`#pvPanel`) — pan and zoom describe whichever plot the
+  reader last touched, and `PV_FOCUS` is null until a pointer has touched one, so
+  there is no stable identity for a link to name.
+- **`ddAng`** — the angle slider is the *device* that moves û, not a description
+  of it: `refreshDirPanel()` resets it to 0 whenever û is set directly, so
+  encoding both means each undoing the other for as many passes as they are
+  given. û pins the direction exactly and nothing is lost.
+- **The theme** — the viewer's preference, and the artifact host sets it.
+
+## Verification
+
+`build` 231 modules · `smoke OK` · `runtests` **4207 passed, 0 failed** ·
+`runall` demos=593 controls=6462 **caught=0 OK** · `auditlink` **findings=0**
+(593/593, both negative controls confirmed failing) · `auditcustom` bad=0 ·
+`auditpanel` bad=0 · `auditderive` flagged=0 · `auditartifact` bad=0 ·
+`auditsize` findings=0 · `auditviewport` bad=0 (the new header button survives
+all sixteen) · `auditscan` 0 HIGH · `auditcontrast` OK · `auditperf` unchanged —
+2 heavy stages, 2-D mean 131, **0 bytes of unchanged panel rewritten**.
+
+**Screenshots, looked at.** A cold load of
+`#w=relativity&d=0.0&c.rlChB=0.96515` opens the right wing and the right
+experiment with β = 0.9651, γ = 3.82121 and the Doppler factor 7.50925 all
+agreeing. Pressing **Copy link** under `file://` shows the fallback: the browser
+refuses the clipboard there, and the panel says so and offers the link selected
+rather than claiming success. The URL in that box was checked by reading it back
+rather than by looking at it — the input scrolls, and the hash was off-screen to
+the right in the image.
+
+## 2026-08-14 — J9, and a hypothesis that was wrong in both halves
+
+Programme J item 9 read "round-off printed as a measurement", and the plan
+recorded a diagnosis to act on: that `gapWork` was reaching the formatter as an
+exact zero, because `fmtNum(1.499e-4, 3)` returns `0.00015`. **Both halves were
+false**, and measuring them first is the only reason the real defect was found.
+
+Measured on the bundle: `gapWork` is **1.4988e-4, not zero**, and
+`fmtNum(1.499e-4, 3)` returns **`"0"`**.
+
+### The formatter, characterised rather than guessed at
+
+`fmtNum`'s exponent term is clamped at zero, so for |v| < 1 its `sig` stops
+counting FIGURES and starts counting DECIMALS. Swept over 80 000 samples, the
+dead zone is exactly **[1e-4, 5x10^-sig)** — bounded below only because the
+scientific branch takes over at 1e-4, which is why `sig` >= 4 is safe by luck
+rather than by design. `sig` 3 loses [1e-4, 4.99e-4]; `sig` 2 loses
+[1e-4, 4.99e-3]. Both call sites in `dyForce` were inside it.
+
+### But the formatter was the outermost of three layers
+
+`dyForceRun` (31a) integrated the line integral by **trapezoid in dx — second
+order — under an RK4 trajectory that is fourth**. Halving h measured it: ratios
+3.992, 3.998, 3.999, 4.000, 4.000, i.e. exactly h^2. The panel was not measuring
+the work-energy theorem at all; it was measuring its own truncation error.
+
+It surfaces as 7.8% because the answer is exponentially small. The stage's
+default law is a damped oscillator run twelve seconds — eight damping times — so
+the net work is the **1.9e-3 J residue of a 13.47 J sum**, a cancellation factor
+of **7.0e3**. A quadrature with 1e-5 relative error on the terms therefore lands
+7.8% off the answer.
+
+Across the laws the stage's own help text suggests: `-4x - 1.2v` disagreed by
+**100%** while the chip printed "they differ by 0" in `--c-pos`, the affirmative
+colour; `-4x` printed `1.20x10^-9` as a measurement; `-1/(x*x)` printed "593"
+with no units.
+
+### The fix, and why it is not a matter of taste
+
+A line integral along a parameterised path **is** an integral in t:
+INT F.dx = INT F(x(t),v(t),t).v(t) dt, with v signed, so a run that doubles back
+still subtracts as it comes home. That is not INT F dt, the impulse — the
+distinction the old comment was defending, and it survives. Composite Simpson
+then matches the stepper's order, which is the condition for the difference to
+measure the physics rather than the arithmetic.
+
+Not invented here: **`rtSpinRun` (32a) is this routine's rotational twin and has
+always integrated INT tau.omega dt this way**, with the comment "even, for
+Simpson" on its own n. `dyForceRun` forced n even at the top and then had no
+Simpson to use it — the line was vestigial.
+
+Pinned against the closed form of m x'' + c x' + k x = 0:
+
+| n | trapezoid in dx | Simpson in t |
+|---|---|---|
+| 300 | 9.5677e-3 | 2.0996e-5 |
+| 2400 | 1.4988e-4 (order 2.00) | 4.5642e-9 (order 4.02) |
+| 9600 | 9.3680e-6 (order 2.00) | 1.7627e-11 (order 4.00) |
+
+**Measured order 2.00 -> 4.00; relative gap 7.8e-2 -> 2.5e-6, at identical
+cost.** Also measured, and deliberately NOT adopted: the trapezoid in dx is
+*exact* against a trapezoidal stepper (gap 2.3e-15 at n=300, because
+dx = h(v_i+v_i-1)/2 makes the discrete theorem an identity). That pairing would
+make the check structurally incapable of failing, which is the opposite of the
+point.
+
+New **`nqCumSimpson`** (21) supplies the running integral the energy-ledger plot
+draws from, built so its **last entry IS the composite Simpson total** (measured
+agreement 0 to 1.4e-16). The panel therefore cannot quote a number the picture
+disagrees with: `Us[n] + wCons = 0` exactly.
+
+### A third check that was never a check
+
+`gapEnergy` is not independent. W_non = W_tot - W_cons by linearity, so
+gapEnergy = |(W_cons - straight) - (W_tot - dK)| = |gapPath -/+ gapWork|, and
+with gapPath at 2.1e-14 it equalled `gapWork` **to ten figures**. The panel
+presented it as a third measurement. It now says what it is.
+
+### The circuit half — two floors, one of them physics
+
+`ckEng`'s only floor was `a < 1e-18`, six electrons a second, so `29.7 fA`,
+`148 fW` and `29.7 pV` printed as readings. Two independent arguments put the
+real floor in the same place. **Numerically**: MNA solves by dense LU, error
+~ eps.kappa(A).||x||, and a circuit spanning 1 ohm to 1 Mohm has kappa ~ 1e6 —
+so a milliamp-scale solution carries ~1e-13 A of arithmetic, which is the 29.7 fA
+exactly. **Physically**: Johnson-Nyquist noise in 1 kohm at 300 K is 4.07 pA/rtHz,
+a hundred times larger.
+
+`ckMeasure` now returns the scales (`iScale`, `vScale`, `pScale`, `eScale`), and
+`ckEngF` floors every solved quantity against its own kind. That alone is not
+enough: **a circuit that has settled to nothing has no scale left to be small
+against**, which is precisely the screenshotted case. So there is a second,
+absolute floor from `ckNoiseI`/`ckNoiseV` — 4k_B.T.B/R and 4k_B.T.B.R over the
+Nyquist band B = 1/2h, k_B CODATA 2022, T = 300 K, pinned in the tests against
+the textbook 4.07 pA / 4.07 nV for 1 kohm at 1 Hz. An ideal circuit with no
+resistance dissipates nothing and so has no Johnson noise, and the floor
+correctly vanishes rather than being assumed.
+
+Residuals are handled the other way round: `ckGap` and `fmtGap` keep the number,
+quote it against the scale it must be read against, and say how many figures the
+two routes share — because the absolute gap alone is what let a 100%
+disagreement read as success.
+
+### The gate was watched to fail
+
+31 tests added. The J9 test was **corrupted back to the trapezoid once and run**:
+four failures, with the order test reporting **1.9995** — the second order,
+measured. The pre-existing tests passed the broken code throughout, because
+their tolerances were absolute against a fixed 4.32 J scale; the new one is
+relative to the answer, which is what makes it bite.
+
+### Verification
+
+`build` 231 modules · `smoke OK` · `runtests` **4238 passed, 0 failed** ·
+`runall` demos=593 controls=6462 **caught=0 OK** · `auditcustom` **bad=0 OK**
+(the typed-force path is exactly this stage) · `auditpanel` **bad=0** ·
+`auditclaims` 249 claims **bad=0 OK** · `auditlink` 593/593 **findings=0**.
+
+---
+
+## 2026-08-14 — the documents were never checked against the program
+
+### FIXED — every live document was wrong about the site
+
+`SITE-RULES.md` (new), `MASTER-PLAN.md`, `AI-GUIDE.md`, `CLAUDE.md`, `README.md`
+
+Nothing in this repository read a `.md` file. Twenty-five gates measured the
+program; none measured what the program *says about itself*, so a document could
+contradict the code indefinitely and every gate stayed green. A hand sweep found
+eight false claims, and they were not cosmetic:
+
+| document | said | actual |
+|---|---|---|
+| `AI-GUIDE.md` | 4175 unit tests in one paragraph, 4207 in another | 4240 |
+| `README.md` | 230 modules, 4175 unit tests, 11 of the 25 scripts documented | 231, 4240, all 26 now |
+| `MASTER-PLAN.md` | 23 harness scripts; §1.6 table described 23 | 25 on disk at the time |
+| `MASTER-PLAN.md` | "all 21 scripts now have distinct profiles" | every script does |
+| `MASTER-PLAN.md`, Part 0 | 5 383 723-byte artifact, ~76 598 source lines | 5 409 933, 77 044 |
+| `AUDIT.md` | "a pass over all twenty wings" | forty |
+| all documents | **nothing at all about `auditresid.ps1`** | a gate enforcing SITE-RULES 1.4 |
+
+**The last row is the defect that matters.** `MASTER-PLAN` §1.6 is how a session
+decides which gate to run, and §4.2 is how it decides when. A gate missing from
+both is a gate nobody runs — the check exists, and the defect it was written to
+catch ships anyway. `auditresid.ps1` and `auditmarks.ps1` had been missing from
+§1.6 since they were written; `clean.ps1`, `auditcontrast.ps1` and `measure.ps1`
+were missing from §4.2.
+
+### The gate: `auditdocs.ps1`
+
+Re-measures the site (`smoke`, `measure`, `runtests`, a directory listing), then
+reads every live document and fails on a contradiction. Four questions, none of
+which any other script asks: **counts**, **script coverage** (every `*.ps1` must
+be in §1.6, §4.2 and `AI-GUIDE.md`), **paths** (every file a document names must
+exist), and **generated-doc freshness** (a source file newer than `MAP.md` means
+`map.ps1` has not been run).
+
+**The dated-record rule is the only exemption.** A figure on a line carrying a
+`YYYY-MM-DD`, or under a dated heading, is a record of what was true then and is
+skipped; every other figure is a live claim. That is the right escape hatch
+because using it *requires saying when* — which is the behaviour the rule wants.
+`AUDIT.md` is dated records throughout and is not scanned; `MAP.md` is generated
+and is checked for freshness instead.
+
+**Volatile quantities are warnings, not failures.** The artifact's byte size and
+the source line count move on every edit to any file, so a hard check would be
+red during all normal work and would train the reader to ignore the gate. They
+are reported with drift and only counted bad past 5%.
+
+### Two things the gate got wrong first, and how they were found
+
+1. **Seven false positives from patterns that were not anchored on totals.**
+   "22 wings" is Programme C's backlog, "0 wings without one" is a coverage
+   result, "8–20 guided experiments" is a per-wing target, "465 call sites"
+   belongs to `ctPath` rather than `mkPlot`, and "2 862 160 bytes/s" is DOM churn
+   rather than the artifact. A gate that cries wolf is switched off within a
+   session, so every pattern now matches *total* phrasing only. **When in doubt,
+   match less**: a missed claim is a gap, a false one is a reason to stop
+   trusting the gate.
+2. **A false green from `-SkipTests`.** Corrupting three counts and running it
+   reported two. The third was a unit-test count, and `-SkipTests` had left that
+   quantity unmeasured, so the claim was skipped **silently** and the run still
+   printed `bad=0 OK`. A partial run now names what it could not check and
+   prints `partial`. This is the same class as J9: a routine that computed
+   nothing reporting agreement.
+
+### The gate was watched to fail
+
+Corrupted `README.md` to "232 modules" and dropped a throwaway probe script into
+the root: **5 findings** — the count, and the unknown script missing from all
+three of §1.6, §4.2 and `AI-GUIDE.md`, plus the script-count claim moving 26 → 27.
+(The probe's name is deliberately not written here in backticks: the gate's own
+path check reads a backticked filename as a reference and flagged this very
+paragraph, which is the check working.)
+Restored, `bad=0 OK`. `-Fix` was then tested on three corrupted counts across two
+files and rewrote exactly the digits verified, leaving the prose untouched.
+
+### Verification
+
+`build` 231 modules · `smoke OK` (wings=40, stages=178, seelinks=80) ·
+`runtests` **4240 passed, 0 failed** · `measure` 593 experiments in 118 groups,
+508 stage-driven · `runall` demos=593 controls=6462 **caught=0 OK** ·
+`auditdocs` docs=6 claims=47 **bad=0 OK** ·
+`auditresid` rows=2189 residualrows=91 **findings=0** ·
+`auditmarks` oldbreaks=2303 newbreaks=20, all four controls as documented.
+
+The last two were re-run to confirm the previous session's fixes are actually in
+the tree: `auditmarks` reproduces §3.10's claimed 2303 → 20 and its four named
+controls exactly.
+
+### NOTE — the summary paragraph was inheriting a green
+
+`MASTER-PLAN.md`'s header said "the build is green on every gate". It was not a
+lie when written, but it was an *inherited* claim: the working tree carried
+uncommitted edits to some forty stage files, so the heavy gates' last green
+predated the code in the tree. It now names which gates were run on which date,
+and says plainly that a green is not inheritable.
+
+---
+
+## 2026-08-14 — the J9 fix had reached the reported surfaces and not their siblings
+
+### FIXED — 76 residual sites across 34 files, and the gate that could not see them
+
+Measured, not estimated: scale-carrying formatter call sites went **`fmtAgree`
+72 → 118, `fmtGap` 18 → 38**, plus 8 `fmtAgreeTight` and 2 `fmtGapTight` at the
+canvas sites that had no helper to reach for. 27 stage files and 7 engines.
+
+The previous session converted ~41 files to `fmtAgree`/`fmtGap` and left
+`auditresid` reporting `findings=0`. That green was real but narrow: the gate
+read two surfaces out of five, and inside the files it had already touched, the
+**readout row was converted and its own chip, derive rung and canvas label were
+not**. Three examples, all in one file each:
+
+| stage | converted | left on bare `fmtNum` |
+|---|---|---|
+| `wsVen` (79k) | `kv('difference', fmtAgree(...))` | the `wsNum` canvas label and the `drvStep` prose beside it |
+| `rtTorque` (76c) | the work–energy row, `fmtGap` | ω, θ and the chip — three rows above it |
+| `rtInertia` (76a) | `kv('difference', fmtAgree(Icm, Iint))` | the parallel-axis row and the own-case chip |
+
+### The gate's four blind spots, each measured before it was closed
+
+Because a gate is not known to work until it has been seen to fail, each was
+found by instrumenting a copy and watching the count move — not by reading it.
+
+1. **It read `readout` and `chip` only.** The **derive ladder** is ~717 000
+   rendered characters across the 178 stages and was never scanned; nor was the
+   legend. Adding them took the promise-rows it inspects from **91 to 122**.
+2. **`SCALED` was tested against the whole panel blob**, and `SCALED` contains
+   `/of\s/` — so **any surface containing the word "of" exempted itself**. On a
+   4000-character ladder that is all of them. Asking the question in a
+   60-character window around the number instead immediately found `smBoltz`
+   printing `8.10×10⁻¹¹` as a measurement.
+3. **`TINY` matched only the typeset `×10⁻ⁿ` form**, so every residual printed
+   through **`toExponential`** — ASCII `8.10e-11` — was invisible. Eighteen sites
+   in the statistical-mechanics wing alone were written that way.
+4. **`st.own` was false at entry, so the 55 stages that answer
+   `if (st.own) return ...readoutOwn(st)` were never rendered.** This is the same
+   hole `auditcustom` exists to cover for `runall`, and it is where **13 of the
+   findings were**: `dyMoment`, `rtInertia`, `rtRoll`, `rtTorque`, `ncBarrier`,
+   `slHeat`, `smSpeed`. SITE-RULES §1.5 holds the reader's own case to the
+   author's standard; the gate did not.
+
+Found by corrupting `79j` twice — a readout row back to `toExponential`, a
+derive rung back to `fmtNum` — and watching a **green** run. With the four fixes
+the same corruption is caught three times over (kv, free text, derive), which is
+what makes the `findings=0` below worth quoting.
+
+### One defect in three spellings
+
+`fmtNum` below 1 counts decimals; **`toExponential`** carries no scale and emits
+ASCII where §1.7 requires `×10⁻ⁿ`; **`toFixed`** rendered a perfect Debye fit as
+`"0.00000 decades"`. All three print a number whose size is its entire meaning
+in a form that destroys the size. Swept: `toFixed` on a residual existed at 2
+sites, `toExponential` at 18 of the 90 total.
+
+### The shared layer that was missing
+
+Four canvas sites printed a difference and **all four had dropped the scale**,
+because `fmtGap`'s sentence does not fit `wsNum`'s 250-pixel column — the class
+had no helper, and SITE-RULES §2.2 says that absence *is* the defect.
+**`fmtAgreeTight`/`fmtGapTight`** (`10-math.js`) are the same derivation and the
+same floor with no prose, Unicode-only because canvas text is drawn literally.
+9 unit tests pin them, including that the output is under 30 characters and
+carries no markup.
+
+Two engines now return the scale beside the residual rather than leaving each
+caller to invent one (§2.4, one source): `slDOSMu`/`slDOSFill` (`44ba`) and
+`slSemiSolve` (`44bc`) carry `residScale`; `ftConvBuild` (`64c`) carries
+`scale`, and its verdict threshold — a bare `d.worst < 1e-9` that passed any
+signal small enough — is now relative to it.
+
+### What was deliberately NOT changed
+
+- **Seven `noscale` rows are physical answers, not residuals**, checked by hand:
+  `rlTwin` (two twins' ages, 4 yr), `rlBarn`, `rlMetric`, `clLimit`, `wsHolo`
+  and two more. A regex cannot separate "difference = 4 yr" from
+  "difference = 2.30×10⁻⁶", so `noscale` is reported and does **not** fail the
+  build. Recorded as SITE-RULES Part 4.7.
+- **`rlElevator`'s 2.46×10⁻¹⁵ is the Pound–Rebka redshift**, not round-off. The
+  first version of the widened gate flagged it; scanning `.dstep` rung labels
+  was dropped for exactly this reason — physics prose legitimately quotes tiny
+  numbers, and a gate that cries wolf is switched off within a session.
+- **`worst residual … decades` and `residual of that fit` are fit statistics**
+  in log units, where the number already *is* its relative measure. They join
+  `rms residual` and `residual sum` in `EXEMPT`, but were still moved off
+  `toFixed` onto `fmtSig`.
+- The rotational integrators were checked for the `dyForceRun` truncation class
+  and are **already correct**: `rtSpinRun` and `rtRedistribute` (`32a`) both use
+  Simpson matched to their stepper. No sibling to fix.
+
+### Verification
+
+`build` 231 modules · `smoke OK` (wings=40, stages=178, seelinks=80) ·
+`runtests` **4249 passed, 0 failed** · `auditresid` rows=2683 residualrows=122
+**findings=0** noscale=7 ownsurfaces=24 · `auditcustom` stages=98 pickers=100
+boxes=134 **bad=0 OK** · `auditlink` 593/593 **findings=0** ·
+`runall` demos=593 controls=6462 **caught=0 OK**.
+
+Coverage moved **2189 → 2683 rendered rows** and **91 → 122 promise rows**; the
+delta is the four blind spots.

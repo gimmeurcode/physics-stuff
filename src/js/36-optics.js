@@ -43,7 +43,11 @@ function opFermat(n1, n2, h1, h2, D, samples){
   }
   const th1 = Math.atan2(best.x, h1), th2 = Math.atan2(D - best.x, h2);
   return { x:best.x, opl:best.t, th1, th2,
-    snellResidual:Math.abs(n1 * Math.sin(th1) - n2 * Math.sin(th2)) };
+    snellResidual:Math.abs(n1 * Math.sin(th1) - n2 * Math.sin(th2)),
+    /* the scale that residual is read against: the size of the two terms whose
+       difference it is. Without it the row cannot say whether 1e-4 means Snell
+       holds or that the scan is too coarse. */
+    snellScale:Math.max(Math.abs(n1 * Math.sin(th1)), Math.abs(n2 * Math.sin(th2))) };
 }
 /* dispersion: n varies with wavelength, which is the whole of the rainbow */
 function opCauchy(lamNm, A, B){

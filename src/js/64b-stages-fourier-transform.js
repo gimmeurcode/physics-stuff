@@ -151,7 +151,7 @@ STAGES.ftPairs = {
         ${kv('signal at the window edge, ÷ peak', fmtNum(C.tr.ratio, 4))}
         ${kv('energy, computed in time', fmtNum(C.par.time, 8))}
         ${kv('energy, computed in frequency', fmtNum(C.par.freq, 8))}
-        ${kv('Parseval gap', fmtNum(C.par.gap, 3))}
+        ${kv('Parseval gap', fmtAgree(C.par.time, C.par.freq))}
         <p class="help">${C.note}</p>
       </div>`;
     }
@@ -364,7 +364,7 @@ STAGES.ftDiscrete = {
           kv('Nyquist f_s/2', fmtNum(st.fs / 2, 4) + ' Hz') +
           kv('appears at', fmtNum(fa, 4) + ' Hz' + (Math.abs(fa - st.f) > 1e-9 ? '  ← aliased' : '')) +
           kv('verdict', st.f <= st.fs / 2 ? '✓ sampled faithfully' : '✗ above Nyquist — irrecoverably folded')}
-      ${kv('reconstruction vs original', fmtNum(resid, 4) + ' at worst')}
+      ${kv('reconstruction vs original', fmtGap(resid, st.amax === undefined ? 1 : st.amax) + ' at worst')}
       <p class="help"><b>Nyquist–Shannon</b>: a signal containing nothing above f_s/2 is completely determined
       by its samples, and can be reconstructed exactly. The bright curve above is that reconstruction — the
       Whittaker–Shannon sum Σ x[n]·sinc(f_s t − n), built from the dots and nothing else — and the row above

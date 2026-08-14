@@ -154,13 +154,13 @@ STAGES.igDoubleRect = {
       ${kv('Σ f(x*, y*) ΔA', fmtNum(S, 8))}
       ${kv('with the grid doubled', fmtNum(S2, 8))}
       ${kv('the integral', fmtNum(exact, 8))}
-      ${kv('error at m', fmtNum(Math.abs(S - exact), 3))}
-      ${kv('error at 2m', fmtNum(Math.abs(S2 - exact), 3))}
+      ${kv('error at m', fmtAgree(S, exact))}
+      ${kv('error at 2m', fmtAgree(S2, exact))}
     </div>
     <div class="card tight"><div class="ttl">Fubini — both orders</div>
       ${kv('∫ₐᵇ [ ∫_c^d f dy ] dx', fmtNum(dydx, 10))}
       ${kv('∫_c^d [ ∫ₐᵇ f dx ] dy', fmtNum(dxdy, 10))}
-      ${kv('difference', fmtNum(Math.abs(dydx - dxdy), 3))}
+      ${kv('difference', fmtAgree(dydx, dxdy))}
       <p class="help">Each is a genuine nested quadrature: the inner integral is evaluated afresh at every
       node of the outer one. They agree to quadrature precision. For a <b>separable</b> integrand
       f = g(x)h(y) the double integral factors into a product of two single integrals, which is worth
@@ -415,8 +415,8 @@ STAGES.igRegion = {
       ${Number.isFinite(I1) ? kv('dy then dx  (Type I)', fmtNum(I1, 9)) : ''}
       ${Number.isFinite(I2) ? kv('dx then dy  (Type II)', fmtNum(I2, 9)) : ''}
       ${Number.isFinite(IP) ? kv('r dr dθ  (polar)', fmtNum(IP, 9)) : ''}
-      ${(Number.isFinite(I1) && Number.isFinite(I2)) ? kv('difference between the orders', fmtNum(Math.abs(I1 - I2), 3)) : ''}
-      ${(Number.isFinite(IP) && Number.isFinite(I1)) ? kv('Cartesian vs polar', fmtNum(Math.abs(IP - I1), 3)) : ''}
+      ${(Number.isFinite(I1) && Number.isFinite(I2)) ? kv('difference between the orders', fmtAgree(I1, I2)) : ''}
+      ${(Number.isFinite(IP) && Number.isFinite(I1)) ? kv('Cartesian vs polar', fmtAgree(IP, I1)) : ''}
       ${kv('currently selected', fmtNum(val, 9))}
       ${igFnCur(st).coords ? kv('you wrote the integrand in', igFnCur(st).coords.label) : ''}
       <p class="help">Every route above is computed independently, with its own nested quadrature and its
@@ -428,8 +428,8 @@ STAGES.igRegion = {
     ${Rg.fubini ? `<div class="card tight"><div class="ttl">Fubini, tested on your two descriptions</div>
       ${kv('area sweeping vertical strips', fmtNum(Rg.fubini.I, 10))}
       ${kv('area sweeping horizontal strips', fmtNum(Rg.fubini.II, 10))}
-      ${kv('difference', Rg.fubini.gap.toExponential(3))}
-      ${kv('refined at 8, 16, 32, 64 panels', Rg.converge.runs.map(r => r.gap.toExponential(1)).join('  →  '))}
+      ${kv('difference', fmtAgree(Rg.fubini.I, Rg.fubini.II))}
+      ${kv('refined at 8, 16, 32, 64 panels', Rg.converge.runs.map(r => fmtSig(r.gap, 2)).join('  →  '))}
       ${kv('verdict', Rg.converge.falling
           ? 'the gap shrinks as the quadrature is refined — the two are the same region, and the difference is arithmetic'
           : 'the gap does NOT shrink — these are descriptions of two different regions, and one of the four limits is wrong')}
@@ -442,7 +442,7 @@ STAGES.igRegion = {
     <div class="card tight"><div class="ttl">Area of the region  (f = 1)</div>
       ${kv('by the iterated integral', fmtNum(area, 8))}
       ${kv('by Monte Carlo, 40 000 darts', fmtNum(mcArea, 6))}
-      ${kv('difference', fmtNum(Math.abs(area - mcArea), 3))}
+      ${kv('difference', fmtAgree(area, mcArea))}
       <p class="help">The Monte Carlo estimate asks only "is this point inside?" — it never sees the limit
       functions at all. Its agreement with the iterated integral is therefore a real check that the limits
       describe the region you think they do, which is the single most common place to go wrong.</p>
@@ -616,7 +616,7 @@ STAGES.igPolar = {
         ${kv('I = ∫₋ᴿᴿ e^(−x²) dx', fmtNum(line, 9))}
         ${kv('I²', fmtNum(line * line, 9))}
         ${kv('∬ over the square [−R, R]²', fmtNum(square, 9))}
-        ${kv('difference', fmtNum(Math.abs(line * line - square), 3))}
+        ${kv('difference', fmtAgree(line * line, square))}
         <p class="help">The first equality is the whole idea: <b>I² = (∫e^(−x²)dx)(∫e^(−y²)dy) =
         ∬e^(−x²−y²)dA</b>. A product of two single integrals in different variables <i>is</i> a double
         integral — which is Fubini read backwards.</p>
@@ -624,7 +624,7 @@ STAGES.igPolar = {
       <div class="card tight"><div class="ttl">Now in polar coordinates</div>
         ${kv('∬ over the disc of radius R', fmtNum(disc, 9))}
         ${kv('π(1 − e^(−R²)), in closed form', fmtNum(exactDisc, 9))}
-        ${kv('difference', fmtNum(Math.abs(disc - exactDisc), 3))}
+        ${kv('difference', fmtAgree(disc, exactDisc))}
         ${kv('as R → ∞', fmtNum(Math.PI, 9))}
         ${kv('so I = √π', fmtNum(Math.sqrt(Math.PI), 9))}
         ${kv('the numerical I at this R', fmtNum(line, 9))}
@@ -663,7 +663,7 @@ STAGES.igPolar = {
     <div class="card tight"><div class="ttl">Does it add up?</div>
       ${kv('sum of all cell areas', fmtNum(total, 8))}
       ${kv('πR²', fmtNum(Math.PI * st.R * st.R, 8))}
-      ${kv('difference', fmtNum(Math.abs(total - Math.PI * st.R * st.R), 3))}
+      ${kv('difference', fmtAgree(total, Math.PI * st.R * st.R))}
       ${kv('what you would get without the r', fmtNum(naive, 6))}
       ${kv('that error', fmtNum(Math.abs(naive - Math.PI * st.R * st.R), 4))}
       <p class="help">The cells tile the disc exactly, so their areas must total πR² — and they do, at

@@ -40,7 +40,7 @@ STAGES.wsEntropy = {
           `r_H = ${fmtNum(wsBH5Radius(st.Q1, st.Q5, st.N), 6)}, A = ${fmtNum(wsBH5Area(st.Q1, st.Q5, st.N), 6)}, and with 4G₅ = π that is S = ${fmtNum(chk.macro, 9)}`),
         drvStep('and compare them',
           `${dv('S')}_micro ${dop('=')} ${dv('S')}_macro`,
-          `${fmtNum(chk.micro, 10)} against ${fmtNum(chk.macro, 10)} — a difference of ${fmtNum(chk.gap, 3)}`),
+          `${fmtNum(chk.micro, 10)} against ${fmtNum(chk.macro, 10)} — a difference of ${fmtAgree(chk.micro, chk.macro)}`),
         drvSay('what makes this a result rather than a rearrangement',
           'The two sides are functions of the same three integers, so they had to be compared as functions rather than at one point. The left comes from counting oscillator states in a two-dimensional conformal field theory. The right comes from solving Einstein\'s equations in five dimensions and measuring a horizon. There is no step in common — and the factor of 1/4 in the area law, which had been an unexplained constant since 1973, comes out right.'),
         drvSay('and where it is honest to stop',
@@ -103,7 +103,7 @@ STAGES.wsEntropy = {
       rlSegment(ctx, colR, yEnd, mid, yEnd + 34, rgbCss(TH.grad), 2);
       rlText(ctx, mid, yEnd + 56, 'S = ' + fmtNum(chk.micro, 10),
              rgbCss(TH.pos), '700 20px ' + FONT_MONO, 'center');
-      rlText(ctx, mid, yEnd + 80, 'the two differ by ' + fmtNum(chk.gap, 3),
+      rlText(ctx, mid, yEnd + 80, 'the two differ by ' + fmtAgreeTight(chk.micro, chk.macro),
              rgbCss(TH.accent), '11px ' + FONT_MONO, 'center');
       rlText(ctx, mid, yEnd + 102,
         'counted in a two-dimensional field theory; measured in five-dimensional gravity',
@@ -201,7 +201,7 @@ STAGES.wsEntropy = {
       ${kv('horizon radius (Q₁Q₅N)^(1/6)', fmtNum(wsBH5Radius(st.Q1, st.Q5, st.N), 8))}
       ${kv('horizon area 2π²r³', fmtNum(wsBH5Area(st.Q1, st.Q5, st.N), 8))}
       ${kv('macroscopic: A ÷ 4G₅', fmtNum(chk.macro, 12))}
-      ${kv('difference', fmtNum(chk.gap, 3))}
+      ${kv('difference', fmtAgree(chk.micro, chk.macro))}
       <p class="help">These are not two ways of writing the same expression. The left column runs Cardy's
       formula on a two-dimensional conformal field theory living on the branes; the right column takes the
       five-dimensional supergravity solution with those charges, reads off the area of its horizon and
@@ -235,7 +235,7 @@ STAGES.wsEntropy = {
     const chk = wsSVCheck(st.Q1, st.Q5, st.N);
     return `<div class="k">Microstate counting</div>
       <div style="color:var(--c-curl)">S = ${fmtNum(chk.micro, 6)}</div>
-      <div style="color:var(--accent)">gap = ${fmtNum(chk.gap, 3)}</div>`;
+      <div style="color:var(--accent)">gap = ${fmtAgreeTight(chk.micro, chk.macro)}</div>`;
   },
   legend(){ return [['var(--c-curl)', 'the field-theory count'],
                     ['var(--c-grad)', 'the horizon-area calculation'],
@@ -395,7 +395,7 @@ STAGES.wsHolo = {
     rlText(ctx, bx, by, 'the bulk calculation', rgbCss(TH.grad), '600 11.5px ' + FONT_UI);
     wsNum(ctx, bx, by + 22, 'geodesic length, by quadrature', fmtNum(r.len, 9), TH.grad);
     wsNum(ctx, bx, by + 40, '  in closed form', fmtNum(r.exact, 9), TH.grad);
-    wsNum(ctx, bx, by + 58, '  they differ by', fmtNum(Math.abs(r.len - r.exact), 3), TH.faint);
+    wsNum(ctx, bx, by + 58, '  they differ by', fmtAgreeTight(r.len, r.exact), TH.faint);
     wsNum(ctx, bx, by + 76, 'divided by 4G₃', fmtNum(r.bulk, 9), TH.grad);
     rlText(ctx, bx, by + 108, 'the boundary calculation', rgbCss(TH.curl), '600 11.5px ' + FONT_UI);
     wsNum(ctx, bx, by + 130, 'central charge c', fmtNum(r.c, 9), TH.curl);
@@ -405,7 +405,7 @@ STAGES.wsHolo = {
     }
     rlText(ctx, bx, by + (st.thermal ? 196 : 178), 'and the difference',
            rgbCss(TH.accent), '600 11.5px ' + FONT_UI);
-    rlText(ctx, bx, by + (st.thermal ? 218 : 200), fmtNum(r.gap, 3) + '   (relative: ' + fmtNum(r.rel, 3) + ')',
+    rlText(ctx, bx, by + (st.thermal ? 218 : 200), fmtGapTight(r.gap, Math.abs(r.bulk)),
            rgbCss(TH.accent), '600 13px ' + FONT_MONO);
     rlText(ctx, bx, by + (st.thermal ? 240 : 222), 'shrink ε and watch it fall as ε²',
            rgbCss(TH.faint), '10.5px ' + FONT_UI);
@@ -419,7 +419,7 @@ STAGES.wsHolo = {
       ${kv('cutoff ε', fmtNum(st.eps, 4))}
       ${kv('geodesic length, adaptive quadrature at 10⁻¹³', fmtNum(r.len, 12))}
       ${kv('  the same integral in closed form', fmtNum(r.exact, 12))}
-      ${kv('  difference', fmtNum(Math.abs(r.len - r.exact), 3))}
+      ${kv('  difference', fmtAgree(r.len, r.exact))}
       ${kv('  the ε → 0 form 2ln(ℓ/ε)', fmtNum(wsGeodesicLengthLeading(st.L, st.eps), 10))}
       ${kv('Newton constant G₃', fmtNum(st.G3, 5))}
       ${kv('S = length ÷ 4G₃', fmtNum(r.bulk, 12))}
@@ -432,8 +432,7 @@ STAGES.wsHolo = {
       ${kv('central charge from Brown–Henneaux', fmtNum(r.c, 8))}
       ${kv('S = (c/3)·ln(ℓ/ε)', fmtNum(r.bdy, 12))}
       ${kv('bulk answer, again', fmtNum(r.bulk, 12))}
-      ${kv('difference', fmtNum(r.gap, 3))}
-      ${kv('relative difference', fmtNum(r.rel, 3))}
+      ${kv('difference', fmtAgree(r.bdy, r.bulk))}
       ${kv('what the residual is', 'the finite-ε correction — it falls as ε², not as an error would')}
       ${kv('at temperature 1/β = ' + fmtNum(1 / st.beta, 4), fmtNum(th, 9))}
       ${kv('  its large-ℓ behaviour', 'linear in ℓ — thermal entropy, extensive as it must be')}

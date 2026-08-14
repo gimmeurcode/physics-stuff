@@ -168,7 +168,7 @@ STAGES.rlEB = {
       ${kv("E′·B′   (moving)", fmtNear(I1.dot))}
       ${kv('E² − c²B²  (lab)', fmtNum(I0.diff, 6))}
       ${kv("E′² − c²B′²  (moving)", fmtNum(I1.diff, 6))}
-      ${kv('residuals', fmtNear(I1.dot - I0.dot) + '  /  ' + fmtNear(I1.diff - I0.diff))}
+      ${kv('residuals', fmtAgree(I1.dot, I0.dot) + '  /  ' + fmtAgree(I1.diff, I0.diff))}
       ${kv('this field is', relFieldCharacter(f.E, f.B))}
       ${canKill && vd < 1 ? kv('the boost that removes one of them', fmtNum(vd, 5) + ' c') : ''}
       <p class="help">${canKill
@@ -368,7 +368,7 @@ STAGES.rlWire = {
     <div class="card tight"><div class="ttl">And they agree</div>
       ${kv("F′ / F", fmtNum(w.ratio, 12))}
       ${kv('γ_v', fmtNum(w.gammaV, 12))}
-      ${kv('residual |F′ − γF|', fmtNear(w.residual) + ' N')}
+      ${kv('residual |F′ − γF|', fmtGap(w.residual, w.Fprime, 'N'))}
       <p class="help">The leftover factor of γ is not a discrepancy: transverse force transforms as
       <b>F′⊥ = γF⊥</b> when the particle is at rest in the primed frame, so <b>F′ = γ_v F</b> is exactly
       what agreement looks like. Divide it out and the two calculations — one using only <b>B</b>, the
@@ -534,7 +534,7 @@ STAGES.rlTensor = {
       ${kv("E′ from the vector formula", '(' + fmtNum(V.E.x, 5) + ', ' + fmtNum(V.E.y, 5) + ', ' + fmtNum(V.E.z, 5) + ')')}
       ${kv("B′ from ΛFΛᵀ", '(' + fmtNum(Bt.x, 5) + ', ' + fmtNum(Bt.y, 5) + ', ' + fmtNum(Bt.z, 5) + ')')}
       ${kv("B′ from the vector formula", '(' + fmtNum(V.B.x, 5) + ', ' + fmtNum(V.B.y, 5) + ', ' + fmtNum(V.B.z, 5) + ')')}
-      ${kv('difference', fmtNear(dE) + '  /  ' + fmtNear(dB))}
+      ${kv('difference', fmtGap(dE, Math.hypot(V.E.x, V.E.y, V.E.z)) + '  /  ' + fmtGap(dB, Math.hypot(V.B.x, V.B.y, V.B.z)))}
       <p class="help">Those are not two derivations that happen to agree — they are the same derivation.
       The six component rules of the previous stage are what <b>ΛFΛᵀ</b> looks like when you write it out
       by hand, which is why nobody writes it out by hand.</p>

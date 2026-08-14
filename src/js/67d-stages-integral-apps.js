@@ -144,7 +144,7 @@ STAGES.igMass = {
       ${kv('I<sub>y</sub> = ∬x²ρ dA', fmtNum(L.Iy, 7))}
       ${kv('I₀ = ∬r²ρ dA', fmtNum(L.I0, 7))}
       ${kv('I<sub>x</sub> + I<sub>y</sub>', fmtNum(L.Ix + L.Iy, 7))}
-      ${kv('difference', fmtNum(Math.abs(L.I0 - L.Ix - L.Iy), 3))}
+      ${kv('difference', fmtAgree(L.I0, L.Ix + L.Iy))}
       ${kv('radius of gyration about ŷ  √(I<sub>y</sub>/m)', fmtNum(L.ry, 7))}
       ${kv('about x̂', fmtNum(L.rx, 7))}
       ${kv('about the origin', fmtNum(L.r0, 7))}
@@ -159,7 +159,7 @@ STAGES.igMass = {
       ${kv('I about that axis, integrated', fmtNum(pa.Ishift, 7))}
       ${kv('I about the centroid', fmtNum(pa.Icen, 7))}
       ${kv('I_centroid + m d²', fmtNum(pa.predicted, 7))}
-      ${kv('difference', fmtNum(Math.abs(pa.Ishift - pa.predicted), 3))}
+      ${kv('difference', fmtAgree(pa.Ishift, pa.predicted))}
       <p class="help">Two independent integrals and one prediction, agreeing. The theorem says the moment
       of inertia is smallest about an axis through the centre of mass, and grows quadratically as you move
       away — which is why a door hinged at its edge is harder to swing than one pivoted at its middle.</p>

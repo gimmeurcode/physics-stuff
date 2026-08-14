@@ -175,7 +175,10 @@ function slDOSFermi(TB, n){
   const F = X => slDOSCum(TB, X, false) - n;
   const EF = nqBisect(F, TB.Elo, TB.Ehi, 1e-13 * (TB.Ehi - TB.Elo), 300);
   if(EF === null) return { ok:false, why:'no filling level could be bracketed in this band' };
-  return { ok:true, EF, gEF:TB.g(EF), resid:F(EF),
+  /* the residual travels with the scale it must be read against — the electron
+     count the root-find was asked to reproduce. A bare F(E_F) says nothing:
+     10⁻⁶ beside n = 1 is a solved root and beside n = 10⁻⁶ is no root at all. */
+  return { ok:true, EF, gEF:TB.g(EF), resid:F(EF), residScale:Math.abs(n),
            /* how sharply the level is defined: a DOS that is nearly zero at E_F
               means a small change in n moves it a long way, which is the
               difference between a metal and a semimetal */
@@ -196,7 +199,7 @@ function slDOSFermi(TB, n){
    once, and is why 10 K is as cheap as 3000 K here.
    ---------------------------------------------------------------------------- */
 function slDOSMu(TB, n, T, EF){
-  if(!(T > 0)) return { mu:EF, ok:true, iters:0, resid:0 };
+  if(!(T > 0)) return { mu:EF, ok:true, iters:0, resid:0, residScale:Math.abs(n) };
   const kT = SL_KBEV * T;
   const W = Math.min(TB.Ehi - TB.Elo + 4 * kT, 46 * kT);
   const win = mu => ({ a:Math.max(TB.Elo, mu - W), b:Math.min(TB.Ehi, mu + W) });
@@ -222,7 +225,8 @@ function slDOSMu(TB, n, T, EF){
     if(Math.abs(step) < 1e-13 * Math.max(1, Math.abs(mu))) { it++; break; }
   }
   const resid = num(mu) - n;
-  return { mu, iters:it, resid, ok:Math.abs(resid) < 1e-9 * Math.max(1e-12, n),
+  return { mu, iters:it, resid, residScale:Math.abs(n),
+           ok:Math.abs(resid) < 1e-9 * Math.max(1e-12, n),
            shift:mu - EF };
 }
 /* U(T) = ∫ E g f dE, split the same way */

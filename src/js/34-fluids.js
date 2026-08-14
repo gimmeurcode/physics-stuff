@@ -265,6 +265,10 @@ function flPipeRun(rho, Aof, hof, v0, P0, L, n){
   }
   return { Q, rows, gap:worst, minP, minA, maxV,
            cavitates:minP < FL_P_VAPOUR,
+           /* the inlet pressure travels with the gap, because it IS the scale
+              the gap must be read against — a caller reconstructing it as
+              gap/rel is one division away from a wrong answer when rel is 0 */
+           P0,
            /* the relative disagreement, which is what should be read */
            rel:Math.abs(P0) > 0 ? worst / Math.abs(P0) : worst };
 }

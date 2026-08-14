@@ -258,14 +258,15 @@ STAGES.agIdent = {
     return (own ? `<div class="card tight"><div class="ttl">Your candidate identity</div>
       ${kv('left side at your angles', fmtNum(own.L(st.a, st.b), 8))}
       ${kv('right side', fmtNum(own.R(st.a, st.b), 8))}
-      ${kv('difference here', fmtNum(Math.abs(own.L(st.a, st.b) - own.R(st.a, st.b)), 4))}
+      ${kv('difference here', fmtAgree(own.L(st.a, st.b), own.R(st.a, st.b)))}
       ${kv('worst difference over the whole grid', fmtNum(own.worst, 4))}
       ${kv('verdict', own.holds ? 'holds everywhere it was tested' : own.seen < 100 ? 'not enough finite values to judge' : 'not an identity')}
       <p class="help">${own.note}</p>
     </div>` : '') +
     `<div class="card tight"><div class="ttl">Each side computed independently</div>
       ${rows.map(o => kv(o.n, fmtNum(o.lhs, 6) + '  vs  ' + fmtNum(o.rhs, 6))).join('')}
-      ${kv('largest disagreement', fmtNum(Math.max(...rows.map(o => o.diff)), 3))}
+      ${kv('largest disagreement', fmtGap(Math.max(...rows.map(o => o.diff)),
+                                          Math.max(1e-300, ...rows.map(o => Math.abs(o.lhs)))))}
       <p class="help">Drag either angle anywhere at all and that last number does not move off zero.
       An identity holds for every value of its variables, and this is what that looks like.</p>
     </div>
@@ -279,7 +280,8 @@ STAGES.agIdent = {
   chip(st){
     const rows = agIdentities(st.a, st.b);
     return `<div class="k">identities</div><div>${rows.length} checked</div>
-      <div style="color:var(--c-grad)">max Δ = ${fmtNum(Math.max(...rows.map(o => o.diff)), 3)}</div>`;
+      <div style="color:var(--c-grad)">${fmtGap(Math.max(...rows.map(o => o.diff)),
+        Math.max(1e-300, ...rows.map(o => Math.abs(o.lhs))))}</div>`;
   },
   legend(){ return [['var(--c-pos)', 'angle a'], ['var(--c-neg)', 'the further turn b'],
                     ['var(--c-warn)', 'a + b']]; },

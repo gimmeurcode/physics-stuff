@@ -65,7 +65,7 @@ function applyDemo(key){
   const d=DEMOS[gi].items[ii];
 
   /* stage experiments bypass the field pipeline entirely */
-  if(d.stage){ applyStageDemo(key, d); return; }
+  if(d.stage){ applyStageDemo(key, d); plAfterDemo(key); return; }
   stageExit();
 
   S.phys.applied=false;
@@ -154,6 +154,9 @@ function applyDemo(key){
     buildPartPanel();
   } else buildPartPanel();
   applyWingSections();
+  /* the permalink's diff baseline is taken here, with the panels built and
+     wired — see 82a-permalink.js */
+  plAfterDemo(key);
 }
 
 /* ------------------------------------------------------------ panel: field ---- */

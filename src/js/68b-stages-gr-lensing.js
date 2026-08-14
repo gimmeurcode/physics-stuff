@@ -151,7 +151,7 @@ STAGES.rlLens = {
             : 'captured — the ray never escapes')}
       ${kv('4GM/c²b (first order)', fmtNum(closed, 6) + ' rad  =  ' + fmtNum(closed * ARCSEC, 5) + '″')}
       ${Number.isFinite(res.deflection)
-        ? kv('difference', fmtNum(Math.abs(res.deflection - closed) / closed * 100, 4) + '%') : ''}
+        ? kv('difference', fmtAgree(res.deflection, closed, '%')) : ''}
       ${kv('Newton\'s corpuscular answer', fmtNum(grDeflectionNewtonian(GM, b) * ARCSEC, 5) + '″')}
       ${kv('capture radius 3√3 GM/c²', fmtNum(bc, 5) + ' m  =  ' + fmtNum(bc / rs, 5) + ' rs')}
       <p class="help">${sun

@@ -52,6 +52,58 @@ function ckEng(v, unit, sig){
   if(str.includes('.')) str = str.replace(/\.?0+$/, '');
   return str.replace('-', '−') + ' ' + p + unit;
 }
+/* A SOLVED quantity below the round-off of its own solve is zero, and printing
+   it as "29.7 fA" states a current the circuit does not carry.
+
+   ckEng's own floor is 1e-18, which is six electrons a second — far below
+   anything this or any other simulation knows. Two independent arguments put
+   the real floor in the same place. Numerically: MNA solves by dense LU, so the
+   error is about ε·κ(A)·‖x‖, and a circuit spanning 1 Ω to 1 MΩ has κ ≈ 10⁶ —
+   a milliamp-scale solution therefore carries ~1e-13 A of arithmetic. That is
+   the 29.7 fA exactly. Physically: Johnson–Nyquist noise in a 1 kΩ resistor at
+   300 K is √(4kT/R) ≈ 4 pA/√Hz, so even femtoamps a thousand times larger would
+   be invisible on a real bench.
+
+   `scale` is the largest quantity of the same kind in the same solution, and
+   `ckMeasure` measures it. The relative floor is not a guess either: that
+   routine recomputes every branch current from its element's own constitutive
+   law, so its kclMax/scale is this solve's round-off, measured. */
+function ckEngF(v, unit, scale, rel, abs){
+  const floor = Math.max(Math.max(1e-300, Math.abs(scale)) * (rel === undefined ? 1e-9 : rel), abs || 0);
+  return Math.abs(v) <= floor ? ckEng(0, unit) : ckEng(v, unit);
+}
+
+/* THE ABSOLUTE FLOOR, from physics rather than from arithmetic.
+
+   A relative floor cannot rescue a circuit that has settled to nothing: every
+   quantity in it is round-off, so there is no scale left to be small against,
+   and that is exactly the case that was screenshotted — a circuit at its steady
+   state reading 29.7 fA. What sets the floor there is not the solver at all.
+
+   Every resistance at temperature T generates Johnson–Nyquist noise whatever
+   the simulation does: a mean-square current 4k_BTB/R through it, and a
+   mean-square voltage 4k_BTBR across it. The bandwidth a discrete simulation
+   can even represent is the Nyquist one, B = 1/2h. Below the resulting figure a
+   reading is not merely unresolved — it could not be measured on any bench.
+
+   An ideal circuit with no resistance in it dissipates nothing and therefore
+   has no Johnson noise, which is why `Rmin`/`Rmax` of nothing returns 0 and
+   leaves only the relative floor. That is the physics, not a special case.
+   k_B is CODATA 2022; T is room temperature. */
+const CK_KB = 1.380649e-23, CK_TROOM = 300;
+const ckNoiseBand = h => (h > 0 && Number.isFinite(h) ? 1 / (2 * h) : 1e6);
+const ckNoiseI = (Rmin, h) => (Rmin > 0 ? Math.sqrt(4 * CK_KB * CK_TROOM * ckNoiseBand(h) / Rmin) : 0);
+const ckNoiseV = (Rmax, h) => (Rmax > 0 ? Math.sqrt(4 * CK_KB * CK_TROOM * ckNoiseBand(h) * Rmax) : 0);
+/* A residual is a verdict, not a reading. It is quoted against the scale it has
+   to be read against, and below the solve's resolution it says so rather than
+   naming a current, a power or a voltage that is not there. */
+function ckGap(gap, scale, unit, rel){
+  const s = Math.max(1e-300, Math.abs(scale)), r = Math.abs(gap) / s;
+  if(!(r > (rel || 1e-9)))
+    return ckEng(0, unit) + ' to the resolution of the solve — it closes to every digit there is';
+  return ckEng(gap, unit) + '  (' + fmtSig(100 * r, 3) + '% of ' + ckEng(s, unit) + ')';
+}
+
 /* the inverse: "4k7", "100n", "2.2M" → a number. Used by the value editor. */
 function ckParseEng(s){
   if(typeof s === 'number') return s;

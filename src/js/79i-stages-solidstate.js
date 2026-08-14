@@ -346,7 +346,7 @@ STAGES.slFermi = {
     <div class="card tight"><div class="ttl">The anchor — free electrons, whose answer is known</div>
       ${kv('(ħ²/2m)(3π²n)^(2/3) at this n', n(closed, 8) + ' eV')}
       ${kv('your E_F', n(D.F.EF, 8) + ' eV')}
-      ${kv('they differ by', fmtNum(Math.abs(D.F.EF - closed) / closed, 3) + ' relative')}
+      ${kv('they differ by', fmtAgree(D.F.EF, closed, 'relative'))}
       <p class="help">Those two agree to eleven figures when g is the free-electron
       0.6812√E, and they are <b>meant</b> to disagree otherwise — the closed form is a property of
       √E and of nothing else. Comparing them is how you see how much of "the Fermi energy of a
@@ -358,7 +358,7 @@ STAGES.slFermi = {
       ${kv('μ − E_F, measured', n(M.shift, 6) + ' eV')}
       ${kv('−(π²/12)(kT)²/E_F, predicted', n(som, 6) + ' eV')}
       ${kv('measured ÷ predicted', n(som !== 0 ? M.shift / som : NaN, 6))}
-      ${kv('Newton steps, residual', M.iters + ',  ' + M.resid.toExponential(2))}
+      ${kv('Newton steps, residual', M.iters + ',  ' + fmtGap(M.resid, M.residScale))}
       <p class="help">Filling from the bottom and conserving electrons at temperature are two
       different equations. They agree only at absolute zero. ${M.shift < 0
         ? 'Here μ sits <b>below</b> E<sub>F</sub>, which is what a rising density of states does: the smear gains more states above than it loses below, so the level must drop to keep the count.'
@@ -892,7 +892,7 @@ STAGES.slSemi = {
           'Every material in the preset list quotes an N_c and an N_v. Feed the effective mass that produces one of them back through the formula above and it comes back exactly — which is what makes the numbers for a material nobody tabulated worth reading. Silicon\'s conduction density-of-states mass comes out at 1.08 m_e, which is the published value.'),
         drvStep('the Fermi level, from charge neutrality',
           `${dv('n')}(${dv('E')}_F) ${dop('−')} ${dv('p')}(${dv('E')}_F) ${dop('+')} ${dv('N')}_a⁻(${dv('E')}_F) ${dop('−')} ${dv('N')}_d⁺(${dv('E')}_F) ${dop('=')} 0`,
-          `bisected: E_F = ${n(S.EF)} eV above the valence edge, residual ${S.resid.toExponential(2)}`),
+          `bisected: E_F = ${n(S.EF)} eV above the valence edge, residual ${fmtGap(S.resid, S.residScale, 'cm⁻³')}`),
         drvSay('why this is a root-find and not a formula',
           'The textbook route assumes which term dominates — n ≈ N_d for an n-type sample — and then solves a quadratic. That is a good approximation in the middle of the doping range and it is an approximation. Here the left-hand side is strictly decreasing in E_F, so the root is unique and bisection cannot be fooled, and no term is assumed to dominate anything.'),
         drvStep('the carriers, by the Fermi–Dirac integral',
@@ -993,7 +993,7 @@ STAGES.slSemi = {
       ${kv('E_F above the valence edge', n(S.EF, 8) + ' eV')}
       ${kv('η at the conduction edge', n(S.etaC, 5) + ' kT')}
       ${kv('η at the valence edge', n(S.etaV, 5) + ' kT')}
-      ${kv('neutrality residual', S.resid.toExponential(2) + ' cm⁻³')}
+      ${kv('neutrality residual', fmtGap(S.resid, S.residScale, 'cm⁻³'))}
       ${kv('verdict', S.degenerate ? 'DEGENERATE — the level is in or near a band' : 'non-degenerate — the level is well inside the gap')}
       <p class="help">Bisected on n − p + N<sub>a</sub>⁻ − N<sub>d</sub>⁺ = 0, which is strictly
       decreasing in E<sub>F</sub>, so the root is unique. No term is assumed to dominate — the usual
@@ -1256,7 +1256,7 @@ STAGES.slHeat = {
              'slope ' + fmtNum(S.fit.slope, 4) + (S.fit.power ? '  — a power law' : '  — not a power law'),
              rgbCss(TH.warn), '11px ' + FONT_UI);
       ctText(ctx, Q.px + 10, Q.py + 33,
-             'worst residual ' + S.fit.worst.toFixed(4) + ' dec, bend ' + fmtNum(S.fit.bend, 3),
+             'worst residual ' + fmtSig(S.fit.worst, 3) + ' dec, bend ' + fmtNum(S.fit.bend, 3),
              rgbCss(TH.faint), '11px ' + FONT_UI);
     } else {
       ctText(ctx, Q.px + 10, Q.py + 18, 'no power law here — C underflows across the range',
@@ -1336,7 +1336,7 @@ STAGES.slHeat = {
           `quadrature ${n(S.cal.mine)} against slDebyeC ${n(S.cal.closed)} — ${S.cal.rel.toExponential(2)} apart`),
         drvStep('and the low-temperature exponent, fitted',
           `log₁₀${dv('C')} ${dop('=')} ${dv('p')}·log₁₀${dv('T')} ${dop('+')} const`,
-          F.ok ? `p = ${n(F.slope)} over ${n(F.Tlo)}–${n(F.Thi)} K, worst residual ${F.worst.toFixed(4)} decades`
+          F.ok ? `p = ${n(F.slope)} over ${n(F.Tlo)}–${n(F.Thi)} K, worst residual ${fmtSig(F.worst, 3)} decades`
                : 'no fit — ' + String(F.why || '').slice(0, 90)),
         drvSay('why the slope alone would not be enough',
           'A least-squares line can be fitted to any set of points, and an Einstein solid — whose heat capacity dies exponentially and has no exponent at all — will hand you one without complaint. Two more numbers are reported with it. The worst residual says how far the points stray from the line. The <b>bend</b> is the local slope at the top of the range minus the local slope at the bottom: a genuine power law has the same slope everywhere and gives zero, while an exponential\'s log-log slope grows without limit and gives a large one. Only with all three is "the exponent is three" a measurement.'),
@@ -1410,7 +1410,7 @@ STAGES.slHeat = {
       ${F.ok
         ? kv('fitted over', n(F.Tlo, 4) + ' to ' + n(F.Thi, 4) + ' K,  ' + F.n + ' points') +
           kv('measured exponent p', n(F.slope, 6)) +
-          kv('worst residual', F.worst.toFixed(5) + ' decades') +
+          kv('worst residual', fmtSig(F.worst, 3) + ' decades') +
           kv('r²', n(F.r2, 8)) +
           kv('local slope, bottom → top', n(F.sLo, 4) + ' → ' + n(F.sHi, 4)) +
           kv('the bend', n(F.bend, 5)) +

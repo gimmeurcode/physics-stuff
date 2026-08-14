@@ -176,7 +176,12 @@ function clNewton(f, df, x0, n){
     if(!Number.isFinite(x)) break;
     path.push(x);
   }
-  return { path, root:x, residual:Math.abs(f(x)) };
+  /* the residual carries the scale it is read against: the largest |f| the
+     iteration actually saw. |f(root)| = 1e-8 means the root is found when the
+     search began at |f| ~ 1, and means nothing at all when it began at 1e-8. */
+  let scale = 0;
+  for(const p of path){ const v = Math.abs(f(p)); if(Number.isFinite(v)) scale = Math.max(scale, v); }
+  return { path, root:x, residual:Math.abs(f(x)), residScale:scale };
 }
 
 /* ------------------------------------------------------- curve analysis ------ */

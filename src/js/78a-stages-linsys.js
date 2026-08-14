@@ -55,7 +55,8 @@ STAGES.laSystem = {
     };
   },
   enter(st, o){
-    const p = LS_PRESETS[o.preset || 'unique'];
+    st.preset = LS_PRESETS[o.preset] ? o.preset : 'unique';
+    const p = LS_PRESETS[st.preset];
     st.M = mxClone(p.M);
     st.step = -1;              // -1 = show the original
     st.showGeom = o.geom !== false;
@@ -74,7 +75,16 @@ STAGES.laSystem = {
     const cols = st.M[0].length;
     const lbl = Array.from({ length:cols }, (_, j) =>
       j === cols - 1 ? '=' : ['x', 'y', 'z', 'w'][j] || ('x' + (j + 1)));
-    return ctSeg('lsP', '', Object.keys(LS_PRESETS).map(k => [k, LS_PRESETS[k].n])) +
+    /* The picker shows which system is loaded, rather than nothing at all.
+       These presets are not all the same SHAPE — two lines in two unknowns
+       against three planes in three — so this control, and only this control,
+       decides how many cells the editor has. A permalink can restore a cell it
+       can find; it cannot conjure a fourth column. Marking the choice is what
+       lets a link to a typed 3×4 system come back as a 3×4 system.
+       It reads as the system this one started from: editing a cell afterwards
+       leaves the highlight where it was, which is also where the shape came
+       from. */
+    return ctSeg('lsP', st.preset, Object.keys(LS_PRESETS).map(k => [k, LS_PRESETS[k].n])) +
       mxHtml('lsM', st.M, null, lbl) +
       `<div class="row wrap">${ctBtn('lsPrev', '◀ step')}${ctBtn('lsNext', 'step ▶')}
         ${ctBtn('lsAll', 'run it all')}${ctBtn('lsRe', 'reset')}
@@ -87,7 +97,7 @@ STAGES.laSystem = {
       which is the reason the method is allowed to exist.</p>`;
   },
   wire(){
-    ctWireSeg('lsP', v => { ST.M = mxClone(LS_PRESETS[v].M); ST.step = -1; STAGES.laSystem.solve(ST); });
+    ctWireSeg('lsP', v => { ST.preset = v; ST.M = mxClone(LS_PRESETS[v].M); ST.step = -1; STAGES.laSystem.solve(ST); });
     mxWire('lsM', (i, j, v) => { ST.M[i][j] = v; STAGES.laSystem.solve(ST); });
     ctWireBtn('lsPrev', () => { ST.step = Math.max(-1, ST.step - 1); });
     ctWireBtn('lsNext', () => { ST.step = Math.min(ST.res.steps.length - 1, ST.step + 1); });
@@ -182,7 +192,8 @@ STAGES.laSystem = {
     ${s.x ? `<div class="card tight"><div class="ttl">Substituted back</div>
       ${st.A.map((row, i) => kv('row ' + (i + 1),
         fmtNum(laDot(row, s.x), 6) + '  vs  ' + fmtNum(st.b[i], 6))).join('')}
-      ${kv('largest residual', fmtNum(Math.max(...st.A.map((row, i) => Math.abs(laDot(row, s.x) - st.b[i]))), 3))}
+      ${kv('largest residual', fmtGap(Math.max(...st.A.map((row, i) => Math.abs(laDot(row, s.x) - st.b[i]))),
+                                      Math.max(1e-300, ...st.b.map(Math.abs))))}
       <p class="help">The solution is put back into the original equations, not the reduced ones.
       A method that produced the answer cannot also be the thing that checks it.</p>
     </div>` : ''}

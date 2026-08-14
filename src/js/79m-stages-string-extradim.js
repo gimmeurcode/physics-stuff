@@ -406,7 +406,7 @@ STAGES.wsTorus = {
           'τ₂ is the modular parameter that plays the role of Schwinger proper time. In a field theory the corresponding integral runs down to zero, and that lower end is the short-distance region where the divergence sits. Here the region is not regulated, cut off, or subtracted — it is simply not part of the integration domain. There is no ultraviolet to renormalise.'),
         drvStep('the symmetry, checked rather than asserted',
           `η(${dop('−')}1/τ) ${dop('=')} √(${dop('−')}${dop('i')}τ) η(τ)`,
-          `computed on both sides at your τ: they differ by ${fmtNum(chk.gap, 3)}`),
+          `computed on both sides at your τ: they differ by ${fmtAgree(wsCabs(chk.lhs), wsCabs(chk.rhs))}`),
         drvSay('and the same modularity gives the Hagedorn density',
           'The transformation of η that removes the ultraviolet here is the one that converts the level-counting product into an exponential in the spectrum stage. The finiteness of the loop and the explosion of the state count are two readings of a single identity, which is a good sign that the structure is not accidental.'),
         drvSay('what this does and does not settle',
@@ -533,7 +533,7 @@ STAGES.wsTorus = {
              rgbCss(TH.dim), '600 11px ' + FONT_UI);
       wsNum(ctx, bx, by + 20, 'η(−1/τ)', fmtNum(wsCabs(chk.lhs), 8), TH.curl);
       wsNum(ctx, bx, by + 38, '√(−iτ) η(τ)', fmtNum(wsCabs(chk.rhs), 8), TH.grad);
-      wsNum(ctx, bx, by + 56, 'difference', fmtNum(chk.gap, 3), TH.accent);
+      wsNum(ctx, bx, by + 56, 'difference', fmtAgreeTight(wsCabs(chk.lhs), wsCabs(chk.rhs)), TH.accent);
       rlText(ctx, bx, by + 80, 'the identity that removes the ultraviolet',
              rgbCss(TH.faint), '10.5px ' + FONT_UI);
       rlText(ctx, bx, by + 95, 'is the identity that produces the Hagedorn density',
@@ -560,7 +560,7 @@ STAGES.wsTorus = {
     <div class="card tight"><div class="ttl">The identity, both sides</div>
       ${kv('|η(−1/τ)|', fmtNum(wsCabs(chk.lhs), 12))}
       ${kv('|√(−iτ)·η(τ)|', fmtNum(wsCabs(chk.rhs), 12))}
-      ${kv('difference', fmtNum(chk.gap, 3))}
+      ${kv('difference', fmtAgree(wsCabs(chk.lhs), wsCabs(chk.rhs)))}
       ${kv('|η| at the reduced τ', fmtNum(wsCabs(eta), 10))}
       <p class="help">Both sides are evaluated from the infinite product, independently, at your τ. Nothing
       is copied from one to the other. This is the transformation law that makes the one-loop measure

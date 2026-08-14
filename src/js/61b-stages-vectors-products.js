@@ -396,7 +396,7 @@ STAGES.gaDot = {
     return `<div class="card tight"><div class="ttl">Two definitions, one number</div>
       ${kv('a₁b₁ + a₂b₂', fmtNum(comp, 6))}
       ${kv('|a||b| cos θ', fmtNum(geo, 6))}
-      ${kv('difference', fmtNum(Math.abs(comp - geo), 3))}
+      ${kv('difference', fmtAgree(comp, geo))}
       ${kv('θ', ctDeg(th))}
       ${kv('sign', comp > 1e-9 ? 'positive — the angle is acute' : comp < -1e-9 ? 'negative — obtuse' : 'zero — perpendicular')}
     </div>

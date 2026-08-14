@@ -837,7 +837,7 @@ function ftPairCur(st){
         : '<b>Careful:</b> your signal is still at ' + fmtNum(tr.ratio, 3) + ' of its peak where the window cuts it off. Cutting a signal is multiplying it by a rectangle, and multiplying in time is convolving in frequency — so a good part of the structure below is the window\'s own sinc tails rather than your signal\'s spectrum. Widen the window until that number is small, and watch the spurious ripples go away.') +
       ' As an independent check, the energy computed in time is ' + fmtNum(par.time, 6) +
       ' and the energy computed from the spectrum is ' + fmtNum(par.freq, 6) +
-      ' — Parseval\'s theorem says those are the same number, and the gap of ' + fmtNum(par.gap, 3) +
+      ' — Parseval\'s theorem says those are the same number, and the gap of ' + fmtAgree(par.time, par.freq) +
       ' is the quadrature\'s honest error bar on everything else here.' };
   if(FT_PAIR_CACHE.size > 8) FT_PAIR_CACHE.clear();
   FT_PAIR_CACHE.set(ck, made);

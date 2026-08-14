@@ -426,6 +426,88 @@ function fmtNum(v, sig){
 }
 const fmtNear = v => (Math.abs(v) < 5e-12 ? '0' : fmtNum(v,4));
 
+/* Significant figures, properly.
+
+   fmtNum's exponent term is clamped at zero, so for |v| < 1 its `sig` silently
+   stops counting FIGURES and starts counting DECIMALS. Swept, the consequence
+   is exact: a non-zero value prints as "0" for v in [1e-4, 4.99e-4] at sig 3,
+   and in [1e-4, 4.99e-3] at sig 2. `dyForce` printed a real 1.4988e-4 J
+   disagreement — 7.8% of the quantity beside it — as "they differ by 0", in the
+   affirmative colour. That is J9. This formatter never does it: use it for a
+   residual, a gap, or anything else whose whole meaning is its size. */
+function fmtSig(v, sig){
+  if(!Number.isFinite(v)) return Number.isNaN(v) ? '—' : (v > 0 ? '∞' : '−∞');
+  if(v === 0) return '0';
+  const a = Math.abs(v);
+  if(a >= 1e6 || a < 1e-3){
+    const parts = v.toExponential(Math.max(0, (sig || 3) - 1)).split('e');
+    return parts[0].replace('-','−') + '×10' + supDigits(parts[1]);
+  }
+  return String(+v.toPrecision(sig || 3)).replace('-','−');
+}
+
+/* A residual is not a measurement — §2.1 — and the way it stops being one is to
+   print it against the scale it must be read against, and to say what it means.
+
+   Two numbers computed by two routes can only be said to agree down to the
+   resolution the routes themselves have. Below `floorRel` there is no
+   information left, so this says so instead of quoting a digit the calculation
+   never earned; above it, the absolute gap, the relative gap and the number of
+   figures the two share are all printed together, because the absolute one
+   alone is what made a 100% disagreement look like success. */
+/* The form to reach for, and the reason it exists rather than everyone calling
+   fmtGap: hand it the TWO numbers rather than their difference, and the scale
+   they must be read against is DERIVED instead of remembered. A scale passed by
+   hand at sixty call sites is a scale that will be wrong at some of them; this
+   one cannot be. Use fmtGap directly only where the two routes are not both in
+   scope — an accumulated drift, a worst-case over a sweep. */
+const fmtAgree = (a, b, unit, floorRel) =>
+  fmtGap(Math.abs(a - b), Math.max(Math.abs(a), Math.abs(b)), unit, floorRel);
+
+function fmtGap(gap, scale, unit, floorRel){
+  const u = unit ? ' ' + unit : '';
+  const rel = Math.abs(gap) / Math.max(1e-300, Math.abs(scale));
+  if(!(rel > (floorRel || 1e-9)))
+    return '0' + u + ' — they agree to every digit either route has';
+  const figs = Math.max(0, Math.floor(-Math.log10(rel)));
+  return fmtSig(Math.abs(gap), 3) + u + '  (' + fmtSig(100 * rel, 3) + '% — agreeing to ' +
+         figs + (figs === 1 ? ' figure)' : ' figures)');
+}
+
+/* The same verdict, sized for a CANVAS label.
+
+   fmtGap's sentence is right for an HTML row and far too wide for a fixed
+   column like wsNum's 250 px — so the four canvas sites that print a difference
+   had each quietly dropped the scale rather than wrap, which is the J9 defect
+   again in the one surface ./auditresid.ps1 cannot read (canvas text is not in
+   the DOM). Same derivation and the same floor, no prose. Output is Unicode
+   only, because canvas text is drawn literally and markup would be painted. */
+const fmtAgreeTight = (a, b, unit) =>
+  fmtGapTight(Math.abs(a - b), Math.max(Math.abs(a), Math.abs(b)), unit);
+
+function fmtGapTight(gap, scale, unit, floorRel){
+  const u = unit ? ' ' + unit : '';
+  const rel = Math.abs(gap) / Math.max(1e-300, Math.abs(scale));
+  if(!(rel > (floorRel || 1e-9))) return '0' + u + ' (every digit)';
+  return fmtSig(Math.abs(gap), 3) + u + ' (' + fmtSig(100 * rel, 2) + '%)';
+}
+
+/* The ASCII form of a number, for a box the reader is expected to type back
+   into. fmtNum is a DISPLAY formatter: it emits U+2212 for the minus sign and
+   real superscripts for an exponent, which is right for a label and wrong for
+   an <input>, because nothing can read them back — parseFloat('−0.7') is NaN,
+   and no parser here can see 10⁻¹⁷ at all.
+
+   Two panels wrote fmtNum into editable boxes: û (du/dv/dw) and n̂
+   (cnx/cny/cnz), each three boxes holding one unit vector, each handler reading
+   all three back with parseFloat. Any component displayed as negative therefore
+   read as NaN, fell through `|| 0`, and the vector silently swung to a
+   different direction the moment the reader edited a neighbouring box. Nothing
+   raised, nothing printed NaN, and the picture simply showed the wrong
+   direction. Found by ./auditlink.ps1, which asks a different question — can a
+   control's value be written back — and got the answer as a side effect. */
+const fmtEdit = (v, sig) => Number.isFinite(v) ? String(+v.toPrecision(sig || 4)) : '';
+
 /* ---- ^ exponents and _ indices -> real markup, for HTML labels ----
    Applied where a label is rendered, never to the stored string: the same
    tables also feed the expression parser, which needs e^(-x^2) to stay ASCII.

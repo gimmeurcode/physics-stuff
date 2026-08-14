@@ -519,7 +519,7 @@ STAGES.pcMotion = {
       return `<div class="card tight"><div class="ttl">Equal areas, measured</div>
         ${kv('wedge near perihelion', fmtNum(A1, 6))}
         ${kv('wedge near aphelion', fmtNum(A2, 6))}
-        ${kv('difference', fmtNum(Math.abs(A1 - A2), 3))}
+        ${kv('difference', fmtAgree(A1, A2))}
         ${kv('swept in equal time Δt', fmtNum(0.55, 3) + ' (mean-anomaly units)')}
         <p class="help">Those two numbers agree because the position is obtained by solving Kepler's
         equation <b>M = E − e sin E</b> for the eccentric anomaly — the motion is genuinely uniform in
@@ -543,7 +543,7 @@ STAGES.pcMotion = {
       ${kv('a_N = κ|v|²', fmtNum(S.aN, 5))}
       ${kv('κ', fmtNum(S.kappa, 6))}
       ${kv('|a|', fmtNum(S.mag, 5))}
-      ${kv('a_T² + a_N² − |a|²', fmtNum(S.residual, 3))}
+      ${kv('a_T² + a_N² − |a|²', fmtGap(S.residual, S.mag * S.mag))}
       ${kv('component along B', fmtNum(vdot(S.frame.dd, S.frame.B), 3))}
       <p class="help">The last two rows are the content of the theorem. The residual is zero because T and
       N span the acceleration completely, and the B-component is zero because they do so on their own —

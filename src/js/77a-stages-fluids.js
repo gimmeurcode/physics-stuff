@@ -323,12 +323,11 @@ STAGES.flStatic = {
       <div class="card tight"><div class="ttl">Archimedes, two ways</div>
         ${kv('∮ pressure over the surface', fmtNum(B.Fsurf, 7) + ' N')}
         ${kv('ρ g V_sub', fmtNum(B.Farch, 7) + ' N')}
-        ${kv('difference', fmtNum(B.gap, 3) + ' N')}
-        ${kv('as a fraction', fmtNum(B.rel, 3))}
+        ${kv('difference', fmtAgree(B.Fsurf, B.Farch, 'N'))}
         ${kv('verdict', B.rel < 1e-6 ? '✓ they agree — the principle is what P = ρgh does to a closed surface'
                                      : 'the profile is too steep for the quadrature to resolve')}
         ${kv('and again with the whole atmosphere added', fmtNum(B.Fatm, 7) + ' N')}
-        ${kv('change it made', fmtNum(B.atmGap, 3) + ' N')}
+        ${kv('change it made', fmtAgree(B.Fatm, B.Fsurf, 'N'))}
         <p class="help">The first row integrates <b>−∮P n̂ dA</b> over the flanks and the two caps. It
         contains a pressure, a radius and a slope, and <b>no volume anywhere</b>. The second row contains
         a volume and no pressure. Nothing in the code links them, so the gap is Archimedes' principle
@@ -343,7 +342,7 @@ STAGES.flStatic = {
         ${B.floats ? `${kv('waterline', fmtNum(B.zw, 5) + ' m above the keel')}
         ${kv('fraction of the volume under', fmtNum(B.fracVol, 5))}
         ${kv('density ratio ρ_object/ρ_fluid', fmtNum(B.ratio, 5))}
-        ${kv('difference', fmtNum(B.lawGap, 3))}
+        ${kv('difference', fmtAgree(B.fracVol, B.ratio))}
         ${kv('fraction of the height under', fmtNum(B.fracH, 5))}
         <p class="help">The waterline was located by bisecting until the <i>surface integral</i> balanced
         the weight — the density ratio was never used. That the volume fraction comes out equal to it
@@ -398,7 +397,7 @@ STAGES.flStatic = {
       ${kv('weight mg', fmtNum(B.W, 6) + ' N')}
       ${kv('F_B = ρ_f g V_sub', fmtNum(B.FB, 6) + ' N')}
       ${kv('by integrating pressure over a cube', fmtNum(G.FB, 6) + ' N')}
-      ${kv('difference', fmtNum(Math.abs(G.FB - G.predicted), 3))}
+      ${kv('difference', fmtAgree(G.FB, G.predicted))}
       <p class="help">The second row differences the pressure on the top and bottom faces of a submerged
       cube and multiplies by the area — the sides cancel by symmetry. Archimedes' principle is not an extra
       law; it is what P = ρgh does to a closed surface.</p>
@@ -631,8 +630,7 @@ STAGES.flFlow = {
         ${kv('lowest pressure', fmtNum(R.minP / 1000, 5) + ' kPa')}
       </div>
       <div class="card tight"><div class="ttl">Bernoulli, checked against Euler</div>
-        ${kv('largest gap between the routes', fmtNum(R.gap, 4) + ' Pa')}
-        ${kv('as a fraction of the inlet pressure', fmtNum(R.rel, 3))}
+        ${kv('largest gap between the routes', fmtGap(R.gap, Math.abs(R.P0), 'Pa'))}
         ${kv('verdict', R.rel < 1e-5 ? '✓ the two agree — Bernoulli is the integral of Euler'
                                       : 'the RK4 step is struggling on a profile this sharp')}
         <p class="help">The green curve is <b>P + ½ρv² = constant</b>, evaluated. The dashed one is
@@ -671,7 +669,7 @@ STAGES.flFlow = {
       ${kv('½ρv₂²', fmtNum(B.e2.dyn, 6) + ' Pa')}
       ${kv('ρgh₂', fmtNum(B.e2.grav, 6) + ' Pa')}
       ${kv('total', fmtNum(B.e2.total, 7) + ' Pa')}
-      ${kv('difference between the totals', fmtNum(Math.abs(B.e1.total - B.e2.total), 3))}
+      ${kv('difference between the totals', fmtAgree(B.e1.total, B.e2.total))}
       ${kv('pressure drop', fmtNum(B.e1.P - B.e2.P, 6) + ' Pa')}
       <p class="help">The two totals agree to rounding, which is the theorem. The static pressure falls
       exactly as much as the dynamic pressure rises — energy has not gone anywhere, it has changed form.</p>

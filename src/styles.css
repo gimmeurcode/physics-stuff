@@ -315,6 +315,24 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;bac
   font-family:var(--f-mono);font-size:12.5px;color:var(--dim);
   font-variant-numeric:tabular-nums;min-width:44px;text-align:right;flex:none;
 }
+
+/* The scenario sheets — the Shape-C editors, where a reader types a body, a
+   netlist, a thermodynamic cycle, a lens prescription or a decay chain.
+
+   `button,input,select,textarea{font:inherit;color:inherit}` at the top of this
+   file gave them the page's light TEXT colour and left the user agent's WHITE
+   background underneath it. Six stages therefore shipped a white box holding
+   pale, barely legible text in the dark theme — the single most visible defect
+   in the laboratory, and the one control that had never been given a rule of
+   its own while every input beside it had. */
+textarea{
+  width:100%;background:var(--bg3);color:var(--text);
+  border:1px solid var(--line2);border-radius:var(--r);
+  padding:8px 9px;font-family:var(--f-mono);font-size:12.5px;line-height:1.55;
+  resize:vertical;min-height:76px;
+}
+textarea:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+textarea::placeholder{color:var(--faint)}
 /* Every slider carries a box holding the plain number, so a reader can set a
    value the track cannot reach. It sits between the track and the formatted
    reading; the reading stays a span because it grows to fit "0.5 c · γ = 1.1547"
@@ -770,6 +788,30 @@ input[type=range]::-webkit-slider-thumb{width:15px;height:15px;margin-top:-6px}
 @media(max-width:1420px){:root{--rail:352px}}
 
 /* ============================================================
+   TOAST — the permalink's one piece of feedback
+   Bottom-centre rather than a corner, because on a phone the corners are where
+   the pane bar and the rail toggle already are. It never takes pointer events
+   except on its own link box, so it cannot swallow a click meant for the canvas
+   underneath it.
+   ============================================================ */
+.toast{
+  position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:90;
+  max-width:min(560px,calc(100vw - 32px));
+  background:var(--bg2);border:1px solid var(--line2);border-radius:10px;
+  box-shadow:var(--shadow);padding:11px 14px;
+  font-size:12.5px;line-height:1.55;color:var(--text);
+  pointer-events:none;
+}
+.toast[hidden]{display:none}
+.toast .toast-msg{color:var(--text)}
+.toast .toast-url{
+  pointer-events:auto;
+  width:100%;margin-top:8px;padding:6px 8px;
+  background:var(--bg3);border:1px solid var(--line2);border-radius:6px;
+  color:var(--text);font-family:var(--f-mono);font-size:12px;
+}
+
+/* ============================================================
    RESPONSIVE
    Three rungs. Desktop keeps the three panes side by side. Tablet drops the
    right rail to a slide-over drawer but keeps canvas and controls together.
@@ -883,7 +925,13 @@ input[type=range]::-webkit-slider-thumb{width:15px;height:15px;margin-top:-6px}
   .brand .nab{font-size:17px}
   .wingnav{flex:none;margin-right:auto}
   .navgroup{display:none}
-  .palettebtn,#btnTheory,#btnTheme,#viewSeg{flex:none}
+  .palettebtn,#btnTheory,#btnLink,#btnTheme,#viewSeg{flex:none}
+  /* the bar is one nowrap row at this width, so the two word-buttons become
+     glyphs rather than being allowed to push the view switch off the edge */
+  #btnLink{font-size:0;padding:6px 9px}
+  #btnLink::after{content:"⧉";font-size:15px}
+  /* clear the bottom pane bar, which owns the last 54 pixels here */
+  .toast{bottom:66px}
   .palettebtn{min-width:0;width:34px;justify-content:center;padding:6px 0}
   #btnTheory{font-size:0;padding:6px 9px;max-width:none}
   #btnTheory::after{content:"∑";font-size:15px;font-family:var(--f-math)}

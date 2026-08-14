@@ -1,4 +1,4 @@
-# Calculus, Fields & the Atom — an interactive mathematics and physics laboratory
+﻿# Calculus, Fields & the Atom — an interactive mathematics and physics laboratory
 
 One self-contained web app, forty wings covering AP Calculus AB and BC, linear algebra, differential equations, complex analysis, AP
 Physics 1 and 2, AP Physics C (Mechanics and E&M), and the whole of multivariable
@@ -257,7 +257,7 @@ Published copy: https://claude.ai/code/artifact/289811c9-07a8-4419-87cc-b4b55e04
 
 ## Layout
 
-- `src/` — the source modules. There are 230 of them, one concern each, and
+- `src/` — the source modules. There are 231 of them, one concern each, and
   `build.ps1` concatenates them in ordinal filename order into a single script
   scope. **The generated `MAP.md` is the authoritative index**: it lists every
   module with its size, what it defines, which of the 178 canvas stages it holds,
@@ -287,7 +287,7 @@ Published copy: https://claude.ai/code/artifact/289811c9-07a8-4419-87cc-b4b55e04
 - `js/49-fourier.js` — Fourier engine (naive DFT and radix-2 FFT sharing one
   inverse flag, series coefficients, analytic transform pairs, the winding
   integral, windows, convolution, aliasing and spread) — pure, unit-tested.
-- `tests.js` — 4175 unit tests: parser, symbolic differentiation, the operators,
+- `tests.js` — 4249 unit tests: parser, symbolic differentiation, the operators,
   physics writers, RK4 mechanics, quantum eigen-relations, the Schrödinger equation
   checked numerically against the plotted packet, barrier unitarity/continuity,
   SEMF landmarks, field-tensor invariants, and all four Maxwell equations verified
@@ -407,6 +407,52 @@ Published copy: https://claude.ai/code/artifact/289811c9-07a8-4419-87cc-b4b55e04
   frames and clears the canvas on resize, so the harness repaints stages on a timer;
   if a capture still comes back blank, read the canvas back with `toDataURL()`
   rather than trusting `--screenshot`.
+- `smoke.ps1` — ten seconds, run after every build. Asks whether the bundle
+  parses and boots at all, whether the three lists of wings agree on membership
+  and order, whether every stage carries all nine of its methods, whether all 80
+  "See it in the laboratory" links resolve, and whether any markup has been
+  written into canvas text, which the canvas draws as its own tags.
+- `auditcustom.ps1` — drives the "or type your own" option on every stage, which
+  `runall.ps1` never selects: it exercises the controls a stage already shows, so
+  the entire reader-supplied path was invisible to it and two bugs shipped
+  through the blind spot in one afternoon. Textareas are driven from a
+  `data-audit` attribute, since no generic expression is valid for a netlist.
+- `auditlink.ps1` — copies a permalink from every experiment, navigates away,
+  follows it back, and asks whether the view returned. It is the only gate that
+  asks whether a control's value can be written **back**, and that question alone
+  found six defects in code it did not own — including display-formatted minus
+  signs (U+2212) in editable boxes, which `parseFloat` reads as `NaN`.
+- `auditresid.ps1` — reads the rendered text of every panel and asks whether any
+  **residual is printed as though it were a measurement**. A difference is
+  meaningless without the scale it is read against: one work-energy row printed a
+  genuine 7.8% gap as "difference 0 J" in the affirmative colour, and a settled
+  circuit printed 29.7 fA of pure round-off as a finding.
+- `auditmarks.ps1` — asks whether the key points drawn on a plot are real. The
+  break test compared a step against 12× the curve's *median* step, which asks
+  whether this part of the curve is steeper than the rest rather than whether it
+  is broken, so any curve with a long flat tail grew a fence of false poles.
+- `auditderive.ps1` — calls every stage's `derive()`, which nothing else does,
+  and measures whether its rungs carry reasoning or merely restate the algebra.
+- `audittext.ps1` / `auditscan.ps1` — harvest what every panel across all 593
+  experiments actually *says*, then scan that harvest for ASCII stand-ins, leaked
+  markup, empty panels and `NaN`. Run on rendered output, never on source:
+  grepping `src/` for `sqrt` drowns in `Math.sqrt(`.
+- `auditprose.ps1` — inventories the essays for phrases that decline to justify a
+  result, and for named theorems leaned on with no statement card behind them.
+- `auditsize.ps1` / `auditviewport.ps1` — eight canvas shapes and sixteen real
+  window sizes. Every other script runs at one window size, so a layout that only
+  breaks at a different aspect ratio was invisible to all of them; these two found
+  161 findings on their first run.
+- `auditcontrast.ps1` — WCAG contrast ratios and the 12 px type floor.
+- `auditartifact.ps1` — whether the app survives publication as a Claude
+  artifact: nested inside the host's document, in all three viewer-theme states
+  including the *system* one that stamps no `data-theme` at all.
+- `auditdocs.ps1` — whether **these documents still describe the program**. It
+  re-measures the site and fails on any `.md` file that contradicts it, checks
+  that every script on disk is documented, and that every file path the docs name
+  exists. Documentation is part of the deliverable, so a stale count is a defect
+  on the same footing as a wrong readout — see `SITE-RULES.md` §1.9.
+- `clean.ps1` — deletes everything the above regenerate (`-WhatIf` to list first).
 
 ## Using it
 

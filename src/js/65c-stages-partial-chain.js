@@ -135,7 +135,7 @@ STAGES.mvTangent = {
       ${kv('dz = f<sub>x</sub> dx + f<sub>y</sub> dy', `${fmtNum(L.gx, 4)} dx + ${fmtNum(L.gy, 4)} dy`)}
       ${kv('with dx = dy = 0.01', fmtNum(L.df(0.01, 0.01), 6))}
       ${kv('actual Δf', fmtNum(F.f(a + 0.01, b + 0.01) - L.f0, 6))}
-      ${kv('difference', fmtNum(Math.abs(L.df(0.01, 0.01) - (F.f(a + 0.01, b + 0.01) - L.f0)), 3))}
+      ${kv('difference', fmtAgree(L.df(0.01, 0.01), (F.f(a + 0.01, b + 0.01) - L.f0)))}
       <p class="help">The differential is not an infinitesimal quantity; it is the <i>linear map</i> that
       the tangent plane is the graph of. This is how error propagation works in every laboratory: a small
       uncertainty in each input contributes |f<sub>x</sub>|·δx + |f<sub>y</sub>|·δy to the output, to first order.</p>
@@ -348,7 +348,7 @@ STAGES.mvChain = {
       ${kv('f<sub>y</sub>', fmtNum(ch.fy, 6))}${kv('dy/dt', fmtNum(ch.dy, 6))}
       ${kv('f<sub>x</sub>·x′ + f<sub>y</sub>·y′', fmtNum(ch.chain, 6))}
       ${kv('d/dt of the composite, directly', fmtNum(ch.direct, 6))}
-      ${kv('difference', fmtNum(ch.gap, 3))}
+      ${kv('difference', fmtAgree(ch.chain, ch.direct))}
       <p class="help">The second-to-last row never touches a partial derivative: it differences
       f(x(t), y(t)) as a single function of t. The two agree, which is the theorem.</p>
     </div>

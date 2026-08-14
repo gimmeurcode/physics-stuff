@@ -555,10 +555,12 @@ STAGES.ckLab = {
   chip(st){
     const m = st.meas;
     if(!m) return `<div class="k">Circuit bench</div><div style="color:var(--c-neg)">${st.err || 'no solution'}</div>`;
+    /* floored against this solve's own scales — a circuit sitting at its steady
+       state reads 0, not "29.7 fA", which is ε·κ·I and not a current */
     return `<div class="k">t = ${ckEng(st.sim.t, 's')} · ${st.sim.ck.nm.count - 1} nodes</div>
-      <div style="color:var(--c-grad)">Σ P delivered = ${ckEng(m.delivered, 'W')}</div>
-      <div style="color:var(--c-pos)">stored in L and C = ${ckEng(m.energy, 'J')}</div>
-      <div>KCL residual = ${ckEng(m.kclMax, 'A')}</div>`;
+      <div style="color:var(--c-grad)">Σ P delivered = ${ckEngF(m.delivered, 'W', m.pScale, 1e-9, m.noiseP)}</div>
+      <div style="color:var(--c-pos)">stored in L and C = ${ckEngF(m.energy, 'J', m.eScale)}</div>
+      <div>KCL closes to ${m.kclRel > 1e-9 ? fmtSig(100 * m.kclRel, 3) + '%' : 'every digit'}</div>`;
   },
 
   /* The canvas is shared between a schematic and an instrument, so a floating

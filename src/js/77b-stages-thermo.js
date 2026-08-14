@@ -14,7 +14,7 @@ STAGES.tmGas = {
             `${dv('W')} ${dop('=')} ∫ ${dv('P')} ${dv('dV')}`,
             `on your path this comes to ${n(Q.W)} J, by adaptive quadrature`),
           drvSay('and check it with a rule that shares no code with the first',
-            'The same integral is done again by a midpoint sum. The two disagree by ' + fmtNum(Q.quadGap, 3) + ' J, and that number — not any claim about accuracy — is the error bar on everything else in the panel.'),
+            'The same integral is done again by a midpoint sum. The two disagree by ' + fmtAgree(Q.W, Q.Wmid, 'J') + ', and that number — not any claim about accuracy — is the error bar on everything else in the panel.'),
           drvStep('the state itself follows from the path, not the other way round',
             `${dv('T')}(${dv('V')}) ${dop('=')} ${dfrac(dv('P') + '(' + dv('V') + ')' + dv('V'), dv('n') + dv('R'))}`,
             `so the ends of your curve are at ${n(Q.T0)} K and ${n(Q.T1)} K`),
@@ -292,7 +292,7 @@ STAGES.tmGas = {
       <div class="card tight"><div class="ttl">The work, by two quadratures</div>
         ${kv('W = ∫P dV, adaptive Simpson', nm(R.W) + ' J')}
         ${kv('the same integral by a midpoint sum', nm(R.Wmid) + ' J')}
-        ${kv('difference', fmtNum(R.quadGap, 3) + ' J')}
+        ${kv('difference', fmtAgree(R.W, R.Wmid, 'J'))}
         ${kv('ΔU = nC_vΔT', nm(R.dU) + ' J')}
         ${kv('Q = ΔU + W', nm(R.Q) + ' J')}
         <p class="help">Two rules with nothing in common, on the curve you drew. Their difference is the
@@ -364,7 +364,7 @@ STAGES.tmGas = {
       ${kv('W from the formula', fmtNum(R.Wformula, 6) + ' J')}
       ${kv('ΔU = nC_vΔT', fmtNum(R.dU, 6) + ' J')}
       ${kv('Q = ΔU + W', fmtNum(R.Q, 6) + ' J')}
-      ${kv('first-law residual', fmtNum(R.residual, 3))}
+      ${kv('first-law residual', fmtGap(R.residual, Math.max(Math.abs(R.dU), Math.abs(R.W), Math.abs(R.Q)), 'J'))}
       <p class="help">The work is the area under the drawn path, obtained by adaptive quadrature on that
       exact curve — and it matches the textbook formula. ΔU depends only on the temperatures, because for
       an ideal gas the internal energy is a function of T alone.</p>

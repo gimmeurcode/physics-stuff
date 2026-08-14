@@ -70,6 +70,7 @@ function setWing(w, force){
   if(w === 'home'){
     $('home').classList.add('open');
     markWingNav('home');
+    plSave();
     return;
   }
   $('home').classList.remove('open');
@@ -83,6 +84,9 @@ function setWing(w, force){
     applyDemo('0.0');
   }
   markWingNav(w);
+  /* leaving the home overview for a wing already loaded changes the address
+     without going through applyDemo, so the URL is written here too */
+  plSave();
 }
 
 /* ---- stage demo application (the stage analogue of applyDemo) ---- */

@@ -185,7 +185,12 @@ function slSemiSolve(M, T){
            ionA:M.na > 0 ? naM(EF) / M.na : 1,
            merged:M.ed <= 0 || M.ea <= 0,
            degenerate:(EF - Eg) / kT > -3 || -EF / kT > -3,
-           resid:F(EF) };
+           resid:F(EF),
+           /* the largest TERM in n − p + N_a⁻ − N_d⁺, which is what the
+              neutrality residual has to be read against: these densities span
+              many orders of magnitude with doping, so an absolute residual in
+              cm⁻³ is unreadable on its own. */
+           residScale:Math.max(Math.abs(n), Math.abs(p), Math.abs(ndP(EF)), Math.abs(naM(EF))) };
 }
 
 /* ----------------------------------------------------------------------------

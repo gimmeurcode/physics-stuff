@@ -211,7 +211,7 @@ STAGES.rlMink = {
     <div class="card tight"><div class="ttl">What survives the boost</div>
       ${kv('s² = (ct)² − x²   (lab)', fmtNum(s2, 6))}
       ${kv('s²   (moving frame)', fmtNum(relInterval(E.t, E.x), 6))}
-      ${kv('difference', fmtNear(relInterval(E.t, E.x) - s2))}
+      ${kv('difference', fmtAgree(relInterval(E.t, E.x), s2))}
       ${kv('separation', kind)}
       ${kv(kind === 'spacelike' ? 'proper distance' : 'proper time',
            kind === 'timelike' ? fmtNum(Math.sqrt(s2), 5)
@@ -363,7 +363,7 @@ STAGES.rlVel = {
       ${kv('φ_v', fmtNum(relRapidity(st.v), 6))}
       ${kv('φ_u + φ_v', fmtNum(relRapidity(st.u) + relRapidity(st.v), 6))}
       ${kv('artanh of the composed speed', fmtNum(relRapidity(w), 6))}
-      ${kv('residual', fmtNear(relRapidity(w) - relRapidity(st.u) - relRapidity(st.v)))}
+      ${kv('residual', fmtAgree(relRapidity(w), relRapidity(st.u) + relRapidity(st.v)))}
       <p class="help">The residual is zero because the composition law <i>is</i> the addition formula for
       tanh. Feed either speed exactly c and the rule returns c — it was built to.</p>
     </div>

@@ -393,7 +393,8 @@ STAGES.laLSQ = {
       ${kv('root mean square error', fmtNum(Math.sqrt(L.rss / st.pts.length), 6))}
     </div>
     <div class="card tight"><div class="ttl">Why this is the answer</div>
-      ${L.orth.map((v, k) => kv('residual · column ' + (k + 1), fmtNum(v, 3))).join('')}
+      ${L.orth.map((v, k) => kv('residual · column ' + (k + 1),
+        fmtGap(v, Math.sqrt(Math.max(1e-300, L.rss)) * Math.max(1e-300, ...st.pts.map(p => Math.abs(k ? p.x : 1)))))).join('')}
       <p class="help">Every one of those is zero: the residual is perpendicular to the space of
       achievable fits. If it were not, some of the error would still lie in a direction the model
       could have absorbed, and the fit would not yet be best. <b>That orthogonality is the theorem</b>
@@ -512,7 +513,7 @@ STAGES.laDet = {
       ${kv('|det A| — the area factor', fmtNum(Math.abs(d), 6))}
       ${kv('orientation', d < 0 ? 'reversed' : d > 0 ? 'preserved' : 'collapsed')}
       ${kv('σ₁ · σ₂ (from the SVD)', fmtNum(S.sigma.reduce((a, b) => a * b, 1), 6))}
-      ${kv('difference', fmtNum(Math.abs(Math.abs(d) - S.sigma.reduce((a, b) => a * b, 1)), 3))}
+      ${kv('difference', fmtAgree(Math.abs(d), S.sigma.reduce((a, b) => a * b, 1)))}
       <p class="help">The determinant computed by elimination and the product of the singular values
       computed from an eigenproblem are entirely different calculations, and they agree — because
       both are measuring the same area.</p>

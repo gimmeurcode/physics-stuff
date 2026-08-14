@@ -120,7 +120,7 @@ STAGES.vcStokes = {
     return `<div class="card tight"><div class="ttl">Both sides</div>
       ${kv('∮ F·dr around the unit circle', fmtNum(cur.circ, 8))}
       ${kv('∬ (∇×F)·dS through the cap', fmtNum(cur.flux, 8))}
-      ${kv('difference', fmtNum(cur.gap, 4))}
+      ${kv('difference', fmtAgree(cur.circ, cur.flux))}
       ${kv('curl at the moving point', ctVec3f(fld.curl(p.x, p.y, p.z)))}
       ${kv('F there', ctVec3f(fld.F(p.x, p.y, p.z)))}
     </div>
@@ -321,7 +321,7 @@ STAGES.vcDiverg = {
     return `<div class="card tight"><div class="ttl">The sphere of radius ${fmtNum(a, 3)}</div>
       ${kv('∯ F·dS  (outward)', fmtNum(flux, 8))}
       ${kv('∭ ∇·F dV', fmtNum(vol, 8))}
-      ${kv('difference', fmtNum(Math.abs(flux - vol), 4))}
+      ${kv('difference', fmtAgree(flux, vol))}
       ${kv('surface area 4πa²', fmtNum(4 * Math.PI * a * a, 7))}
       ${kv('volume 4πa³/3', fmtNum(4 * Math.PI * a * a * a / 3, 7))}
       ${kv('average of F·n̂ over the surface', fmtNum(flux / (4 * Math.PI * a * a), 7))}
@@ -330,7 +330,7 @@ STAGES.vcDiverg = {
     <div class="card tight"><div class="ttl">A cylinder, to show it is not about spheres</div>
       ${kv('∯ F·dS  (side + two caps)', fmtNum(cylFlux, 7))}
       ${kv('∭ ∇·F dV', fmtNum(cylVol, 7))}
-      ${kv('difference', fmtNum(Math.abs(cylFlux - cylVol), 4))}
+      ${kv('difference', fmtAgree(cylFlux, cylVol))}
       <p class="help">Three separate surface integrals — the curved side and the two flat caps, each with
       its normal chosen to point out of the solid — added up and compared with one volume integral. Getting
       the cap orientations right is most of the work in a hand calculation, and it is the step where signs

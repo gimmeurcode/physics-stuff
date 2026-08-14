@@ -118,6 +118,9 @@
       <button data-v="2d"   aria-pressed="false">2D map</button>
     </div>
     <button class="btn" id="btnTheory">The mathematics</button>
+    <button class="btn" id="btnLink"
+            title="Copy a link that reopens this experiment with the controls exactly as they are now"
+            aria-label="Copy a link to this view">Copy link</button>
     <button class="btn iconbtn" id="btnTheme" aria-label="Switch between light and dark theme">◐</button>
     <button class="btn" id="btnReset">Reset view</button>
   </header>
@@ -279,6 +282,13 @@
     <button data-pane="rail"  aria-pressed="false"><span>☰</span>Experiments</button>
   </nav>
 </div>
+
+<!-- Transient confirmation, used by the permalink: whether a link was copied,
+     and — when the browser refuses the clipboard, as a file:// page and a
+     sandboxed artifact frame both do — the link itself, selected to be taken by
+     hand. It starts empty and hidden, so it adds nothing to any harvest until
+     something has actually happened. -->
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
 <!-- Command palette: one search box over all twenty wings and every guided
      experiment in them. This is the fastest way to reach anything. -->

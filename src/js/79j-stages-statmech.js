@@ -238,7 +238,7 @@ STAGES.smCount = {
           `golden section: q_A = ${n(R.qMax)}`),
         drvStep('and the split at which the two temperatures are equal',
           `${dfrac('∂' + dv('S') + '_A', '∂' + dv('U') + '_A')} ${dop('=')} ${dfrac('∂' + dv('S') + '_B', '∂' + dv('U') + '_B')}`,
-          `bisection: q_A = ${n(R.qRoot)} — apart by ${n(R.gap)} quanta`),
+          `bisection: q_A = ${n(R.qRoot)} — apart by ${fmtAgree(R.qMax, R.qRoot, 'quanta')}`),
         drvSay('those are two different calculations, and they are the theorem',
           'One maximises a function; the other solves an equation between two derivatives. Nothing in the code makes them agree. That they land on the same split is what licenses "systems in contact reach a common temperature", and the gap above is how well it holds on your entropies.'),
         drvStep('so the shared slope has a value, and it is a temperature',
@@ -257,7 +257,7 @@ STAGES.smCount = {
           'Expanding the exponent to second order about its maximum is the standard move, and it is an approximation whose error nobody usually looks at. Here both numbers are on the screen and the dashed bell is drawn over the distribution it approximates. It is good, and it is not exact, and the difference shrinks as the blocks grow.'),
         F && F.ok ? drvStep('the fluctuations fall with size — at a FITTED rate',
           `${dfrac('σ', '⟨' + dv('q') + '_A⟩')} ${dop('∼')} ${dv('N')}^${dv('s')}`,
-          `s = ${n(F.slope)} across four sizes, residual ${F.resid.toExponential(2)}; ` +
+          `s = ${n(F.slope)} across four sizes, residual ${fmtSig(F.resid, 3)} in ln σ; ` +
           `that is ${n(F.perDouble)}× narrower per doubling`)
           : drvSay('the size fit did not run', 'Not enough of the scaled systems had an interior maximum to fit an exponent through.'),
         drvSay('and the exponent is −½ only because entropy is extensive',
@@ -327,8 +327,8 @@ STAGES.smCount = {
     <div class="card tight"><div class="ttl">The split, by two routes</div>
       ${kv('by maximising S_A + S_B', n(R.qMax) + ' quanta in A')}
       ${kv('by equal temperatures', n(R.qRoot) + ' quanta in A')}
-      ${kv('they differ by', n(R.gap, 8) + ' quanta')}
-      ${kv('as a fraction of q', Number.isFinite(R.rel) ? R.rel.toExponential(3) : '—')}
+      ${kv('they differ by', fmtAgree(R.qMax, R.qRoot, 'quanta'))}
+      ${kv('as a fraction of q', Number.isFinite(R.rel) ? fmtSig(R.rel, 3) : '—')}
       ${kv('T_A there', n(R.TA))}
       ${kv('T_B there', n(R.TB))}
       ${kv('the two temperatures differ by', Number.isFinite(R.tempRel) ? fmtNum(100 * R.tempRel, 6) + '%' : '—')}
@@ -355,7 +355,7 @@ STAGES.smCount = {
         kv('everything × ' + fmtNum(r.lam, 2), 'σ/⟨q⟩ = ' + fmtNum(r.relWidth, 7))).join('') +
         kv('fitted exponent', n(F.slope, 6)) +
         kv('narrower per doubling', n(F.perDouble, 6) + '×  (√2 = 1.414214)') +
-        kv('residual of the fit', F.resid.toExponential(3))
+        kv('residual of the fit', fmtSig(F.resid, 3) + ' in ln σ')
        : kv('', 'the size fit did not run on this multiplicity')}
       <p class="help">Not asserted — fitted, across four system sizes. The exponent is −½ only
       because entropy is extensive; the panel below reports whether yours is.</p>
@@ -409,7 +409,7 @@ STAGES.smCount = {
       const D = STAGES.smCount.splitOf(st);
       if(!D.R.ok) return `<div class="k">your multiplicity</div><div style="color:var(--c-neg)">no equilibrium</div>`;
       return `<div class="k">peak at q_A = ${fmtNum(D.R.qMax, 5)}</div>
-        <div>two routes apart by ${fmtNum(D.R.gap, 3)}</div>
+        <div>two routes apart by ${fmtAgreeTight(D.R.qMax, D.R.qRoot)}</div>
         <div>relative width ${fmtNum(100 * D.R.relWidth, 2)}%</div>`;
     }
     const C = smContact(st.NA, st.NB, st.q);
@@ -705,7 +705,7 @@ STAGES.smBoltz = {
           `${n(R.U)} eV`),
         drvStep('and again, by differentiating the sum',
           `⟨${dv('E')}⟩ ${dop('=')} ${dop('−')}${dfrac('∂ ln ' + dv('Z'), '∂β')}`,
-          `${n(R.Ubeta)} eV — the two differ by ${R.dU.toExponential(2)}`),
+          `${n(R.Ubeta)} eV — the two differ by ${fmtAgree(R.U, R.Ubeta, 'eV')}`),
         drvSay('the second route never looks at a population',
           'It differentiates one number, the sum, with respect to one parameter. That it lands on the same energy as adding up E times P over every level is the claim Z exists to make, and it is checked here on a scheme nobody chose in advance.'),
         drvStep('the heat capacity, as an energy fluctuation',
@@ -713,7 +713,7 @@ STAGES.smBoltz = {
           `C = ${n(R.C)} eV/K, which is ${fmtNum(R.Cok, 5)} k`),
         drvStep('and again, as dU/dT on a five-point stencil',
           `${dv('C')} ${dop('=')} ${dfrac('d⟨' + dv('E') + '⟩', 'd' + dv('T'))}`,
-          `${n(R.CdT)} eV/K — apart by ${R.dC.toExponential(2)}`),
+          `${n(R.CdT)} eV/K — apart by ${fmtAgree(R.C, R.CdT, 'eV/K')}`),
         drvSay('a response function equal to a fluctuation',
           'A system that absorbs heat readily is one whose energy fluctuates a lot, and here they are the same number to the precision of a numerical derivative. The same pattern connects conductivity to current noise and viscosity to Brownian motion, and it is not a coincidence: both sides are second derivatives of the same ln Z.'),
         drvStep('the entropy, by Gibbs',
@@ -721,10 +721,10 @@ STAGES.smBoltz = {
           `${n(R.Sgibbs)} eV/K`),
         drvStep('and by thermodynamics, which never sees a population',
           `${dv('S')} ${dop('=')} ${dfrac(dv('U') + ' − ' + dv('F'), dv('T'))} , &nbsp; ${dv('F')} ${dop('=')} ${dop('−')}${dv('k')}${dv('T')} ln ${dv('Z')}`,
-          `${n(R.S)} eV/K — apart by ${R.dS.toExponential(2)}`),
+          `${n(R.S)} eV/K — apart by ${fmtAgree(R.S, R.Sgibbs, 'eV/K')}`),
         drvStep('both ends of the third law, measured on your scheme',
           `${dv('S')}(${dv('T')}→0) ${dop('=')} ${dv('k')} ln ${dv('g')}₀ , &nbsp; ${dv('S')}(${dv('T')}→∞) ${dop('=')} ${dv('k')} ln Σ${dv('g')}ᵢ`,
-          `ln g₀ = ${fmtNum(K.ok ? K.ln0 : NaN, 5)}, reached to ${R.loGap.toExponential(2)} eV/K; ` +
+          `ln g₀ = ${fmtNum(K.ok ? K.ln0 : NaN, 5)}, reached to ${fmtAgree(R.SloMeas, R.S0, 'eV/K')}; ` +
           `ln Σg = ${fmtNum(K.ok ? K.lnG : NaN, 5)}, reached to ${fmtNum(100 * (R.hiRatio - 1), 5)}%`),
         drvSay('which is why entropy has an absolute zero and energy does not',
           'Add a constant to every level and Z is multiplied by an exponential, U shifts by that constant and S does not move at all. The entropy of a system is the logarithm of a count of states, and a count has a bottom: at zero temperature only the ground level is occupied and S falls to k ln g₀, whatever the rest of the scheme looks like.'),
@@ -782,7 +782,7 @@ STAGES.smBoltz = {
           `${n(R.U)} eV`),
         drvStep('and again, by differentiating ln Z',
           `⟨${dv('E')}⟩ ${dop('=')} ${dop('−')}${dfrac('∂ ln ' + dv('Z'), '∂β')} , &nbsp; β ${dop('=')} 1/${dv('k')}${dv('T')}`,
-          `${n(U2)} eV — the two routes differ by ${fmtNum(Math.abs(R.U - U2), 3)}`),
+          `${n(U2)} eV — the two routes differ by ${fmtAgree(R.U, U2, 'eV')}`),
         drvStep('the fluctuation in energy gives the heat capacity for free',
           `⟨${dv('E')}²⟩ ${dop('−')} ⟨${dv('E')}⟩² ${dop('=')} ${dv('k')}${dv('T')}²${dv('C')}`,
           `C = ${n(R.C)} eV/K`),
@@ -820,13 +820,13 @@ STAGES.smBoltz = {
     <div class="card tight"><div class="ttl">Three quantities, each computed twice</div>
       ${kv('⟨E⟩ by Σ EᵢPᵢ', n(R.U) + ' eV')}
       ${kv('⟨E⟩ by −∂lnZ/∂β', n(R.Ubeta) + ' eV')}
-      ${kv('they differ by', R.dU.toExponential(3))}
+      ${kv('they differ by', fmtAgree(R.U, R.Ubeta, 'eV'))}
       ${kv('C by the energy fluctuation', n(R.C) + ' eV/K')}
       ${kv('C by dU/dT', n(R.CdT) + ' eV/K')}
-      ${kv('they differ by', R.dC.toExponential(3))}
+      ${kv('they differ by', fmtAgree(R.C, R.CdT, 'eV/K'))}
       ${kv('S by −kΣ p ln p', n(R.Sgibbs) + ' eV/K')}
       ${kv('S by (U−F)/T', n(R.S) + ' eV/K')}
-      ${kv('they differ by', R.dS.toExponential(3))}
+      ${kv('they differ by', fmtAgree(R.S, R.Sgibbs, 'eV/K'))}
       <p class="help">Three claims, six numbers, three gaps. Each pair is computed along routes that
       share no code — one weights the levels, the other differentiates the sum — and what is left over
       is numerical differentiation error rather than physics. Printing only the agreeing number would
@@ -860,7 +860,7 @@ STAGES.smBoltz = {
     <div class="card tight"><div class="ttl">The third law, at both ends</div>
       ${kv('S(T→0), computed', n(R.SloMeas) + ' eV/K')}
       ${kv('k ln g₀', n(R.S0) + ' eV/K')}
-      ${kv('they differ by', R.loGap.toExponential(3))}
+      ${kv('they differ by', fmtAgree(R.SloMeas, R.S0, 'eV/K'))}
       ${kv('S(T→∞), computed', n(R.ShiMeas) + ' eV/K')}
       ${kv('k ln Σg', n(R.Sinf) + ' eV/K')}
       ${kv('ratio', n(R.hiRatio, 9))}
@@ -891,7 +891,7 @@ STAGES.smBoltz = {
     <div class="card tight"><div class="ttl">Two routes to the same energy</div>
       ${kv('⟨E⟩ by summing populations', n(R.U) + ' eV')}
       ${kv('⟨E⟩ by −∂lnZ/∂β', n(U2) + ' eV')}
-      ${kv('difference', fmtNum(Math.abs(R.U - U2), 3))}
+      ${kv('difference', fmtAgree(R.U, U2))}
       ${kv('heat capacity C', n(R.C) + ' eV/K')}
       ${kv('free energy F', n(R.F) + ' eV')}
       ${kv('entropy S', n(R.S) + ' eV/K')}

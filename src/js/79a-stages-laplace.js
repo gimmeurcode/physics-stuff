@@ -105,7 +105,7 @@ STAGES.ltTransform = {
     return `<div class="card tight"><div class="ttl">At s = ${fmtNum(st.s, 4)}</div>
       ${kv('F(s) by quadrature', fmtNum(num, 8))}
       ${exact !== null ? kv('F(s) from the table', fmtNum(exact, 8)) : ''}
-      ${exact !== null ? kv('difference', fmtNum(Math.abs(num - exact), 3)) : ''}
+      ${exact !== null ? kv('difference', fmtAgree(num, exact)) : ''}
       ${kv('region of convergence', st.custom ? 'depends on your curve' : e.roc)}
       ${st.custom ? '' : kv('the pair', e.tex)}
       <p class="help">${st.custom

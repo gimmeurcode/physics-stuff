@@ -1215,7 +1215,7 @@ STAGES.ncBarrier = {
     <div class="card tight"><div class="ttl">The quadrature, calibrated against a closed form</div>
       ${kv('G over the bare Coulomb tail, by quadrature', n(O.calQ.G, 10))}
       ${kv('the same integral, as an antiderivative', n(O.calC.G, 10))}
-      ${kv('they differ by', ncBarExp(calGap, 3))}
+      ${kv('they differ by', fmtAgree(O.calQ.G, O.calC.G))}
       ${kv('your barrier, against that tail', Number.isFinite(dG)
           ? (dG > 0 ? '+' : '') + n(dG, 6) + ' in G'
           : 'no comparison — your barrier has no turning point here')}

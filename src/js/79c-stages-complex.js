@@ -164,7 +164,7 @@ STAGES.cxMap = {
     <div class="card tight"><div class="ttl">Cauchy–Riemann</div>
       ${kv('u_x − v_y', fmtNum(cr.cr1, 3))}
       ${kv('u_y + v_x', fmtNum(cr.cr2, 3))}
-      ${kv('|∂f/∂x − (−i)∂f/∂y|', fmtNum(cr.resid, 3))}
+      ${kv('|∂f/∂x − (−i)∂f/∂y|', fmtGap(cr.resid, Math.max(cxAbs(v), 1e-12)))}
       ${kv('analytic here?', analytic ? 'yes' : '<b>no</b>')}
       ${analytic ? kv("f′(z)", fmtNum(cr.deriv.re, 5) + (cr.deriv.im < 0 ? ' − ' : ' + ') + fmtNum(Math.abs(cr.deriv.im), 5) + 'i') : ''}
       <p class="help">${analytic
@@ -243,7 +243,7 @@ STAGES.cxContourInt = {
         'f = u + iv, as two real functions. The contour integral is computed numerically along the path ' +
         'either way — but Cauchy\'s theorem only applies to a holomorphic f, so the panel measures the ' +
         'Cauchy-Riemann residual first and says whether the theorem it is about to quote is even in force.') +
-      ctlRow('radius', ctlSlider('ciR', 0.2, 2, 0.01, st.r)) +
+      ctlRow('radius', ctlSlider('cxR', 0.2, 2, 0.01, st.r)) +
       `<div class="row wrap">${ctBtn('ciFree', 'draw your own contour')}${ctBtn('ciCirc', 'back to a circle')}</div>
       <p class="help">The whole subject in one number: <b>∮ f(z) dz</b>. For an analytic function
       inside the contour it is <b>zero</b> — Cauchy's theorem — and that is why complex integrals
@@ -256,7 +256,12 @@ STAGES.cxContourInt = {
   },
   wire(){
     pkWire('ciK', 'cxown', ST.key, ST, CX_OWN, null, v => { ST.key = v; });
-    wireSlider('ciR', () => ST.r, v => { ST.r = v; }, v => fmtNum(+v, 3));
+    /* cxR, not ciR: that id already belongs to the circulation loop's radius in
+       80e-ui-flux-circ-panel.js, and both live in the dock. getElementById is
+       first-wins, so which slider a wireSlider call reached depended on nothing
+       but which panel happened to come first in the document — and a permalink,
+       whose keys ARE element ids, read one slider and wrote the other. */
+    wireSlider('cxR', () => ST.r, v => { ST.r = v; }, v => fmtNum(+v, 3));
     ctWireBtn('ciFree', () => { ST.free = true; ST.loop = lpNew(); });
     ctWireBtn('ciCirc', () => { ST.free = false; });
   },
@@ -310,7 +315,7 @@ STAGES.cxContourInt = {
       ${kv('poles enclosed', inside.length)}
       ${inside.map(o => kv('  winding about pole ' + (o.i + 1), o.w)).join('')}
       ${kv('2πi × Σ residues', fmtNum(pred.re, 5) + (pred.im < 0 ? ' − ' : ' + ') + fmtNum(Math.abs(pred.im), 5) + 'i')}
-      ${kv('difference', fmtNum(cxAbs(cxSub(I, pred)), 3))}
+      ${kv('difference', fmtGap(cxAbs(cxSub(I, pred)), Math.max(cxAbs(I), cxAbs(pred))))}
       <p class="help">Two entirely independent calculations: a quadrature marched along the contour
       you drew, and a count of enclosed poles weighted by their residues. The difference is the
       evidence for the residue theorem.</p>

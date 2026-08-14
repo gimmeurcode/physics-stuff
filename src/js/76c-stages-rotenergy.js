@@ -268,8 +268,7 @@ STAGES.rtTorque = {
     <div class="card tight"><div class="ttl">ω, by two routes that share nothing</div>
       ${kv('ω(T) by RK4 on I dω/dt = τ(t)', fmtNum(D.w, 8) + ' rad/s')}
       ${kv('ω(T) by ω₀ + (1/I)∫τ dt, quadrature', fmtNum(D.wQ, 8) + ' rad/s')}
-      ${kv('difference', fmtNum(D.gapW, 3) + ' rad/s')}
-      ${kv('relative to ω itself', fmtNum(D.gapW / sc, 3))}
+      ${kv('difference', fmtAgree(D.w, D.wQ, 'rad/s'))}
       ${kv('angular impulse ∫τ dt', fmtNum(D.J, 6) + ' N·m·s')}
       ${kv('and I ΔL/I = I(ω − ω₀)', fmtNum(D.dL, 6) + ' kg·m²/s')}
       ${kv('order of the stepper, measured by halving h', ordTxt)}
@@ -281,7 +280,7 @@ STAGES.rtTorque = {
     <div class="card tight"><div class="ttl">θ, the same way</div>
       ${kv('θ(T) by integrating ω along the track', fmtNum(D.th, 8) + ' rad')}
       ${kv('θ(T) by ω₀T + (1/I)∫(T−t)τ(t)dt', fmtNum(D.thQ, 8) + ' rad')}
-      ${kv('difference', fmtNum(D.gapTh, 3) + ' rad')}
+      ${kv('difference', fmtAgree(D.th, D.thQ, 'rad'))}
       ${kv('in turns', fmtNum(D.th / (2 * Math.PI), 5))}
       <p class="help">The second route is one quadrature, not two. Swapping the order of the double
       integral ∫₀ᵀ∫₀ˢτ(u)du ds collapses it to a single integral with a (T − u) weight — the Cauchy formula
@@ -290,7 +289,7 @@ STAGES.rtTorque = {
     <div class="card tight"><div class="ttl">And the work–energy theorem, checked</div>
       ${kv('∫τω dt over the integrated motion', fmtNum(D.work, 7) + ' J')}
       ${kv('½I(ω² − ω₀²) from the two endpoints', fmtNum(D.dK, 7) + ' J')}
-      ${kv('difference', fmtNum(D.gapWork, 3) + ' J')}
+      ${kv('difference', fmtGap(D.gapWork, Math.max(1e-12, Math.abs(D.dK), Math.abs(D.work)), 'J'))}
       ${kv('K at the start', fmtNum(D.K0, 6) + ' J')}
       ${kv('K at the end', fmtNum(D.K1, 6) + ' J')}
       <p class="help">Rotational work is <b>∫τ dθ</b>, and since dθ = ω dt that is the power τω integrated
@@ -327,7 +326,7 @@ STAGES.rtTorque = {
       const D = STAGES.rtTorque.own(st);
       return `<div class="k">two routes to ω</div>
         <div style="color:var(--c-grad)">ω(T) = ${fmtNum(D.w, 5)} rad/s</div>
-        <div style="color:var(--c-pos)">they differ by ${fmtNum(D.gapW, 2)}</div>`;
+        <div style="color:var(--c-pos)">they differ by ${fmtAgreeTight(D.w, D.wQ)}</div>`;
     }
     const v = this.vals(st);
     return `<div class="k">torque</div><div>τ = ${fmtNum(v.tau, 4)} N·m</div>
@@ -674,7 +673,7 @@ STAGES.rtEnergy = {
     <div class="card tight"><div class="ttl">The energy lost, by two routes</div>
       ${kv('heat generated, ∫τ|ω₁−ω₂| dt', fmtNum(C.heat, 7) + ' J')}
       ${kv('½·(I₁I₂/(I₁+I₂))·(Δω)²', fmtNum(C.heatClosed, 7) + ' J')}
-      ${kv('difference', fmtNum(C.gapHeat, 3) + ' J')}
+      ${kv('difference', fmtAgree(C.heat, C.heatClosed, 'J'))}
       ${kv('K before', fmtNum(C.K0, 6) + ' J')}
       ${kv('K after', fmtNum(C.K1, 6) + ' J')}
       ${kv('K lost', fmtNum(C.dK, 6) + ' J')}
@@ -705,7 +704,7 @@ STAGES.rtEnergy = {
         ${kv('L before = Iω', fmtNum(S.L1, 6))}
         ${kv('I after', fmtNum(st.I2frac, 4))}${kv('ω after', fmtNum(S.w2, 6) + ' rad/s')}
         ${kv('L after', fmtNum(S.L2, 6))}
-        ${kv('difference', fmtNum(Math.abs(S.L1 - S.L2), 3))}
+        ${kv('difference', fmtAgree(S.L1, S.L2))}
         <p class="help">No external torque acts, so L cannot change — and it does not, to machine
         precision. That is the whole reason ω rises.</p>
       </div>
@@ -726,7 +725,7 @@ STAGES.rtEnergy = {
       ${kv('translational ½Mv²', fmtNum(v.Ktr, 6) + ' J')}
       ${kv('rotational ½Iω²', fmtNum(v.Krot, 6) + ' J')}
       ${kv('their sum', fmtNum(v.Ktr + v.Krot, 6) + ' J')}
-      ${kv('difference from Mgh', fmtNum(Math.abs(v.U - v.Ktr - v.Krot), 3))}
+      ${kv('difference from Mgh', fmtAgree(v.U, v.Ktr + v.Krot, 'J'))}
       <p class="help">The two kinetic pieces are computed independently from the speed and the spin,
       then added and compared with the drop. Nothing was assumed to balance; it balances.</p>
     </div>

@@ -591,7 +591,7 @@ STAGES.pcConic = {
     ${kind === 'ellipse' ? `<div class="card tight"><div class="ttl">The perimeter nobody can write down</div>
       ${kv('numerical arc length', fmtNum(arc, 8))}
       ${kv("Ramanujan's approximation", fmtNum(pcEllipsePerimApprox(D.a, D.b), 8))}
-      ${kv('difference', fmtNum(Math.abs(arc - pcEllipsePerimApprox(D.a, D.b)), 3))}
+      ${kv('difference', fmtAgree(arc, pcEllipsePerimApprox(D.a, D.b)))}
       <p class="help">The ellipse's arc-length integral is elliptic — it is <i>the</i> elliptic integral,
       and it has no elementary antiderivative. An entire branch of nineteenth-century mathematics grew out
       of that failure. Ramanujan's 1914 approximation is accurate to about one part in 10⁸ for moderate

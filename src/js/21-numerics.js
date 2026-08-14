@@ -135,6 +135,31 @@ function nqAccumulate(f, a, b, n){
   return { xs, As, h };
 }
 
+/* The running integral of a SAMPLED function on a uniform grid, at the order
+   composite Simpson gives — for the case where the samples already exist because
+   a stepper produced them and there is no f left to call.
+
+   `n` must be even. The even nodes carry the composite Simpson rule exactly, so
+   `c[n]` IS the composite Simpson total and a panel quoting the total can never
+   disagree with a plot drawn from the array. The odd nodes get the three-point
+   Newton–Cotes value h/12(5g₀ + 8g₁ − g₂), which is what the curve between two
+   Simpson nodes needs and is fourth-order locally.
+
+   The alternative — accumulate a trapezoid and quote its end — is second order,
+   and on an integrand whose net is the residue of a nearly cancelling sum that
+   is not a small error. `dyForceRun` printed a 7.8% disagreement as a
+   measurement that way; see the note there. */
+function nqCumSimpson(g, h, n, out){
+  const c = out || new Float64Array(n + 1);
+  c[0] = 0;
+  for(let k = 2; k <= n; k += 2){
+    c[k - 1] = c[k - 2] + h / 12 * (5 * g[k - 2] + 8 * g[k - 1] - g[k]);
+    c[k]     = c[k - 2] + h / 3  * (g[k - 2] + 4 * g[k - 1] + g[k]);
+  }
+  if(n % 2) c[n] = c[n - 1] + h / 2 * (g[n - 1] + g[n]);   // guard: n should be even
+  return c;
+}
+
 /* an improper integral on a half-infinite range, by the substitution x = a + t/(1−t) */
 function nqImproperTail(f, a, tol){
   const g = t => { const u = 1 - t; return f(a + t / u) / (u * u); };

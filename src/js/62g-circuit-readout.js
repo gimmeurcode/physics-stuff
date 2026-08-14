@@ -23,7 +23,7 @@ function ckReadout(st){
   let fieldRows = '';
   if(st.field && (st.show.efield || st.show.heat || st.show.equipot)){
     const q = ckFieldAt(st.field, st.probeP.x, st.probeP.y);
-    fieldRows = kv('V at the probe', ckEng(q.V, 'V')) +
+    fieldRows = kv('V at the probe', ckEngF(q.V, 'V', m.vScale, 1e-9, m.noiseV)) +
       kv('E = −∇V', '(' + fmtNum(q.Ex, 4) + ', ' + fmtNum(q.Ey, 4) + ') V per grid unit') +
       kv('|E|', fmtNum(q.mag, 4)) +
       kv('inside a conductor?', q.inside ? 'yes — E = 0 inside an ideal conductor' : 'no');
@@ -34,19 +34,28 @@ function ckReadout(st){
     fieldRows += kv('as a fraction of Earth\'s field', fmtNum(Math.abs(bz) / 5e-5, 3) + ' × 50 µT');
   }
 
+  /* every SOLVED quantity is floored against the largest of its own kind in the
+     same solution — below that it is the LU's arithmetic, not the circuit, and
+     "29.7 fA" would be a current nothing carries. Residuals are handled the
+     other way, further down: they keep their number and gain a verdict. */
+  const eV = v => ckEngF(v, 'V', m.vScale, 1e-9, m.noiseV);
+  const eI = v => ckEngF(v, 'A', m.iScale, 1e-9, m.noiseI);
+  const eP = v => ckEngF(v, 'W', m.pScale, 1e-9, m.noiseP);
+  const eJ = v => ckEngF(v, 'J', m.eScale);
+
   const nodeRows = [];
   for(let k = 1; k < ck.nm.count; k++)
-    nodeRows.push(kv('node ' + k + (k === nd ? ' ← probe' : ''), ckEng(m.nodeV[k], 'V')));
+    nodeRows.push(kv('node ' + k + (k === nd ? ' ← probe' : ''), eV(m.nodeV[k])));
 
   const elRows = m.states.map(q => {
     let extra = '';
     if(q.kind === 'XFMR' || q.kind === 'XFMRI')
-      extra = ' · secondary ' + ckEng(q.v2, 'V') + ', ' + ckEng(q.i2, 'A');
-    if(q.energy) extra += ' · stores ' + ckEng(q.energy, 'J');
+      extra = ' · secondary ' + eV(q.v2) + ', ' + eI(q.i2);
+    if(q.energy) extra += ' · stores ' + eJ(q.energy);
     if(q.note) extra += ' · ' + q.note;
     return kv(q.name + ' (' + CK_KINDS[q.kind].name + ')',
-      ckEng(q.v, 'V') + ' · ' + ckEng(ckShowI(q), 'A') + ' · ' +
-      ckShowVerb(q) + ' ' + ckEng(Math.abs(ckShowP(q)), 'W') + extra);
+      eV(q.v) + ' · ' + eI(ckShowI(q)) + ' · ' +
+      ckShowVerb(q) + ' ' + eP(Math.abs(ckShowP(q))) + extra);
   });
 
   /* the closed forms this particular circuit should obey */
@@ -123,16 +132,16 @@ function ckReadout(st){
     const pp = ckProbePair(ck, s.x, na, nb, fdrive);
     const z = pp.z;
     probeCard = `<div class="card tight"><div class="ttl">Between the probes · node ${na} → node ${nb}</div>
-      ${kv('V at probe A', ckEng(pp.va, 'V'))}
-      ${kv('V at probe B', ckEng(pp.vb, 'V'))}
-      ${kv('ΔV = V_A − V_B', '<b>' + ckEng(pp.dv, 'V') + '</b>')}
-      ${z ? kv('Thévenin V_th', ckEng(pp.dv, 'V')) : ''}
+      ${kv('V at probe A', eV(pp.va))}
+      ${kv('V at probe B', eV(pp.vb))}
+      ${kv('ΔV = V_A − V_B', '<b>' + eV(pp.dv) + '</b>')}
+      ${z ? kv('Thévenin V_th', eV(pp.dv)) : ''}
       ${z ? kv(fdrive ? 'Thévenin Z_th at ' + ckEng(fdrive, 'Hz') : 'Thévenin R_th',
                fdrive ? ckEng(z.re, 'Ω') + (z.im >= 0 ? ' + j' : ' − j') + ckEng(Math.abs(z.im), 'Ω')
                       : ckEng(z.re, 'Ω')) : ''}
       ${z && fdrive ? kv('|Z_th| ∠ φ', ckEng(z.mag, 'Ω') + ' ∠ ' + fmtNum(z.ph, 4) + '°') : ''}
-      ${pp.ishort !== null ? kv('current if you shorted them', '<b>' + ckEng(pp.ishort, 'A') + '</b>') : ''}
-      ${z ? kv('power a matched load would take', ckEng(z.mag > 1e-12 ? pp.dv * pp.dv / (4 * Math.max(1e-12, z.re)) : 0, 'W')) : ''}
+      ${pp.ishort !== null ? kv('current if you shorted them', '<b>' + eI(pp.ishort) + '</b>') : ''}
+      ${z ? kv('power a matched load would take', eP(z.mag > 1e-12 ? pp.dv * pp.dv / (4 * Math.max(1e-12, z.re)) : 0)) : ''}
       <p class="help">An ideal voltmeter draws nothing, so <b>ΔV</b> is just the difference of two solved node
       potentials. The rest is <b>Thévenin's theorem</b>: every linear network seen from two terminals is
       indistinguishable from one source <b>V_th</b> behind one impedance <b>Z_th</b>. Z_th is measured here the
@@ -145,9 +154,9 @@ function ckReadout(st){
 
   return probeCard + `<div class="card tight"><div class="ttl">At the probe · (${fmtNum(st.probeP.x,3)}, ${fmtNum(st.probeP.y,3)})</div>
       ${near ? kv('nearest part', near.name + ' — ' + CK_KINDS[near.kind].name) : ''}
-      ${near ? kv('v across it', ckEng(near.v, 'V')) : ''}
-      ${near ? kv('i through it', ckEng(ckShowI(near), 'A')) : ''}
-      ${near ? kv('p = v·i', ckEng(Math.abs(ckShowP(near)), 'W') + ' ' + ckShowVerb(near)) : ''}
+      ${near ? kv('v across it', eV(near.v)) : ''}
+      ${near ? kv('i through it', eI(ckShowI(near))) : ''}
+      ${near ? kv('p = v·i', eP(Math.abs(ckShowP(near))) + ' ' + ckShowVerb(near)) : ''}
       ${fieldRows}
       ${fieldRows ? '' : '<p class="help">Switch on <b>potential map</b>, <b>equipotentials</b> or <b>electric field E</b> to have the probe read the field as well as the circuit.</p>'}
     </div>
@@ -164,16 +173,29 @@ function ckReadout(st){
       convention throughout, which is what makes the Tellegen sum below close exactly.</p>
     </div>
     <div class="card tight"><div class="ttl">The laws, checked numerically</div>
-      ${kv('largest KCL residual  Σi at a node', ckEng(m.kclMax, 'A') + (m.kclNode ? ' (node ' + m.kclNode + ')' : ''))}
-      ${kv('relative to the biggest branch current', fmtNum(m.kclRel, 3))}
+      ${kv('largest KCL residual  Σi at a node', ckGap(m.kclMax, m.iScale, 'A') + (m.kclNode ? ' (node ' + m.kclNode + ')' : ''))}
+      ${kv('relative to the biggest branch current', fmtSig(m.kclRel, 3))}
       ${kv('KCL verdict', m.kclRel < 1e-6 ? '✓ Kirchhoff\'s current law holds' : 'check the circuit')}
-      ${kv('Σ power absorbed', ckEng(m.absorbed, 'W'))}
-      ${kv('Σ power delivered', ckEng(m.delivered, 'W'))}
-      ${kv('Tellegen residual', ckEng(m.residual, 'W'))}
-      ${kv('energy stored in L and C', ckEng(m.energy, 'J'))}
+      ${kv('Σ power absorbed', eP(m.absorbed))}
+      ${kv('Σ power delivered', eP(m.delivered))}
+      ${kv('Tellegen residual', ckGap(m.residual, m.pScale, 'W'))}
+      ${kv('energy stored in L and C', eJ(m.energy))}
       <p class="help">Both checks are computed from each part's own constitutive law — <b>v = iR</b>,
       <b>i = C dv/dt</b>, <b>v = L di/dt</b> — evaluated at the solved node voltages, never read back out of
       the matrix. Their agreement is therefore evidence that the solve is right, not a restatement of it.</p>
+      <p class="help">A residual is quoted <i>against</i> the largest quantity of its own kind, and below
+      the resolution of the solve it is reported as zero rather than named. The matrix is factorised in
+      double precision, so a solution carries roughly ε·κ of arithmetic in it — for a circuit spanning
+      1 Ω to 1 MΩ that is a part in 10¹⁰, and a milliamp-scale answer therefore has a hundred femtoamps of
+      pure round-off attached. Printing that as "29.7 fA" would name a current nothing carries.</p>
+      <p class="help">A circuit that has settled to nothing has no scale of its own left to be small
+      against, so there is a second floor underneath that one, and it is physics rather than arithmetic:
+      every resistance at temperature T generates <b>Johnson–Nyquist noise</b>, 4k<sub>B</sub>TB/R of
+      mean-square current and 4k<sub>B</sub>TBR of mean-square voltage, whatever the simulation does. Over
+      the widest band this run can represent, B = 1/2h, that comes to
+      ${ckEng(m.noiseI, 'A')} and ${ckEng(m.noiseV, 'V')} here. A reading below it could not be taken on
+      any bench at room temperature. An ideal circuit with no resistance in it dissipates nothing and so
+      has no Johnson noise at all — which is why that floor then vanishes rather than being assumed.</p>
     </div>
     ${theory ? `<div class="card tight"><div class="ttl">What theory says this circuit must do</div>${theory}</div>` : ''}
     ${acRows ? `<div class="card tight"><div class="ttl">In the frequency domain</div>${acRows}

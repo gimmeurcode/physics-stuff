@@ -217,7 +217,7 @@ STAGES.igTriple = {
       ${kv('coordinate system', S.sph ? 'spherical — ρ² sin φ dρ dφ dθ' : (S.cyl || st.sys === 'cyl') ? 'cylindrical — r dz dr dθ' : 'Cartesian — dz dy dx')}
       ${kv('V = ∭ 1 dV, computed', fmtNum(V, 8))}
       ${kv(S.exactLabel || 'the known volume', fmtNum(S.exactVol, S.exactLabel ? 5 : 8))}
-      ${kv('difference', fmtNum(Math.abs(V - S.exactVol), 3))}
+      ${kv('difference', fmtAgree(V, S.exactVol))}
     </div>
     <div class="card tight"><div class="ttl">The highlighted cross-section</div>
       ${kv('at height z =', fmtNum(zs, 5))}
@@ -371,7 +371,7 @@ STAGES.igCylSph = {
         ${kv('cells', `${st.nr} × ${st.np} × ${st.nt} = ${st.nr * st.np * st.nt}`)}
         ${kv('Σ of exact cell volumes', fmtNum(total, 8))}
         ${kv('4πρ³/3', fmtNum(exact, 8))}
-        ${kv('difference', fmtNum(Math.abs(total - exact), 3))}
+        ${kv('difference', fmtAgree(total, exact))}
         ${kv('by nested quadrature', fmtNum(shell, 8))}
       </div>
       <div class="card tight"><div class="ttl">The sin φ, in numbers</div>
@@ -401,7 +401,7 @@ STAGES.igCylSph = {
     return `<div class="card tight"><div class="ttl">The cylinder r ≤ ${fmtNum(st.rho, 3)}, 0 ≤ z ≤ 2</div>
       ${kv('∭ r dz dr dθ', fmtNum(V, 8))}
       ${kv('πr²h', fmtNum(Math.PI * st.rho * st.rho * hgt, 8))}
-      ${kv('difference', fmtNum(Math.abs(V - Math.PI * st.rho * st.rho * hgt), 3))}
+      ${kv('difference', fmtAgree(V, Math.PI * st.rho * st.rho * hgt))}
     </div>
     <div class="card tight"><div class="ttl">The r, in numbers</div>
       ${kv('innermost cell volume', fmtNum(inner, 7))}

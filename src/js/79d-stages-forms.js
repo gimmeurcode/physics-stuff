@@ -238,7 +238,7 @@ STAGES.dfHarmonic = {
     return `<div class="card tight"><div class="ttl">The mean value property</div>
       ${kv('f at the centre', fmtNum(centre, 8))}
       ${kv('average over the circle', fmtNum(mean, 8))}
-      ${kv('difference', fmtNum(Math.abs(centre - mean), 3))}
+      ${kv('difference', fmtAgree(centre, mean))}
       ${kv('∇²f there', fmtNum(lap, 4))}
       ${kv('harmonic?', D.harmonic ? 'yes' : '<b>no</b> — ∇²f ≠ 0')}
       <p class="help">${D.harmonic

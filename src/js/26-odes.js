@@ -189,6 +189,21 @@ function odMaxGap(sol, num){
   }
   return m;
 }
+/* The scale that gap has to be read against, measured over the SAME samples:
+   the largest excursion the solution actually makes. A gap of 1e-3 is the
+   stepper working on a solution of size 10 and the stepper failing on one that
+   has decayed to 1e-3. Kept separate from odMaxGap rather than folded into a
+   returned object, because four unit tests assert on that function's numeric
+   value directly. */
+function odGapScale(sol, num){
+  let s = 0;
+  for(let i = 0; i < num.ts.length; i += 3){
+    const a = Math.abs(sol(num.ts[i])), b = Math.abs(num.ys[i]);
+    if(Number.isFinite(a)) s = Math.max(s, a);
+    if(Number.isFinite(b)) s = Math.max(s, b);
+  }
+  return s;
+}
 
 /* ------------------------------------------- undetermined coefficients ------ */
 /* The forcings whose particular solutions can be guessed, with the guess and

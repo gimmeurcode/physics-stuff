@@ -262,6 +262,11 @@ function boot(){
 
   document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) startLoop(); });
 
+  /* Last, because it may navigate: a link in the address bar names a wing, a
+     demo and the controls the author had set, and following it must happen
+     after every panel builder above exists to be driven. */
+  plInit();
+
   startLoop();
 }
 

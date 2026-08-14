@@ -14,7 +14,8 @@ carried forward.
 | you are | read |
 |---|---|
 | **starting a session cold** | **§4.1 (three commands), then §4.3 (what to work on) and §4.3a (the order that avoids rework)**. Do not read Part 3 end to end — go to the one programme §4.3 sends you to |
-| about to write anything | Part 2 — **the rules**. Non-negotiable |
+| about to write anything | **`SITE-RULES.md`** — the nine laws and the universality rule, which outrank this document — then Part 2 here, the mechanics that satisfy them. Both non-negotiable |
+| **fixing a defect** | **`SITE-RULES.md` Part 2** — the instance reported is a sample, not the population. Its §2.6 checklist is what "done" means |
 | choosing what to work on | **§4.3**, which is ordered by what makes the *next* work cheaper. Part 3 has the detail once you have picked |
 | deciding *how* to sequence a change | **§4.3a** — machinery before instances, fix a pattern before replicating it, batch by gate |
 | changing existing code | `AI-GUIDE.md` for the mechanics, Part 5 here for the traps |
@@ -23,18 +24,42 @@ carried forward.
 | wondering if something was checked | `AUDIT.md` (the accuracy record) |
 | about to reopen a settled question | **§1.7** first — several are already decided with reasons |
 
-**The short version, 2026-08-13 (revised).** The build is green on every gate.
-**Programme E — performance — is done** (§3.5): the 17 stages over 1 200 paint
-calls per frame are down to 2, the 2-D mean from 569 to 131, and the panel
-rebuild from 2.86 MB/s of HTML to nothing. The next work in order is now
-**delivery (§3.9), then the permalink, then verification items D2–D3, then new
-subject matter.** Delivery leads because it is small and it unblocks showing
-anyone anything, and it is now **mostly prepared**: Git is installed, this is a
-working tree, and `.gitignore` is verified against a real dry run (§3.9). What
-is left there is a commit identity and the push.
+**Verified 2026-08-14:** `build` 231 modules · `smoke` OK (wings=40, stages=178,
+seelinks=80) · `runtests` **4249 passed, 0 failed** · `measure` 593 experiments
+in 118 groups · `runall` demos=593 controls=6462 **caught=0 OK** ·
+`auditresid` **findings=0** · `auditmarks` 2303 → 20 · `auditdocs` **bad=0 OK**.
+Not re-run that day: `audittext`, `auditlink`, `auditperf`, `auditsize`,
+`auditviewport`, `auditclaims`, `auditcustom`, `auditpanel`, `auditzoom`.
 
-Three documents survive alongside this one and are not duplicated here:
+**Name the gates you ran; never inherit a green.** This paragraph used to read
+"the build is green on every gate", which was an *inherited* claim: the working
+tree carried uncommitted edits to some forty stage files from the previous
+session, so the heavy gates' last green predated the code in the tree. `runall`
+was then run and did pass — but that is a measurement, not an assumption, and
+the list above says which measurements exist.
 
+**The short version, 2026-08-13 (revised twice).** The build was green on every
+gate then in existence. **Programme E (performance), Programme I (delivery) and
+Programme F's permalink are done.** Performance: the 17 stages over 1 200 paint
+calls per frame are down to 2, the 2-D mean from 569 to 131, the panel rebuild
+from 2.86 MB/s of HTML to nothing (§3.5). Delivery: `main` is pushed and the
+artifact is published and gated (§3.9); the website half is one hosting setting
+away, which needs a human. Permalink: `#w=…&d=…&c.<id>=…`, 593 of 593 round
+trips exact, gated by `./auditlink.ps1` (§3.6).
+
+**The next work in order is verification items D2–D3, then the EM and atom
+scenario editors, then syllabus gaps B1–B4.** D2–D3 lead because they multiply
+everything after them and must land before Programme C's 22 wings reproduce the
+same class of defect at scale. Note what the permalink cost and returned: it
+touched no stage and fixed **six defects in code it did not own**, every one
+invisible to the 22 gates that existed. §4.3a rule 8 is the generalisation.
+
+Four documents survive alongside this one and are not duplicated here:
+
+- **`SITE-RULES.md`** — the layer **above** this one: what must be true of the
+  site (the nine laws) and what a fix owes the wings it was not found in
+  (universality). Part 2 here is the mechanics that satisfy it. Where the two
+  appear to conflict, `SITE-RULES.md` wins.
 - **`AI-GUIDE.md`** — *how* to change things: the recipes, the toolkit APIs, the
   layout system. Orientation for editing.
 - **`AUDIT.md`** — the accuracy record. What was wrong, what it says now, how the
@@ -53,6 +78,10 @@ Everything below was measured on **2026-08-12** against the current build, not
 copied from an earlier document. The commands that produced each number are
 given so the next session can re-measure rather than trust.
 
+**Re-measured 2026-08-14.** The row values below are the current ones, and
+`./auditdocs.ps1` now fails the build if this table, `CLAUDE.md`, `AI-GUIDE.md`,
+`README.md` or `SITE-RULES.md` drifts from what the site actually reports.
+
 | quantity | value | how it was measured |
 |---|---|---|
 | wings | **40** | `./measure.ps1` (and `./smoke.ps1` → `wings=40`) |
@@ -60,25 +89,39 @@ given so the next session can re-measure rather than trust.
 | demo groups | **118** | same. **Do not grep `src/` for this** — patterns return 89 or 105 |
 | experiments driving a canvas stage | **508** | same (the other 85 drive the field pipeline) |
 | canvas stages | **178** | `./smoke.ps1` → `stages=178`; `./measure.ps1` confirms `unreachablestages=none` |
-| source modules | **230** | `./build.ps1` |
-| deployable size | **5 351 740 bytes** (5.35 MB / 5.1 MiB) | `./measure.ps1`. **`build.ps1` prints ~5 294 000, which is a CHARACTER count** — the Unicode maths symbols cost ~57 KB more as UTF-8 bytes. Both are far inside any upload limit. **A fresh `git clone` builds ~15.6 KB smaller**: `.gitattributes` normalises line endings to LF and 54 of the source files carried CRLF when this was measured, which is 15 627 carriage returns. The app is identical — but this is why the row says *measure*, not *quote* |
-| source lines | ~75 930 (all of `src/`) | `./measure.ps1`; `./map.ps1` reports `src/js` alone |
-| unit tests | **4175 passed, 0 failed** | `./runtests.ps1` |
+| source modules | **231** | `./build.ps1` |
+| harness scripts | **26** | `Get-ChildItem *.ps1`. Every one must appear in §1.6 and §4.2 — `./auditdocs.ps1` checks |
+| deployable size | **5 409 933 bytes** (5.41 MB / 5.16 MiB) | `./measure.ps1`. **`build.ps1` prints a smaller figure, which is a CHARACTER count** — the Unicode maths symbols cost ~57 KB more as UTF-8 bytes. Both are far inside any upload limit. **A fresh `git clone` builds ~15.6 KB smaller**: `.gitattributes` normalises line endings to LF and 54 of the source files carried CRLF when this was measured, which is 15 627 carriage returns. The app is identical — but this is why the row says *measure*, not *quote* |
+| source lines | ~77 044 (all of `src/`) | `./measure.ps1`; `./map.ps1` reports `src/js` alone |
+| unit tests | **4249 passed, 0 failed** | `./runtests.ps1` |
+| `mkPlot` call sites | **250** | `./measure.ps1` |
+| permalink round trips | **593 of 593 exact**, 11 demos measured stochastic | `./auditlink.ps1` |
 | declared table claims | **249, bad=0** | `./auditclaims.ps1` |
 | "See it in the laboratory" links | 80, all resolving | `./smoke.ps1` → `seelinks=80` |
 
-**The stale numbers you may find elsewhere.** `CLAUDE.md` and `AI-GUIDE.md` said
-584 experiments, 222 modules and 3759 tests; the retired `ROADMAP.md` said 555 /
-213 / 2460 and `TIER-THREE-ITEMS.md` said 214 / 2938. All were true when
-written. The figures in the table above are the current ones. **A count in prose
-goes stale within a session — measure before quoting.**
+**The stale numbers this table replaced.** Each row was true when it was
+written, and every one was found by hand rather than by any gate:
+
+| document | claimed | corrected |
+|---|---|---|
+| `AI-GUIDE.md` | 4175 unit tests in one paragraph, 4207 in another | 2026-08-14 |
+| `README.md` | 230 modules, 4175 unit tests | 2026-08-14 |
+| `CLAUDE.md`, `AI-GUIDE.md` | 584 experiments, 222 modules, 3759 unit tests | 2026-08-12 |
+| the retired `ROADMAP.md` | 555 experiments, 213 modules, 2460 unit tests | 2026-08-12 |
+
+That is why **`./auditdocs.ps1`** now exists: it re-measures the site and fails on
+any document that contradicts it. **A count in prose goes stale within a session
+— measure before quoting, and date the quote.** A figure on a line carrying a
+`YYYY-MM-DD`, or under a dated heading, is read as a record and exempted; every
+other figure is a live claim and is checked.
 
 ## The invariant that must hold on every build
 
 ```
-./build.ps1     → 230 modules, no error
+./build.ps1     → 231 modules, no error
 ./smoke.ps1     → smoke OK        (parses, boots, nav agrees, no ctText shift)
 ./runtests.ps1  → 0 failed
+./auditdocs.ps1 → bad=0 OK        (the documents still describe the site)
 ```
 
 **A claim in a preset table is not covered by any of those three.** `./auditclaims.ps1`
@@ -90,8 +133,13 @@ one guess ever made without it — that the 3D stages were the expensive ones �
 wrong by a factor of forty. Run it before optimising anything, and after adding
 any stage that draws per-cell or per-sample.
 
-If those three do not pass, nothing else matters and nothing else is worth
-running.
+**`./auditdocs.ps1` is in the invariant because documentation is part of the
+deliverable, not a report about it** (`SITE-RULES.md` §1.9). It costs ~1 minute
+and it is the only thing that reads a `.md` file at all: a stale count is a
+false claim on the same footing as a wrong readout, and every one of the eight
+found on 2026-08-14 had survived every other gate indefinitely.
+
+If those do not pass, nothing else matters and nothing else is worth running.
 
 ---
 
@@ -103,10 +151,10 @@ running.
 src/head.html      <- <meta>, title
 src/styles.css     <- the whole design system
 src/shell.html     <- the DOM skeleton (header, canvas, dock, rail, palette)
-src/js/*.js        <- 230 modules, concatenated in ORDINAL filename order
+src/js/*.js        <- 231 modules, concatenated in ORDINAL filename order
         |
         v  ./build.ps1
-vector-calculus.html   (5 339 257 bytes, the deployable artifact)
+vector-calculus.html   (5 409 933 bytes on 2026-08-14, the deployable artifact)
 ```
 
 No build step beyond concatenation. No dependencies, no network, no framework.
@@ -218,14 +266,17 @@ no author's function to replace; the "r(θ) region" slot went instead to
 
 ## 1.6 The verification harness
 
-**22 scripts** (`Get-ChildItem *.ps1` — the table below lists them all; the
-"nine" this line used to claim was wrong for a long time). What matters is
-**what each one can see that the others cannot** — every one of them exists
-because something shipped through a blind spot.
+**26 scripts** (`Get-ChildItem *.ps1` — **that command is the authority, not this
+number**; the table below listed 23 until 2026-08-14, when `auditmarks` and
+`auditresid` turned out to have been missing from it since they were written, and
+the "nine" the line claimed before that was wrong for far longer). What matters
+is **what each one can see that the others cannot** — every one of them exists
+because something shipped through a blind spot. `./auditdocs.ps1` now fails if a
+script exists that this table does not describe.
 
 | script | time | must print | sees what nothing else does |
 |---|---|---|---|
-| `build.ps1` | ~1 s | `230 modules` | — |
+| `build.ps1` | ~1 s | `231 modules` | — |
 | `auditperf.ps1` | ~40 s | *(a ranking)* | **where a frame goes** — paint calls, path ops, 3D primitives sorted, and **the bytes a refresh rewrites when nothing has changed**, for all 178 stages. Nothing else measures cost at all, and *both* guesses made without it were wrong: that 3D was the expensive part, and that unbatched strokes were. Its panel column used to report the panel's **size**, which could not see its own fix — it reports **writes** now |
 | `measure.ps1` | ~15 s | *(the Part 0 table)* | the headline counts, **from the booted app** — wings, groups, experiments, stage-driven vs field, and any stage no demo reaches. Static greps over `src/` for the group count return 89 or 105 depending on the pattern; the app says 118. Also the artifact's real **byte** size, which `build.ps1` does not print |
 | `smoke.ps1` | ~10 s | `smoke OK` | whether the bundle **parses and boots at all**; nav/home/`NAV_GROUP_OF` agreement; every stage carries all nine methods; all 80 see-links resolve; `ctText` argument shifts; **markup inside canvas text**, which the canvas draws as its own tags and nothing else can see |
@@ -233,9 +284,13 @@ because something shipped through a blind spot.
 | `runall.ps1` | ~18 min | `caught=0 OK` | every demo × every control actually runs; greps prose for `undefined`/`NaN`/`Infinity` |
 | `auditcustom.ps1` | ~1 min | `bad=0 OK` | the **"type your own" path**, which `runall` never selects. Drives textareas from their `data-audit` attribute |
 | `auditartifact.ps1` | ~1 min | `bad=0` | whether the app survives being **published as a Claude artifact** — nested inside the host's own document, in all three viewer-theme states including the *system* one that stamps no `data-theme` at all. Reads the theme back two ways, the CSS token **and** the array the canvas paints with, because a toggle that moved one and not the other would repaint every picture for the wrong theme |
+| `auditlink.ps1` | ~2 min | `findings=0` / `auditlink OK` | whether a **permalink reproduces the view it was copied from** — all 593 demos, perturbed, copied, navigated away from and followed back, plus one **cold load** through `plInit()` inside `boot()`. Two routes, and the first alone is worthless: the controls, *and* the text the visible panels print **from** those controls. Neutering `plNotify` so a restore fills every box and tells no stage anything leaves 586 of 593 passing the control comparison and fails 505 on the text. Also fails on a **duplicate element id** under `#dock`, because a permalink's keys *are* element ids. It **measures** which demos are stochastic rather than keeping a list of them (11 are) |
 | `auditpanel.ps1` | ~20 s | `bad=0` / `auditpanel OK` | whether a stage still has its readout, ladder and chip **after being left and reopened**. `uiSetHtml` skips a write matching what it last wrote, so the panels are stateful and anything clearing them behind its back makes the next identical refresh a silent no-op. On the build that introduced it **145 of 178 stages came back blank and `runall` still said `caught=0`** — it visits each demo once and never returns to one |
 | `auditderive.ps1` | ~40 s | `flagged=0 OK` | every stage's `derive()`, which **nothing else calls**; and whether rungs carry reasoning or restate algebra |
 | `auditclaims.ps1` | ~30 s | `bad=0 OK` | whether the **preset tables tell the truth** — 249 declared claims across 14 tables recomputed by an independent route. Reaches `EIG_PRESETS` (78b) and `NM_FUNCS` (79g), which are outside the window `runtests` extracts |
+| `auditresid.ps1` | ~1 min | `findings=0` / `auditresid OK` | whether a **residual is printed as though it were a measurement**. A row promising a difference must carry the scale it is read against, and two ways of failing that both shipped: `fmtNum`'s dead zone at [1e-4, 5×10⁻ˢⁱᵍ) printed `dyForce`'s genuine 7.8% gap as "difference 0 J" in the affirmative colour, and a circuit at steady state printed 29.7 fA of pure round-off as a finding. It reads **rendered panel text**, not source, so a new way of getting it wrong is caught too. **Widened 2026-08-14 after its own blind spots were measured**, and each one was hiding real defects: it read only `readout` and `chip`, so the **derive ladder** (~717 000 rendered characters) and the legend were invisible; it tested "is the scale printed?" against the *whole* panel text, and `SCALED` contains `of\s`, so **any panel containing the word "of" exempted itself**; its round-off pattern matched only the typeset `×10⁻ⁿ` form, so every residual printed through **`toExponential`** was invisible; and with `st.own` false at entry it never rendered the **55 stages' reader-supplied surfaces** at all — where 13 of the defects were. Now also reports an **advisory `noscale=`** count that does not fail the build, because no regex separates a two-route residual from a physical difference (`SITE-RULES` Part 4) |
+| `auditmarks.ps1` | ~1 min | *(old → new scores)* | whether the **key points drawn on a plot are real**. `pvFeatures` marked a break wherever a step beat 12× the curve's *median* step — which asks whether this part is steeper than the rest, not whether the curve is broken — so any curve with a long flat tail grew a picket fence of false poles. **2303 → 20 markers** across the stages, with controls proving `tan` and `1/x` keep their real poles: the first attempt scored 2303 → 10 and **silently dropped tan's pole**, which is the whole argument for having a control |
+| `auditdocs.ps1` | ~1 min | `bad=0 OK` | whether **these documents still describe the site**. It re-measures wings, experiments, groups, stages, modules, tests, see-links, scripts and artifact size, then reads every live `.md` and fails on a contradiction; checks that every `*.ps1` on disk is described in §1.6 and §4.2 and listed in `AI-GUIDE.md`; and that every file path a document names exists. **An undated number is a live claim; a number on a line carrying a `YYYY-MM-DD`, or under a dated heading, is a record and is exempt** — that is the only escape hatch, and it is honest because it says when the figure was true. **`-Fix` rewrites the stale counts** (exactly the digits it verified, printing each substitution — then read the diff). **`-SkipTests` makes the run partial and it says so**, because a `bad=0` from a run that did not look is worse than no gate. Nothing else reads a `.md` at all, and eight false counts had survived every other gate indefinitely |
 | `auditzoom.ps1` | ~1 min | `findings=0` | pan/zoom on all 178 stages, **and mkPlot's identity-at-rest** |
 | `auditframe.ps1` | ~1 min | *(a report)* | how much of each curve falls outside its window, classified `LINE`/`POLE`/`MINOR`/`CUT` |
 | `auditsize.ps1` | ~2 min | `findings=0` | eight canvas shapes — layouts that only break at another aspect ratio |
@@ -295,6 +350,13 @@ become mojibake that fails to parse. This has bitten twice.
 **These are not style preferences. Every one of them exists because its
 violation shipped a defect.** They apply to anything new and to anything being
 changed.
+
+**These are the mechanics. The laws they serve are in `SITE-RULES.md`**, which
+outranks this part — read it first if you are settling a question rather than
+looking up a call. In particular, its Part 2 (**a defect is found in one place
+and fixed in every place it exists**) governs every rule below: each one here was
+written after a class of defect was found at one instance, and §2.6 there is the
+checklist that says when a fix is finished.
 
 ## 2.1 The prime rule — measure, never assert
 
@@ -425,7 +487,7 @@ time:
 all sort between `60-` and `61-`. **Keep the letter even for a lone file** so the
 next insertion has room. Aim for **under ~600 lines / ~50 KB per file**.
 
-**Name collisions are silent.** All 230 modules share one script scope. Prefix
+**Name collisions are silent.** All 231 modules share one script scope. Prefix
 every engine function with its wing (`nq ga pc mv ig vc od ct ck rl qm dy tm la
 sk lp mx fn lt sy ph cx df ag pb nm nc sl sm pv em es at ws fl op rt wv`) and
 **grep case-sensitively before choosing a name**.
@@ -1032,7 +1094,8 @@ written without it will reproduce the same fourteen defects at scale.
 
 ## 3.5 Programme E — speed — **DONE 2026-08-13**
 
-**Executed and measured. `AUDIT.md` has the full entry.**
+**Executed and measured 2026-08-13. `AUDIT.md` has the full entry.** The figures
+below are a dated before/after record, not live counts.
 
 | | before | after |
 |---|---|---|
@@ -1106,7 +1169,7 @@ every machine, and for this renderer is what the cost actually is.
 
 | item | note |
 |---|---|
-| **No permalink** | verified: zero uses of `location.hash` in `src/`. Encoding wing, demo and control state into the URL hash would make the site usable for teaching — "open this link and look at what happens at β = 0.99". **The single biggest usability win available** |
+| ~~**No permalink**~~ | **DONE 2026-08-13.** `82a-permalink.js`: `#w=<wing>&d=<group.item>&c.<id>=<value>`, restored by driving the real controls so no stage needed changing. The URL carries only the **difference** from what the demo opened with, so a link is short and says what its author meant; the restore target is those defaults with the overrides merged on top, because a control sitting at its default can still need setting (moving `igFx` stops the sweep the link wanted running). The address bar follows wing and demo; **Copy link** captures the controls. **Not encoded, deliberately:** the View panel's pan/zoom (no stable plot identity), `ddAng` (the device that moves û, not a description of it), the theme (the viewer's). Gate: `./auditlink.ps1`, 593/593 exact, both negative controls seen to fail |
 | **No export** | neither the computed numbers (CSV) nor the figure (PNG/SVG) can be taken out |
 | **Drag-only interactions are keyboard-inaccessible** | the sketch pad, the region tool and every `pick()` handler need a keyboard path |
 | **Canvas content is invisible to a screen reader** | each stage could emit a short description of what is currently drawn into an `aria-live` region; `readout` is already close to this. `ckPinName` exists for the circuit half of it |
@@ -1159,7 +1222,11 @@ A word-sense the tool cannot tell apart is worth a reword, not a weaker pattern.
 That pairing is what makes Programme E urgent, because the two targets have very
 different amounts of CPU headroom for identical code.
 
-### What was measured, so nobody re-derives it
+### What was measured 2026-08-13, so nobody re-derives it
+
+**These are dated records of one measurement, not live figures** — the artifact
+has grown since (Part 0 has the current byte count). The *ratios* are what this
+table is for, and they hold.
 
 | | |
 |---|---|
@@ -1192,7 +1259,7 @@ do by default. Nothing in the app needs to change.
 **Prepared 2026-08-13.** Git 2.55.0 is installed (`C:\Program Files\Git\cmd`),
 this directory is now a working tree, and `.gitignore` is written and **verified
 against a real `git add --dry-run`**, not by inspection: it admits **264 files,
-11.4 MB** — the source tree, the 21 harness scripts, the docs and the deployable
+11.4 MB** — the source tree, the harness scripts, the docs and the deployable
 `vector-calculus.html` — and excludes every Chrome profile, `apptest-*.html`,
 `dom-*.txt`, `shot-*.png` and `audit-*.csv`. Without it the first commit carries
 ~1.5 GB of harness output. The ignore list was cross-checked line by line
@@ -1290,6 +1357,126 @@ defects in.
 - **A single `.exe` for both platforms does not exist.** `.exe` is Windows-only;
   macOS needs a `.app`. Any native route is two builds and two signing regimes.
 
+
+## 3.10 Programme J — the visual defect sweep (opened 2026-08-13)
+
+**Where this came from.** Forty screenshots of the running site, taken by the
+reader. **Every one carried a defect, and every gate was green at the time** —
+which is the fact to hold on to: the harness proves the laboratory *runs* and
+*says* the right things, and had almost nothing that looks at what it *draws*.
+Twenty root causes, most of them shared across many stages, so the count of
+affected stages is far larger than the forty pictures.
+
+**Read the root causes, not the screenshots.** Nine of the forty are one CSS
+rule; eleven are one missing clip.
+
+| # | defect | seen in | root cause | gate that should have caught it |
+|---|---|---|---|---|
+| **J1** | **Curves and markers are drawn outside their own plot box** — phase-plane trajectories sweep across the whole canvas and over the neighbouring inset; the trace–determinant marker lands outside the chart; `laMatrix`'s AB parallelogram runs off the top; the nuclear term-curves and the decay chain leave the frame; the Regge fit line and the modular-τ ray reach the canvas corner | 11 shots: `sySystem`×5, `laMatrix`, `ncBind`, `ncChain`, `wsRegge`, `wsTorus` | `pvClip` applies to `mkPlot` boxes, but these paths are drawn without it | **`auditframe.ps1` measures exactly this and is a REPORT, not a gate.** Make it fail |
+| **J2** | **Spurious "key points"** — a picket fence of yellow dashed pole markers over a steep but perfectly continuous stretch, and extremum circles all over a flat one | 4 shots: `odDamped`, `ltTransform`, `ltConv`, `ncChain` | `pvFeatures` (`59c`): a break is declared when a step exceeds `12 ×` the **median** step, which any steep-but-finite region clears; turning points need only `0.75 ×` the median | none — nothing inspects overlay marks |
+| **J3** | **Axis tick labels drawn twice once the view has been zoomed or panned**, so every negative tick reads `=40` instead of `−40` | 3 shots: `slBand`×2, `ncBind` | `pvDrawAxes` draws its own ticks when `moved`, on top of the stage's | none |
+| **J4** | **Axis titles collide with tick labels**, and one axis carries two unit scales that overlap; `ckLab`'s axis says `(s)` while its ticks are in ms; `wsRegge` draws two x-label sets at the same height, merging into `6 = 500` | 5 shots | no reservation of the gutter a rotated axis title needs | `auditsize`/`auditviewport` check layout but not label collision |
+| **J5** | **Every `<textarea>` is white in the dark theme** — the Shape-C scenario editors, which are the whole reader-input story | 6 shots: `rtInertia`, `rtRace`, `rtCouple`, `tmEngine`, `opLens`, `ncChain` | `styles.css` styles `input` and never `textarea` | `auditcontrast` reads CSS tokens, not the elements actually used |
+| **J6** | **The readout chip covers the canvas heading underneath it** | 3 shots: `rlTensor`, `ncChain`, `wsTorus` | the rule in `src/js/CLAUDE.md` ("centre it, or start below it") is not enforced | none |
+| **J7** | **A legend describing a different picture** — the cycloid caption says "dark red dots" over blue ones; "slicing a cone" keeps the focus–directrix legend and draws none of it, labelling the cutting plane "the conic"; `slBand` writes "green = allowed bands" in orange | 3 shots | `legend(st)` not keyed on the scene, exactly the trap already recorded in §2.4 | none |
+| **J8** | **The canvas title and the chip print the same `t` from different instants** — 7.76 against 6.9 on the very stage whose rail text promises "the picture and the numbers cannot drift apart" | 2 shots: `pcCurve` | the title is drawn every frame, the chip four times a second | none |
+| **J9** | **Round-off printed as a measurement** — `difference 0 J` where the two routes differ by 1.5e-4 and **7.8% relatively**; a circuit at its steady state printing `29.7 fA`, `148 fW`, `29.7 pV` | 3 shots: `dyForce`×2, `ckLab` | **not the formatter — a second-order quadrature under a fourth-order stepper** (see below), then `fmtNum` hiding the result, then no floor tied to the physics | §2.1 already forbids both; nothing measures it |
+| **J10** | **A curve joined across a pole** — the Veneziano amplitude's poles drawn as rectangles, the polyline running from +∞ to −∞ along the clamp | 1 shot: `wsVen` | `plotCurve` does not break the path at a sign-flipping discontinuity | J1's gate would see it as "outside the window" |
+| **J11** | **The EM sandbox can only place objects at z = 0** — its own caption admits it: "click to place a pos on the z = 0 plane" | 1 shot + code | `em3dPickPlane` (`60j`) intersects the ray with z = 0 only; `pick3d` calls `place(st, w.x, w.y)` with two coordinates | none |
+| **J12** | **The convolution middle panel is empty** and `t = 29.8` sits outside the plotted window | 1 shot: `ltConv` | the typed value is not bounded by the plot | none |
+| **J13** | **The energy-ledger ball is not on its track** — the track occupies a fifth of the plot and the ball floats to the left of where it starts | 1 shot: `dyEnergy` | track drawn over its own x-domain, ball placed in plot coordinates | none |
+| **J14** | **The tangent plane is drawn several times larger than the ±1 window its title claims** | 1 shot: `mvTangent` | plane extent not tied to the window | none |
+| **J15** | **`igChange`'s Ellipse preset contradicts its own prose** — the text promises the unit disc mapping to an ellipse; the picture draws a square mapping to a rectangle | 1 shot | the region is the (u,v) rectangle for every preset | `auditclaims` checks table claims, not prose-to-picture |
+| **J16** | **The inertia bitmap is too coarse** — the disc's edge is visibly stair-stepped | 2 shots: `rtInertia` | cell count fixed while the blit scales to the canvas | `auditperf` measures cost, not resolution |
+| **J17** | **The race labels sit on top of the ramp**, and two of the six read "Solid" | 1 shot: `rtRace` | fixed label positions; `n` not distinguishing cylinder from sphere | none |
+| **J18** | **The p–n junction's diode turns on at negative bias**, and the axis excludes the +0.7 V it should turn on at | 1 shot: `slDiode` | sign or axis range — to be measured, not guessed | none |
+| **J19** | **A dense fan of false contours at the branch cut** of the recovered potential | 1 shot: `vcConserv` | the contour tracer crosses the atan2 discontinuity | none |
+| **J20** | **The dock's content is clipped horizontally** at some widths | 1 shot: `sySystem` | overflow in the dock's grid | `auditviewport` checks the document, not the dock's inner scroll |
+
+### Decisions taken 2026-08-13 — do not reopen
+
+- **J11, how a reader sets the height: BOTH halves** (answer (a)). A "place at
+  z = …" control that moves the placement plane, **drawn** so it is visible
+  where the next object will land, **and** a `z` box in the selected-object
+  panel so an object already placed can be lifted. Not one or the other.
+- **J1, clipping: yes, clip the function lines to the box** — and the curve must
+  be **re-generated for the window actually on screen**, so zooming in shows
+  more detail and zooming out shows more of the function, both at honest
+  accuracy. Half of that was already true and nobody had noticed: `plotCurve`
+  samples over `P.x0…P.x1`, which is the window *after* pan and zoom, so the
+  arithmetic already follows the viewport. What did not follow was the sample
+  COUNT, fixed at 240 however wide the box — a point every five pixels on a
+  large plot, which is why a zoomed-in curve looked polygonal. It now follows
+  the box's pixel width (one sample per ~1.5 px, 240–1200), which the canvas
+  bounds, so §2.5's "cap anything deriving a loop count from a data span" is
+  respected: the span can grow without limit under zoom, the box cannot.
+  **Measured: 2-D mean paint calls 131 → 130** — the extra samples are `lineTo`s
+  inside paths that were already batched, which §3.5 records as the cheap part.
+
+### The generalisation rule, applied retrospectively — added 2026-08-14
+
+**Every J item is a class, not a screenshot.** J9 was recorded as "3 shots" and
+turned out to be **55 defective rows in 44 stages across 20 wings**. That was not
+bad luck; it is what the table's "seen in" column always means, and the count
+there is the count of *pictures the reader happened to take*, never the count of
+instances. Before fixing any remaining item:
+
+1. Grep the **cause**, count the population, and write the number down.
+2. Prefer the shape that makes the defect **unrepresentable** — `fmtAgree(a, b)`
+   derives its scale, `fmtGap(gap, scale)` still lets a caller pass the wrong one.
+3. Build the gate that renders what the site actually shows, **corrupt one site
+   back, and watch it fail**.
+4. Let the measurement overrule the diagnosis — see the `qmShoot` note under J9.
+
+Checked retrospectively against the items already closed, and they hold up: J5
+was one CSS rule for all six stages; J2 replaced the break rule itself
+(`pvBreakReal`, 2303 → 20 markers over all 178 stages, with named controls);
+J1's clipping went into `ctPath`/`ctFill`/`ctDot`/`ctArrow`, 465 call sites
+inheriting one omission, not into the eleven stages photographed; J3 gave the
+ticks one owner. Each already fixed the class. **J9 is the first one where the
+recorded diagnosis was itself wrong**, which is the argument for measuring before
+fixing rather than after.
+
+### The order to fix them in
+
+**By §4.3a rule 1 — machinery before instances.** J1, J2, J3, J5 and J9 are one
+change each covering thirty-odd of the forty pictures. Do those first, each with
+the gate that would have caught it, then the single-stage items.
+
+1. **J5** — one CSS rule, six stages. Trivial and highly visible.
+2. **J1** — clip every `mkPlot` path. **Turn `auditframe.ps1` into a gate**: it
+   already measures how much of each curve leaves its window and classifies the
+   honest cases (`LINE`, `POLE`) apart from the dishonest ones.
+3. **J2** — a break must be a *discontinuity*, not a steep step. Compare against
+   the step the neighbouring samples predict, not the median of all of them, and
+   require the jump to survive a refinement. Measure the false-positive count
+   across all 178 stages before and after.
+4. **J3** — one owner for the ticks.
+5. **J9** — **DONE**, and it was not the bug it looked like. See the entry in the
+   progress table.
+6. Then J4, J6, J7, J8, J10 … J20, each with a check.
+
+### Progress
+
+| item | state |
+|---|---|
+| **J5** textareas | **DONE.** One rule in `styles.css`; six stages; screenshot looked at |
+| **J2** key points | **DONE.** `pvBreakReal` in `59c`; gated by the new **`./auditmarks.ps1`**, which scores the old and new rules in one run: **2303 → 20** markers across 178 stages, with named controls proving `exp(−400x²)` and `exp(−30x)` lose their false fences (64 → 0, 28 → 0) while `tan` and `1/x` keep their real poles. The first attempt scored 2303 → 10 and **silently dropped tan's pole**; only the control caught it, which is the whole argument for having one |
+| **J1** sample density | **DONE** (the resampling half — see the decision above) |
+| **J1** clipping | **DONE, and it was four lines in one file.** `plotCurve` always clipped; **everything else went through `ctPath`, `ctFill`, `ctDot` and `ctArrow`, none of which did** — 310 + 155 call sites inheriting one omission. They clip now. The new **`ctClip`** (61a) is what `pvClip` could not be: `pvClip` skips a `ctBox` because §2.5 frees an aspect-true diagram to point an ARROW past its frame, and that exemption is right for arrows and wrong for curves — the phase plane is a ctBox, and its trajectories were crossing the trace–determinant chart beside it. Curves, fills and markers now clip to any framed box; only `ctArrow` keeps the plot-only rule. Verified by screenshot |
+| **J3** doubled ticks | **DONE.** `ctGrid` labelled at `+4px` with 3 figures and `pvDrawAxes` at `+3px` with 4, **both at once** on a moved view — two minus signs a pixel apart, which is the `=40`. `ctGrid` now yields the whole grid to `pvDrawAxes` once the view has moved, because pv's ticks follow the window and a stage's are a fixed list chosen for the author's window |
+| **compute** | **DONE** (asked for separately). `refreshAll` was evaluating the field, its divergence, curl and Jacobian at the probe and rebuilding five panels of HTML **into elements with `display:none`** on every one of the 178 stages, because `applyWingSections` hides the field panels but nothing stopped them being recomputed. It now returns early while a stage is active. Safe because the hiding is all-or-nothing, and the route back always runs `applyField` after `stageExit` |
+| **J9** round-off as measurement | **DONE, and the hypothesis recorded here was wrong in both halves.** It said `gapWork` reached the formatter as an exact zero because `fmtNum(1.499e-4, 3)` returns `0.00015`. Measured on the bundle: `gapWork` is **1.4988e-4, not zero**, and `fmtNum(1.499e-4, 3)` returns **`"0"`**. `fmtNum`'s exponent term is clamped at zero, so below 1 its `sig` counts DECIMALS, not FIGURES — swept, the dead zone is exactly **[1e-4, 5×10⁻ˢⁱᵍ)**, bounded below only because the scientific branch takes over at 1e-4. **But the formatter was the outermost of three layers.** The real defect: `dyForceRun` (31a) integrated ∫F·dx by **trapezoid in dx, second order, under an RK4 trajectory that is fourth**. Halving h showed it converging at exactly h² (ratio 3.999, 4.000, 4.000), so the panel was measuring its own truncation error, not the work–energy theorem. It shows up as 7.8% because the answer is exponentially small — the default law is a damped oscillator run eight damping times, whose net work is the 1.9e-3 J residue of a **13.47 J** sum, a **cancellation factor of 7 × 10³**. Across the laws the help text itself suggests, `-4x - 1.2v` disagreed by **100%** while the chip said "they differ by 0" in `--c-pos`, the affirmative colour. **The fix is ∫F·dx = ∫F·v dt by composite Simpson** — the same line integral (v is signed, so doubling back still subtracts; it is not ∫F dt, the impulse), at the order the stepper has. Not invented here: **`rtSpinRun` (32a) is this routine's rotational twin and has always done it**, and `dyForceRun` already forced `n` even with no Simpson to use it. Pinned against the closed form of m x″ + c x′ + k x = 0: measured order **2.00 → 4.00**, relative gap **7.8e-2 → 2.5e-6**, same cost. New `nqCumSimpson` (21) gives the running integral the ledger plot draws from, and its last entry **is** the composite Simpson total, so panel and picture cannot drift (measured: `Us[n] + wCons = 0` exactly). Also found: `gapEnergy` was never a third check — W_non = W_tot − W_cons by linearity, so it is \|gapPath ∓ gapWork\|, and it equalled `gapWork` to ten figures. New `fmtSig`/`fmtGap` (10) print residuals as figures with the relative gap and a figures-agreed verdict; `ckEngF`/`ckGap` (48a) floor circuit quantities against scales `ckMeasure` now returns, because ε·κ(A)·‖x‖ for a 1 Ω–1 MΩ circuit is ~1e-13 A on a milliamp solution — that *is* the 29.7 fA — and Johnson noise in a 1 kΩ resistor at 300 K is 4 pA/√Hz, a hundred times larger. **20 tests added; the J9 test was corrupted back to the trapezoid once and watched to fail, reporting order 1.9995.** The old tests passed the broken code because their tolerances were absolute against a fixed 4.32 J scale — the new one is relative to the answer, which is what makes it bite |
+| J4, J6–J8, J10–J20 | **OPEN**, in the order below |
+
+**The lesson for Part 4.** Every one of these was invisible to twenty-three
+gates. The harness measures *behaviour* and *text*; it barely measures *pixels*.
+`auditframe` exists and does not gate; `auditsize` and `auditviewport` check
+layout but never look at what is inside the canvas. **A screenshot audit that
+diffs rendered canvases against approved images is the missing gate**, and it is
+the one piece of infrastructure that would have caught the majority of this
+list. That belongs in Programme D.
+
 ---
 
 # PART 4 · The session guide
@@ -1315,6 +1502,7 @@ Then read: this document Part 3 for what to pick, `MAP.md` to find the files,
 ./build.ps1        # after EVERY edit
 ./smoke.ps1        # after EVERY build — 10 seconds, catches the fatal class
 ./runtests.ps1     # after any engine change
+./auditdocs.ps1    # before ENDING a session — did the documents keep up?
 ```
 
 Then, matched to what you touched:
@@ -1322,8 +1510,12 @@ Then, matched to what you touched:
 | you changed | also run |
 |---|---|
 | an engine (21–49) | `./runtests.ps1` |
+| **anything that changes a count** — a wing, a demo, a stage, a module, a test, a script | `./auditdocs.ps1`, and fix the documents it names. **This is not optional and not a tidy-up afterwards** — see §4.4 |
+| **anything printing a difference, a residual or a gap** — in a readout, a chip, a **derive rung**, a legend, or a **`*Own` reader-supplied panel**, all five of which it reads | `./auditresid.ps1` |
+| **`pvFeatures`, `pvDrawFeatures`, or any marker drawn on a curve** | `./auditmarks.ps1` |
 | a stage, a demo, the UI | `./runall.ps1` (~18 min, **background it**) |
 | a picker, an accessor, a `pk*` helper, any typed input | `./auditcustom.ps1` |
+| **a control, a control's id, or anything a control writes** | `./auditlink.ps1` — a permalink is the reader's whole view, so it is the one gate that asks whether every control's value can be written **back** |
 | **`uiSetHtml`, `stageExit`, or anything writing a panel** | `./auditpanel.ps1` |
 | **anything before republishing the Claude artifact** | `./auditartifact.ps1` |
 | a `derive()` ladder | `./auditderive.ps1` |
@@ -1333,7 +1525,10 @@ Then, matched to what you touched:
 | anything that draws | `./auditsize.ps1` **and** `./auditviewport.ps1` |
 | any visible text | `./audittext.ps1` then `./auditscan.ps1` |
 | an essay | `./auditprose.ps1` (after `audittext`) |
-| added or renamed a file | `./map.ps1` |
+| a colour, a type size, a contrast pair | `./auditcontrast.ps1` |
+| added or renamed a file | `./map.ps1`, then `./auditdocs.ps1` |
+| needing a headline count for any of the above | `./measure.ps1` — never a grep, never a figure quoted from prose |
+| finished, and the scratch files are in the way | `./clean.ps1` (`-WhatIf` lists what it would delete first) |
 
 Two things that waste time if you do not know them:
 
@@ -1342,7 +1537,7 @@ Two things that waste time if you do not know them:
   `runapp.ps1` and `runall.ps1` both used `cprof`, so the natural move of
   grabbing a screenshot while the 18-minute sweep ran in the background was
   exactly the collision, and it failed quietly. **Fixed 2026-08-13** — `runapp`
-  uses `cprof-app` and all 21 scripts now have distinct profiles, so they can be
+  uses `cprof-app` and every script now has a distinct profile, so they can be
   run concurrently. Keep it that way when adding a script.
 - **Do not pipe native executables through `2>&1` in PowerShell 5.1.** It wraps
   stderr in ErrorRecords and reports failure on a successful run. Chrome writes
@@ -1369,9 +1564,12 @@ is sequenced by *what makes the next piece of work cheaper*, not by subject.
    `https://github.com/gimmeurcode/physics-stuff.git`; Git is installed, the
    working tree and `.gitignore` are ready and verified, and what is left is a
    commit identity and the push itself (§3.9).
-4. **Programme F — the permalink.** Still worth doing early, and now more so:
-   with the site hosted, "open this link and look at what happens at β = 0.99" is
-   how every later piece of work gets demonstrated and reported.
+4. ~~**Programme F — the permalink.**~~ — **DONE 2026-08-13** (§3.6).
+   `#w=…&d=…&c.<id>=…`, 593 of 593 round trips exact, gated by
+   `./auditlink.ps1`. "Open this link and look at what happens at β = 0.99" now
+   works, which is how every later piece of work gets demonstrated and reported.
+   It also found six defects in code that had nothing to do with it — see
+   `AUDIT.md`; the lesson is in §4.3a rule 8.
 5. **Programme D items 2 and 3** — the both-sides audit and stage-level tests.
    Item 1 is done. This still multiplies everything after it, and it must land
    **before Programme C**, or 22 new wings reproduce the same class of defect at
@@ -1415,6 +1613,16 @@ done twice.* Seven rules, each of which has already cost this repo a session.
    its stages. A session that ends red costs the next session more than it
    gained — and a cold session re-derives context, so leaving a half-finished
    edit is the most expensive possible state to stop in.
+8. **A feature that reads the whole app is a defect detector — budget for it.**
+   The permalink touched no stage and fixed six defects in code it did not own,
+   because asking *"can this control's value be written back?"* is a question no
+   other gate asks. Every one was invisible to all 22 scripts that existed on 2026-08-13.
+   Expect the same of the export path and the keyboard path in §3.6: the work is
+   not the feature, it is what the feature finds. **And when a new gate reports
+   dozens of failures, prove the gate can fail before believing what it says** —
+   the first version of `auditlink` reported 119 differences that were its own
+   fault, and the version after that passed on a build where the restore told no
+   stage anything.
 
 **Write down what you measured, not what you built.** `AUDIT.md` is what stops
 the next session re-deriving a number that already exists.
@@ -1464,7 +1672,7 @@ sessions and the bottom is next year.
 |---|---|---|
 | 1 | ~~**E — performance**~~ | **DONE 2026-08-13, one session.** The estimate was right; the *contents* were not — `cxPaint` was one of five per-cell loops, the named "stroke batching" turned out to be a misattribution, and the real win was one shared helper (`ctHeat`) covering ten stages |
 | 2 | **I — delivery** | **~1 session, now first, and part-done.** Git, the working tree and a verified `.gitignore` are in place; the website then needs nothing but a compressed host. The artifact still needs a build target and its two risks tested |
-| 3 | **F — the permalink** | ~1 session; the rest of usability is ~1 more |
+| 3 | ~~**F — the permalink**~~ | **DONE 2026-08-13, one session** — and the estimate was right only for the feature. Two thirds of the session went on the six defects the gate found in code the permalink does not own. The rest of usability (export, keyboard, screen reader, print) is ~1–2 more, and should be budgeted the same way |
 | 4 | **D2–D3 — verification** | ~2 sessions, and it pays for itself before Programme C |
 | 5 | A — EM and atom editors | ~2 sessions; the machinery exists |
 | 6 | B — syllabus gaps 1–4 | ~4 sessions; items 5–6 are wings, in C |
@@ -1486,7 +1694,7 @@ Consolidated. Every one of these has cost real debugging time in this repo.
 
 **Fatal, and invisible to the unit suite**
 
-- **Silent name collisions.** One script scope, 230 modules. Prefix and grep
+- **Silent name collisions.** One script scope, 231 modules. Prefix and grep
   case-sensitively first.
 - **A template hole inside a template hole** is a parse error that takes the
   whole app down while `runtests` still reports passing. `./smoke.ps1` after
@@ -1571,6 +1779,16 @@ Consolidated. Every one of these has cost real debugging time in this repo.
 - **PowerShell variable names are greedy and case-insensitive.** `"$pm1"` is a
   variable named `pm1`, not `$pm` + `1`; `$T` and `$t` are the same variable.
   Both have silently eaten text here. Use `$([char]0x00B1)` or `${pm}1`.
+- **`@( @('a','b') )` is NOT a one-element list of pairs — it flattens to
+  `@('a','b')`.** A loop over it then binds `$p` to the *string* `'a'`, so
+  `$p[0]` and `$p[1]` are its first two **characters**. A search-and-replace
+  written that way ran `Replace('s','r')` over `AI-GUIDE.md` and turned every
+  `s` in the file into an `r` — 12 occurrences of `src/` became `rrc/` — with no
+  error and a cheerful summary. It was caught by *reading the file back* and
+  restored with `git checkout --`. **Wrap the outer list with a comma
+  (`,@('a','b')`) or use a hashtable, and re-read any file a script rewrote.**
+  This is the same lesson as the negative-control rule: a script reporting
+  success is not evidence that it did the right thing.
 - **Audit scripts carrying Unicode need a UTF-8 BOM.** PowerShell 5.1 reads a
   BOM-less `.ps1` as ANSI.
 - **`Set-Content`/`Add-Content` default to the system ANSI codepage.** Pass
@@ -1608,7 +1826,7 @@ with no statement card (Programme H). Four minutes to regenerate.
 
 Nine functions and one constant, with no caller in `src/`, no reference in
 `tests.js`, `shell.html` or any harness script. Build re-verified green
-afterwards: **230 modules, smoke OK, 4160 passed / 0 failed.**
+afterwards, on 2026-08-13: **230 modules, smoke OK, 4160 passed / 0 failed.**
 
 | removed | was | why |
 |---|---|---|

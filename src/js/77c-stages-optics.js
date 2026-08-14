@@ -335,7 +335,7 @@ STAGES.opGeom = {
         ${kv('optical path length there', fmtNum(F.opl, 7))}
         ${kv('θ₁ at that point', ctDeg(F.th1))}
         ${kv('θ₂ at that point', ctDeg(F.th2))}
-        ${kv('|n₁sinθ₁ − n₂sinθ₂|', fmtNum(F.snellResidual, 4))}
+        ${kv('|n₁sinθ₁ − n₂sinθ₂|', fmtGap(F.snellResidual, F.snellScale))}
         <p class="help">The routine scans every possible crossing point, computes the travel time for each,
         and keeps the smallest. Snell's law was never used — and yet the winning geometry satisfies it to
         four decimal places. That is Fermat's principle producing the law rather than restating it.</p>

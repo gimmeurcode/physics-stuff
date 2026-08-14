@@ -20,6 +20,24 @@ function ctBox(W, H, cx, cy, half, pad){
     y0:cy - (ph / 2) / u, y1:cy + (ph / 2) / u,
     inside:(sx, sy) => sx >= p.l && sx <= p.l + pw && sy >= p.t && sy <= p.t + ph };
 }
+/* Clip to a box's rectangle, whether it is an `mkPlot` or a `ctBox`.
+
+   `pvClip` deliberately skips a `ctBox`, because §2.5 keeps aspect-true diagrams
+   free to point an arrow past their own frame. That exemption is right for
+   ARROWS and wrong for everything else: `ctFrame` strokes a rectangle round a
+   ctBox, and a curve crossing a stroked frame is not a deliberate overflow, it
+   is ink in the wrong place. The phase plane is a ctBox, and its background
+   trajectories were sweeping across the entire canvas and straight through the
+   trace–determinant chart beside it.
+
+   So curves, fills and markers clip to any framed box; only ctArrow keeps the
+   old plot-only rule. */
+function ctClip(ctx, P, fn){
+  if(!P || !(P.pw > 0) || !(P.ph > 0) || !Number.isFinite(P.px) || !Number.isFinite(P.py)){ fn(); return; }
+  ctx.save();
+  ctx.beginPath(); ctx.rect(P.px, P.py, P.pw, P.ph); ctx.clip();
+  try { fn(); } finally { ctx.restore(); }
+}
 function ctFrame(ctx, P, title){
   ctx.strokeStyle = rgbCss(TH.line2); ctx.lineWidth = 1;
   ctx.strokeRect(P.px, P.py, P.pw, P.ph);
@@ -59,6 +77,20 @@ function ctGridStep(want, span, px){
   return s;
 }
 function ctGrid(ctx, P, step, labels){
+  /* ONE OWNER FOR THE AXIS FURNITURE.
+
+     Once the reader has panned or zoomed, pvDrawAxes (59c) draws the grid, the
+     zero axes and the tick numbers for the window actually on screen — and it
+     was drawing them ON TOP of these rather than instead of them. Two grids at
+     two different steps, and two sets of numbers one pixel and one significant
+     figure apart: that is why every negative tick on a zoomed plot read `=40`
+     rather than `−40`. Two minus signs, a pixel apart, look like an equals sign.
+
+     Yielding rather than suppressing the other one is the right way round,
+     because pv's ticks follow the window and a stage's are a fixed list chosen
+     for the window its author framed. When the view is home, the author's win. */
+  if(P && P.key && typeof pvOf === 'function' && typeof pvIsDefault === 'function'
+     && !pvIsDefault(pvOf(P.key))) return;
   const sx = step ? ctGridStep(step, P.x1 - P.x0, P.pw) : ctNiceStep(P.x1 - P.x0);
   const sy = step ? ctGridStep(step, P.y1 - P.y0, P.ph) : ctNiceStep(P.y1 - P.y0);
   ctx.save();
@@ -96,12 +128,20 @@ function ctArrow(ctx, P, x0, y0, x1, y1, col, w, label){
   if(L < 0.6){ ctx.beginPath(); ctx.arc(ax, ay, 2, 0, 6.2832); ctx.fill(); return; }
   const ux = dx / L, uy = dy / L;
   const hl = Math.max(5, Math.min(14, L * 0.3)), hw = hl * 0.44;
-  ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx - ux * hl * 0.78, by - uy * hl * 0.78); ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(bx, by);
-  ctx.lineTo(bx - ux * hl - uy * hw, by - uy * hl + ux * hw);
-  ctx.lineTo(bx - ux * hl + uy * hw, by - uy * hl - ux * hw);
-  ctx.closePath(); ctx.fill();
+  /* The SHAFT AND HEAD clip to the plot, the LABEL does not. An arrow whose tip
+     leaves the chart was being drawn across the rest of the canvas — laMatrix's
+     AB parallelogram sent e₂ ↦ (0,5) through the top of its box and over the
+     fps counter. Its name still has to be readable though, and ctFitText below
+     already pins that back onto the canvas, so keeping the label outside the
+     clip is what lets a just-off-scale arrow still say which one it is. */
+  pvClip(ctx, P, () => {
+    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx - ux * hl * 0.78, by - uy * hl * 0.78); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(bx, by);
+    ctx.lineTo(bx - ux * hl - uy * hw, by - uy * hl + ux * hw);
+    ctx.lineTo(bx - ux * hl + uy * hw, by - uy * hl - ux * hw);
+    ctx.closePath(); ctx.fill();
+  });
   if(label){
     ctx.font = '600 11.5px ' + FONT_UI; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     /* the label sits beyond the head, so an arrow reaching the edge of the plot
@@ -111,10 +151,17 @@ function ctArrow(ctx, P, x0, y0, x1, y1, col, w, label){
     ctx.fillText(label, p.x, p.y);
   }
 }
+/* Clipped for the same reason as ctPath, and with a sharper consequence: a
+   marker outside its own chart does not read as "off the scale", it reads as a
+   position. The trace–determinant plane put the system's (trace, det) dot in
+   the empty canvas below its own box whenever det went past the window, where
+   it looked exactly like a legitimate reading. */
 function ctDot(ctx, P, x, y, r, col, ring){
-  ctx.fillStyle = col;
-  ctx.beginPath(); ctx.arc(P.X(x), P.Y(y), r, 0, 6.2832); ctx.fill();
-  if(ring){ ctx.strokeStyle = ring; ctx.lineWidth = 1.6; ctx.stroke(); }
+  ctClip(ctx, P, () => {
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.arc(P.X(x), P.Y(y), r, 0, 6.2832); ctx.fill();
+    if(ring){ ctx.strokeStyle = ring; ctx.lineWidth = 1.6; ctx.stroke(); }
+  });
 }
 /* A label is the one thing on a canvas that fails completely silently. A curve
    drawn past the edge still shows the part that fits; a string drawn past the
@@ -137,8 +184,23 @@ function ctText(ctx, sx, sy, s, col, font, align, base){
   const p = ctFitText(ctx, sx, sy, txt);
   ctx.fillText(txt, p.x, p.y);
 }
+/* CLIPPED TO ITS PLOT, like plotCurve — and for 310 call sites at once.
+
+   `plotCurve` has always drawn inside pvClip; everything else that puts a line
+   into a plot comes through here, and this did not. So a phase-plane trajectory
+   spiralled out across the whole canvas and straight over the neighbouring
+   trace–determinant chart; the nuclear term curves ran above the frame and
+   through the fps counter; the Regge fit line and the modular-τ ray reached the
+   canvas corner. Eleven of Programme J's forty screenshots are this one missing
+   call.
+
+   `pvClip` is a no-op for anything that is not a `kind:'plot'` box, so the
+   aspect-true `ctBox` diagrams keep the arrows that are *meant* to reach past
+   their frame — the distinction §2.5 draws, now enforced in one place instead
+   of being left to each caller to remember. */
 function ctPath(ctx, P, pts, col, w, dash){
   if(pts.length < 2) return;
+  ctClip(ctx, P, () => {
   ctx.strokeStyle = col; ctx.lineWidth = w || 1.8;
   if(dash) ctx.setLineDash(dash);
   ctx.beginPath();
@@ -150,14 +212,17 @@ function ctPath(ctx, P, pts, col, w, dash){
   }
   ctx.stroke();
   if(dash) ctx.setLineDash([]);
+  });
 }
 function ctFill(ctx, P, pts, col){
   if(pts.length < 3) return;
+  ctClip(ctx, P, () => {          /* same reason as ctPath — see above */
   ctx.fillStyle = col;
   ctx.beginPath();
   ctx.moveTo(P.X(pts[0].x), P.Y(pts[0].y));
   for(let i = 1; i < pts.length; i++) ctx.lineTo(P.X(pts[i].x), P.Y(pts[i].y));
   ctx.closePath(); ctx.fill();
+  });
 }
 /* sample a parametrised curve into points, so it can be drawn or filled */
 function ctSample(f, t0, t1, n){

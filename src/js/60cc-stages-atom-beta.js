@@ -226,7 +226,7 @@ STAGES.atomBeta.readoutOwn = function(st){
         kv('daughter mass', n(c.daughter.m, 9) + ' MeV') +
         kv('Q by subtracting them', '<b>' + n(c.Q, 6) + ' MeV</b>') +
         kv('Q as (m_n − m_H) + ΔB', '<b>' + n(c.viaB, 6) + ' MeV</b>') +
-        kv('difference between the routes', c.gap.toExponential(2)) +
+        kv('difference between the routes', fmtGap(c.gap, c.Q, 'MeV')) +
         kv('significant figures the subtraction destroys', n(c.digits, 3)) +
         kv('binding energies came from', c.src);
     })()}
@@ -240,7 +240,7 @@ STAGES.atomBeta.readoutOwn = function(st){
   <div class="card tight"><div class="ttl">And that constant is the neutron itself</div>
     ${kv('m_n − m_H', n(NC_QN, 8) + ' MeV')}
     ${kv('Q for a free neutron, computed', n(ncBetaQ(0, 1).beta.Q, 8) + ' MeV')}
-    ${kv('difference', Math.abs(ncBetaQ(0, 1).beta.Q - NC_QN).toExponential(2))}
+    ${kv('difference', fmtAgree(ncBetaQ(0, 1).beta.Q, NC_QN, 'MeV'))}
     <p class="help">The 0.782 MeV the panel next door treats as a given is not a separate fact. It is
     this identity with both binding energies set to zero — a free neutron and a free proton have
     nothing to unbind — so the neutron's Q value <b>is</b> the neutron–hydrogen mass difference, and
@@ -301,7 +301,7 @@ STAGES.atomBeta.deriveOwn = function(st){
         'every term in Zm_H and (A−Z)m_n appears on both sides but one'),
       drvStep('which leaves a difference of binding energies and one constant',
         `${dv('Q')}(β⁻) ${dop('=')} (m_n ${dop('−')} m_H) ${dop('+')} [${dv('B')}(${dv('Z')}{+}1, ${dv('A')}) ${dop('−')} ${dv('B')}(${dv('Z')}, ${dv('A')})]`,
-        c ? n(c.viaB, 6) + ' MeV — apart from the direct route by ' + c.gap.toExponential(2) : ''),
+        c ? n(c.viaB, 6) + ' MeV — apart from the direct route by ' + fmtAgree(c.Q, c.viaB, 'MeV') : ''),
       drvSay('and the constant is the answer to the original question',
         'm_n − m_H = 0.78235 MeV. Set both binding energies to zero — a free neutron and a free hydrogen atom have nothing to unbind — and the general formula collapses to exactly the number the neutron stage was given. The headline figure of the panel next door is the special case of the thing you just typed, and it was never an independent fact.'),
       drvStep('where a chain of the same A settles, by walking it',

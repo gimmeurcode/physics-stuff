@@ -306,8 +306,23 @@ function plotZeroY(ctx, P){
    The samples are kept on the plot so the overlay can find zeros and turning
    points from them (59c). They are the samples actually drawn, so a marker can
    never disagree with the curve under it. */
+/* The sample count follows the BOX, not a constant.
+
+   `x` below runs over `P.x0…P.x1`, which is the window AFTER the reader's pan
+   and zoom, so the curve is already re-evaluated for whatever is on screen —
+   zoom in and you are looking at new arithmetic, not a magnified polyline. What
+   was fixed at 240 was how many points that arithmetic used, which is the part
+   the reader actually sees: 240 samples across a 1 200-pixel plot is a point
+   every five pixels, so every corner is cut and a curve zoomed into far enough
+   turns visibly polygonal.
+
+   One sample per pixel-and-a-half is the target. The count is derived from the
+   plot's WIDTH, which the canvas already bounds, so this cannot become the
+   unbounded loop §2.5 warns about — the span may grow without limit under zoom,
+   the box cannot. A caller that knows better still wins: an explicit `n` is
+   taken as given, because a few stages sample something expensive per point. */
 function plotCurve(ctx, P, fn, n, col, w, fill){
-  const N = n || 240;
+  const N = n || Math.max(240, Math.min(1200, Math.round((P && P.pw) || 0)));
   const xs = new Array(N + 1), ys = new Array(N + 1);
   const draw = () => {
     ctx.beginPath();

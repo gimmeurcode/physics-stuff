@@ -202,7 +202,7 @@ STAGES.rlTwin = {
       ${kv('Earth receives', fmtNum(earthReceives, 4))}
       ${kv('Earth sends', fmtNum(f.earthTotal, 4))}
       ${kv('traveller receives', fmtNum(travReceives, 4))}
-      ${kv('residuals', fmtNear(travReceives - f.earthTotal) + '  /  ' + fmtNear(earthReceives - f.travTotal))}
+      ${kv('residuals', fmtAgree(travReceives, f.earthTotal) + '  /  ' + fmtAgree(earthReceives, f.travTotal))}
       ${kv('Doppler k = √((1+β)/(1−β))', fmtNum(f.k, 5))}
       ${kv('and k + 1/k', fmtNum(f.k + 1 / f.k, 5) + '  = 2γ')}
       <p class="help">Every flash sent is a flash received, so the totals are forced — and they come out

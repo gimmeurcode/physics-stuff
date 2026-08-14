@@ -189,7 +189,7 @@ STAGES.odLinear = {
       ${R0.kind === 'complex' ? kv('phase', fmtNum(S.phase, 5) + ' rad') : ''}
     </div>
     <div class="card tight"><div class="ttl">Checked against RK4</div>
-      ${kv('largest gap over [0, 14]', fmtNum(gap, 3))}
+      ${kv('largest gap over [0, 14]', fmtGap(gap, odGapScale(S.y, num)))}
       ${kv('RK4 steps', '6000')}
       ${kv('y(0) from the formula', fmtNum(S.y(0), 8))}
       ${kv("y′(0) from the formula", fmtNum(S.dy(0), 8))}
@@ -202,7 +202,7 @@ STAGES.odLinear = {
       ${kv('W(0)', fmtNum(W0, 6))}
       ${kv('W(3), computed', fmtNum(odWronskian(st.a, st.b, st.c, 3), 6))}
       ${kv("Abel's W₀e^(−bt/a)", fmtNum(odAbel(st.a, st.b, W0, 3), 6))}
-      ${kv('difference', fmtNum(Math.abs(odWronskian(st.a, st.b, st.c, 3) - odAbel(st.a, st.b, W0, 3)), 4))}
+      ${kv('difference', fmtAgree(odWronskian(st.a, st.b, st.c, 3), odAbel(st.a, st.b, W0, 3)))}
       ${kv('ever zero?', Math.abs(W0) < 1e-12 ? 'yes — the solutions are dependent' : 'no — an exponential never vanishes')}
       <p class="help">Abel's formula says the Wronskian obeys its own first-order equation, <b>W′ =
       −(b/a)W</b>, whatever the solutions are. So it is either never zero or identically zero — there is no
@@ -378,7 +378,7 @@ STAGES.odNonhom = {
     const num = odRK4(st.a, st.b, st.c, g, st.y0, st.v0, 0, 22, 8000);
     const R0 = odRoots(st.a, st.b, st.c);
     /* the residual: substitute y_p back into the equation and see if it is zero */
-    let worst = 0;
+    let worst = 0, worstScale = 0;
     if(yp){
       for(let i = 1; i <= 40; i++){
         const t = i * 0.4;
@@ -386,6 +386,12 @@ STAGES.odNonhom = {
         const y = yp(t), y1 = (yp(t + h) - yp(t - h)) / (2 * h);
         const y2 = (yp(t + h) - 2 * y + yp(t - h)) / (h * h);
         worst = Math.max(worst, Math.abs(st.a * y2 + st.b * y1 + st.c * y - g(t)));
+        /* the largest TERM in that sum, which is what the residual has to be
+           read against: a residual of 1e-6 is machine zero beside terms of
+           order 1 and a wrong answer beside terms of order 1e-6. Printing the
+           bare number said nothing either way. */
+        worstScale = Math.max(worstScale, Math.abs(st.a * y2), Math.abs(st.b * y1),
+                              Math.abs(st.c * y), Math.abs(g(t)));
       }
     }
     /* variation of parameters, as an independent route to the same y_p */
@@ -398,15 +404,18 @@ STAGES.odNonhom = {
         : st.forcing === 'expo' ? 'y_p = Ae^(−0.5t)' : st.forcing === 'cosine' ? 'y_p = A cos ωt + B sin ωt' : '—')}
       ${yp ? kv('y_p(0)', fmtNum(yp(0), 6)) : kv('y_p', 'none needed — the equation is homogeneous')}
       ${yp ? kv('y_p(5)', fmtNum(yp(5), 6)) : ''}
-      ${yp ? kv('residual  |a y_p″ + b y_p′ + c y_p − g|', fmtNum(worst, 4)) : ''}
+      ${yp ? kv('residual  |a y_p″ + b y_p′ + c y_p − g|', fmtGap(worst, worstScale)) : ''}
       <p class="help">The residual is computed by substituting the proposed y_p back into the equation
-      numerically. It is zero, which is the definition of being a solution — the coefficients were not
-      guessed and hoped for, they were solved for and checked.</p>
+      numerically, and it is quoted against the largest term in that sum — a bare residual says nothing,
+      because whether 10⁻⁶ is zero depends entirely on what it sits beside. It vanishes to the resolution
+      the check itself has: y_p″ comes from a central difference at h = 10⁻⁴, whose own round-off floor is
+      about ε/h² ≈ 10⁻⁸, so the last few figures are the differencing, not the solution. The coefficients
+      were not guessed and hoped for, they were solved for and checked.</p>
     </div>
     <div class="card tight"><div class="ttl">Variation of parameters — the general method</div>
       ${kv('y_p(12) by variation of parameters', fmtNum(vp.yp, 7))}
       ${kv('the RK4 solution at t = 12', fmtNum(numAt12, 7))}
-      ${kv('difference', fmtNum(Math.abs(vp.yp - numAt12), 4))}
+      ${kv('difference', fmtAgree(vp.yp, numAt12))}
       ${kv('Wronskian at t = 12', fmtNum(vp.W, 6))}
       <p class="help">Variation of parameters needs no table of guesses: it builds y_p as
       <b>−y₁∫(y₂g/aW) + y₂∫(y₁g/aW)</b> for <i>any</i> continuous g, at the cost of two integrals that

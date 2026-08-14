@@ -59,25 +59,55 @@ function dyForceRun(F, m, x0, v0, t1, n){
     v += h / 6 * (k1v + 2 * k2v + 2 * k3v + k4v);
     xs[i] = x; vs[i] = v; ts[i] = i * h;
   }
-  /* line integrals along the trajectory, by the trapezoid in dx — this is what
-     ∫F·dx means for a path that may double back, and it is not ∫F dt */
-  let Wtot = 0, Wcons = 0, Wnon = 0, travel = 0;
+  /* THE LINE INTEGRALS ALONG THE TRAJECTORY.
+
+     A line integral along a parameterised path IS an integral in t:
+
+         ∫F·dx = ∫ F(x(t), v(t), t) · v(t) dt
+
+     with v signed, so a run that doubles back still subtracts as it comes home.
+     That is not ∫F dt, which is the impulse — the distinction the old comment
+     here was defending, and it survives intact.
+
+     What it did not survive was the ORDER. This stood as a trapezoid in dx,
+     second order, laid over an RK4 trajectory that is fourth. Halving h showed
+     it converging at exactly h², and on the stage's own default law — a damped
+     oscillator run twelve seconds, whose net work is the 1.9e-3 J residue of a
+     13.5 J sum that very nearly cancels — the quadrature's own truncation error
+     came to 7.8% of the answer and was printed as the theorem's residual. It is
+     the answer being exponentially small that turns a fine quadrature error into
+     a gross one: the cancellation factor is 7 × 10³.
+
+     Composite Simpson matches the stepper's order, which is the condition for
+     the difference to measure the physics instead of the arithmetic. Pinned
+     against the closed form of m x″ + c x′ + k x = 0, the measured order goes
+     2.00 → 4.00 and the relative gap 7.8e-2 → 2.5e-6 at identical cost.
+
+     `n` is forced even above for exactly this, and always was — `rtSpinRun`
+     (32a) is this routine's rotational twin and has always integrated ∫τω dt
+     this way. Do NOT "simplify" it to a trapezoid that is exactly consistent
+     with the stepper (Δx = h(vᵢ+vᵢ₋₁)/2 makes the discrete theorem an identity,
+     measured at 2e-15): that would make the check structurally incapable of
+     failing, which is the opposite of the point. */
   const F0 = q => { const w = F(q, 0, 0); return Number.isFinite(w) ? w : 0; };
-  /* the potential and the kinetic energy sample by sample, so a panel can draw
-     the ledger rather than only quote its two ends */
-  const Us = new Float64Array(n + 1), Ks = new Float64Array(n + 1);
-  Ks[0] = 0.5 * m * v0 * v0;
-  for(let i = 1; i <= n; i++){
-    const dx = xs[i] - xs[i - 1];
-    const fa = F(xs[i - 1], vs[i - 1], ts[i - 1]), fb = F(xs[i], vs[i], ts[i]);
-    const ca = F0(xs[i - 1]), cb = F0(xs[i]);
-    if(Number.isFinite(fa) && Number.isFinite(fb)) Wtot += (fa + fb) / 2 * dx;
-    Wcons += (ca + cb) / 2 * dx;
-    if(Number.isFinite(fa) && Number.isFinite(fb)) Wnon += ((fa - ca) + (fb - cb)) / 2 * dx;
-    travel += Math.abs(dx);
-    Us[i] = -Wcons;
+  const fin = q => (Number.isFinite(q) ? q : 0);
+  /* the kinetic energy sample by sample, so a panel can draw the ledger rather
+     than only quote its two ends */
+  const Ks = new Float64Array(n + 1);
+  const gTot = new Float64Array(n + 1), gCons = new Float64Array(n + 1);
+  let travel = 0;
+  for(let i = 0; i <= n; i++){
+    gTot[i]  = fin(F(xs[i], vs[i], ts[i])) * vs[i];
+    gCons[i] = F0(xs[i]) * vs[i];
     Ks[i] = 0.5 * m * vs[i] * vs[i];
+    if(i > 0) travel += Math.abs(xs[i] - xs[i - 1]);
   }
+  const cumTot = nqCumSimpson(gTot, h, n), cumCons = nqCumSimpson(gCons, h, n);
+  const Wtot = cumTot[n], Wcons = cumCons[n], Wnon = Wtot - Wcons;
+  /* the potential sample by sample comes off the SAME running integral the
+     total came from, so the ledger plot and the panel cannot drift apart */
+  const Us = new Float64Array(n + 1);
+  for(let i = 0; i <= n; i++) Us[i] = -cumCons[i];
   /* the same conservative work, computed by a quadrature that knows only the two
      endpoints and nothing about how the object got from one to the other */
   const straight = nqAdaptive(F0, x0, xs[n], 1e-12);
@@ -86,6 +116,13 @@ function dyForceRun(F, m, x0, v0, t1, n){
     K0, K1, dK:K1 - K0, work:Wtot, gapWork:Math.abs(Wtot - (K1 - K0)),
     wCons:Wcons, wStraight:straight, gapPath:Math.abs(Wcons - straight),
     wNon:Wnon, dU:-straight, dE:(K1 - K0) - straight,
+    /* NOT a third independent check, and a panel must not present it as one:
+       W_non = W_tot − W_cons by linearity of the quadrature, so
+         gapEnergy = |(ΔK − straight) − (W_tot − W_cons)|
+                   = |(W_cons − straight) − (W_tot − ΔK)| = |gapPath ∓ gapWork|,
+       and with gapPath at 1e-14 it was numerically equal to gapWork to ten
+       figures. The two measurements here are gapWork and gapPath; this row is
+       the identity they imply, and is worth showing as that. */
     gapEnergy:Math.abs(((K1 - K0) - straight) - Wnon),
     travel, net:xs[n] - x0 };
 }

@@ -90,6 +90,124 @@ ok('supify: unclosed group is left verbatim', sup('e^(ika') === 'e^(ika', sup('e
 ok('supify: idempotent on its own output', sup(sup('e^(ikx) and E_g')) === sup('e^(ikx) and E_g'),
    sup(sup('e^(ikx) and E_g')));
 
+/* ============ fmtEdit: what may go into a box the reader types back into ======
+   fmtNum is the DISPLAY formatter and emits U+2212 and real superscripts. Two
+   panels wrote it into editable <input>s holding the components of a unit
+   vector — û as du/dv/dw, n̂ as cnx/cny/cnz — and read them back with
+   parseFloat. Every negative component therefore came back NaN, fell through
+   `|| 0`, and the vector silently swung elsewhere the moment the reader edited
+   a neighbouring box. Nothing raised and nothing printed NaN.
+
+   Both directions are pinned here: that fmtEdit's output survives the trip
+   back, and that fmtNum's does NOT — so nobody "tidies" the one into the
+   other. */
+for(const v of [-0.695048, 0.719, -1, 1, 0.5, -2.5e-7, 3.75e8, 1/3, -1/Math.sqrt(2)]){
+  const s = fmtEdit(v, 4);
+  ok('fmtEdit(' + v + ') is ASCII', !/[−×⁰¹²³⁴⁵⁶⁷⁸⁹⁻]/.test(s), s);
+  close('fmtEdit(' + v + ') survives parseFloat', parseFloat(s), +v.toPrecision(4), 0);
+  close('fmtEdit(' + v + ') survives the expression engine', E(s)(0, 0, 0), +v.toPrecision(4), 0);
+}
+close('fmtEdit rounds to the digits asked for', parseFloat(fmtEdit(1/3, 4)), 0.3333, 0);
+ok('fmtEdit refuses a non-number rather than printing one', fmtEdit(NaN) === '' && fmtEdit(Infinity) === '',
+   fmtEdit(NaN) + '|' + fmtEdit(Infinity));
+ok('fmtEdit(0) is 0', fmtEdit(0) === '0', fmtEdit(0));
+
+/* the negative control — the behaviour that made the bug, still true of fmtNum */
+ok('fmtNum still emits U+2212, which parseFloat cannot read',
+   Number.isNaN(parseFloat(fmtNum(-0.695, 3))), fmtNum(-0.695, 3));
+ok('fmtNum still emits a superscript exponent, which no parser here can read',
+   /[⁰¹²³⁴⁵⁶⁷⁸⁹⁻]/.test(fmtNum(5.55e-17, 3)), fmtNum(5.55e-17, 3));
+
+/* ============ fmtSig / fmtGap: a residual must never print as "0" (J9) =========
+   fmtNum's exponent term is clamped at zero, so below 1 its `sig` counts
+   DECIMALS rather than FIGURES. `dyForce` printed a real 1.4988e-4 J
+   disagreement — 7.8% of the number beside it — as "they differ by 0", in the
+   affirmative colour. The dead zone is exactly [1e-4, 5×10^−sig), bounded below
+   only because the scientific branch takes over at 1e-4.
+
+   Both directions again: that fmtSig has no dead zone, and that fmtNum still
+   has one, so nobody "tidies" a residual back onto the display formatter. */
+ok('fmtNum still collapses a real 1.4988e-4 to "0" at 3 figures — the J9 defect',
+   fmtNum(1.4988e-4, 3) === '0', fmtNum(1.4988e-4, 3));
+(function(){
+  let dead = 0, worst = '';
+  for(const sig of [2, 3, 4, 5]) for(let e = -8; e <= 2; e += 0.001){
+    const v = Math.pow(10, e);
+    if(fmtSig(v, sig) === '0'){ dead++; worst = v + '@' + sig; }
+    if(fmtSig(-v, sig) === '0'){ dead++; worst = -v + '@' + sig; }
+  }
+  ok('fmtSig never prints a non-zero as "0", over 80000 samples', dead === 0, dead + ' e.g. ' + worst);
+})();
+ok('fmtSig(0) is still 0', fmtSig(0) === '0', fmtSig(0));
+ok('fmtSig keeps figures, not decimals', fmtSig(0.0001499, 3) === '1.50×10⁻⁴', fmtSig(0.0001499, 3));
+ok('and rounds to the figures asked for above 1', fmtSig(1234.5, 3) === '1230', fmtSig(1234.5, 3));
+/* fmtGap: the relative gap is what makes an absolute one readable */
+ok('fmtGap prints the relative gap beside the absolute one',
+   /7\.79.*%/.test(fmtGap(1.4988e-4, 1.925e-3, 'J')), fmtGap(1.4988e-4, 1.925e-3, 'J'));
+ok('fmtGap says so rather than quoting a digit it did not earn',
+   fmtGap(1e-14, 1, 'J').indexOf('every digit') > 0, fmtGap(1e-14, 1, 'J'));
+ok('fmtGap calls a 100% disagreement 100%, not zero',
+   /100%/.test(fmtGap(4e-9, 4e-9, 'J')), fmtGap(4e-9, 4e-9, 'J'));
+
+/* ---- fmtAgree: the scale DERIVED rather than remembered ----
+   The whole reason it exists beside fmtGap. A scale passed by hand at sixty
+   call sites will be wrong at some of them; one taken from the two numbers
+   themselves cannot be. */
+ok('fmtAgree derives the same verdict fmtGap gives the scale for',
+   fmtAgree(1.925e-3, 1.925e-3 - 1.4988e-4, 'J') === fmtGap(1.4988e-4, 1.925e-3, 'J'),
+   fmtAgree(1.925e-3, 1.925e-3 - 1.4988e-4, 'J'));
+ok('fmtAgree is symmetric in its two routes',
+   fmtAgree(3, 3.0001) === fmtAgree(3.0001, 3), fmtAgree(3, 3.0001));
+ok('fmtAgree on two identical routes says every digit agrees',
+   fmtAgree(7.25, 7.25, 'J').indexOf('every digit') > 0, fmtAgree(7.25, 7.25, 'J'));
+
+/* ---- fmtAgreeTight / fmtGapTight: the same verdict, sized for a canvas ----
+   Canvas text is drawn literally, so this must stay Unicode-only and must fit
+   a fixed column. The four canvas sites that print a difference had each
+   dropped the scale instead of wrapping, which is J9 in the one surface
+   auditresid cannot read. */
+ok('fmtGapTight carries a relative figure like the long form does',
+   /%/.test(fmtGapTight(1.4988e-4, 1.925e-3)), fmtGapTight(1.4988e-4, 1.925e-3));
+ok('fmtGapTight still refuses to quote a digit it did not earn',
+   fmtGapTight(1e-14, 1).indexOf('every digit') > 0, fmtGapTight(1e-14, 1));
+ok('fmtAgreeTight agrees with fmtGapTight on the derived scale',
+   fmtAgreeTight(1.925e-3, 1.925e-3 - 1.4988e-4) === fmtGapTight(1.4988e-4, 1.925e-3),
+   fmtAgreeTight(1.925e-3, 1.925e-3 - 1.4988e-4));
+ok('fmtAgreeTight fits a canvas column — under 30 characters',
+   fmtAgreeTight(1.925e-3, 1.925e-3 - 1.4988e-4).length < 30,
+   String(fmtAgreeTight(1.925e-3, 1.925e-3 - 1.4988e-4).length));
+ok('and carries no markup, because canvas text would paint it literally',
+   !/[<>&]/.test(fmtAgreeTight(1.925e-3, 1.7e-3)) && !/[<>&]/.test(fmtGapTight(1e-14, 1)),
+   fmtAgreeTight(1.925e-3, 1.7e-3));
+/* the dead zone again, in the tight form: a real gap must never print as 0 */
+ok('fmtGapTight never renders a real disagreement as a bare 0',
+   fmtGapTight(1.4988e-4, 1.925e-3).indexOf('every digit') < 0,
+   fmtGapTight(1.4988e-4, 1.925e-3));
+
+/* ---- and the circuit half of J9: a floor tied to the physics ---- */
+ok('ckEng still prints round-off as a reading — the J9 defect',
+   ckEng(2.97e-14, 'A') === '29.7 fA', ckEng(2.97e-14, 'A'));
+ok('ckEngF floors it against the solution it came from',
+   ckEngF(2.97e-14, 'A', 1e-3) === '0 A', ckEngF(2.97e-14, 'A', 1e-3));
+ok('while a real milliamp survives', ckEngF(3.3e-3, 'A', 5e-3) === '3.3 mA', ckEngF(3.3e-3, 'A', 5e-3));
+/* the Johnson-Nyquist floor, against the closed form it is defined by. This is
+   the one a relative floor cannot supply: a settled circuit has no scale of its
+   own left. 1 kΩ at 300 K over 1 Hz is the textbook 4.07 pA / 4.07 nV. */
+close('Johnson noise current for 1 kΩ at 300 K over 1 Hz is 4.07 pA',
+   ckNoiseI(1e3, 0.5), Math.sqrt(4 * 1.380649e-23 * 300 / 1e3), 1e-18);
+close('and the voltage across it 4.07 nV', ckNoiseV(1e3, 0.5),
+   Math.sqrt(4 * 1.380649e-23 * 300 * 1e3), 1e-15);
+ok('the noise current is bigger for a smaller resistor', ckNoiseI(10, 1e-6) > ckNoiseI(1e6, 1e-6));
+ok('and the noise voltage bigger for a larger one', ckNoiseV(1e6, 1e-6) > ckNoiseV(10, 1e-6));
+ok('an ideal circuit with no resistance has no Johnson noise to floor against',
+   ckNoiseI(0, 1e-6) === 0 && ckNoiseV(0, 1e-6) === 0);
+ok('a settled circuit with no scale of its own is still floored by physics',
+   ckEngF(2.97e-14, 'A', 3e-14, 1e-9, ckNoiseI(1e3, 1e-6)) === '0 A',
+   ckEngF(2.97e-14, 'A', 3e-14, 1e-9, ckNoiseI(1e3, 1e-6)));
+ok('ckGap reports a residual against its scale rather than naming a current',
+   ckGap(2.97e-14, 1e-3, 'A').indexOf('every digit') > 0, ckGap(2.97e-14, 1e-3, 'A'));
+ok('and quotes the percentage when there is one', /4%/.test(ckGap(4e-5, 1e-3, 'A')), ckGap(4e-5, 1e-3, 'A'));
+
 /* ============ symbolic differentiation + simplifier readability ============ */
 ok('d/dx x^2 prints as 2x', plain(tex(diff(parse('x^2'),'x'),0))==='2x', plain(tex(diff(parse('x^2'),'x'),0)));
 ok('d/dx (x^2+y^2+z^2) = 2x', plain(tex(diff(parse('x^2+y^2+z^2'),'x'),0))==='2x');
@@ -700,12 +818,52 @@ ok('scalar mode div is the Laplacian', sf('x^2+y^2+z^2').laplacian !== null);
      so it is checked rather than assumed */
   for (let n = 1; n <= 4; n++)
     ok('state ' + n + ' has ' + (n-1) + ' interior nodes', box[n-1].nodes === n - 1, box[n-1].nodes);
-  /* and the wavefunction really is normalised */
+  /* And the wavefunction really is normalised — pinned against the CLOSED FORM,
+     not against the rule that does the normalising.
+
+     This used to integrate psi^2 by the trapezoid and demand 1 to 1e-9, which
+     the trapezoid could only ever satisfy because the trapezoid had also done
+     the normalising. qmShoot is Numerov, i.e. FOURTH order, so a second-order
+     normalisation threw away two orders for nothing (see 40-quantum.js). Now
+     Simpson normalises it, and the honest check is the analytic eigenfunction
+     of the flat box, sqrt(2/L) sin(n pi x / L), which knows nothing about
+     either rule. */
   (function(){
-    let s = 0;
-    const S = box[2];
-    for (let i = 0; i < S.N; i++) s += (S.psi[i]*S.psi[i] + S.psi[i+1]*S.psi[i+1]) / 2 * S.h;
-    close('the returned wavefunction is normalised', s, 1, 1e-9);
+    const S = box[2], n = 3;                     // third state, two interior nodes
+    const exact = x => Math.sqrt(2 / L) * Math.sin(n * Math.PI * x / L);
+    let sign = 1, big = 0;
+    for (let i = 0; i <= S.N; i++) if (Math.abs(S.psi[i]) > big) { big = Math.abs(S.psi[i]); sign = Math.sign(S.psi[i] * exact(i * S.h)); }
+    let worst = 0;
+    for (let i = 0; i <= S.N; i++) worst = Math.max(worst, Math.abs(sign * S.psi[i] - exact(i * S.h)));
+    ok('the returned wavefunction matches the analytic eigenfunction pointwise',
+       worst < 1e-6, worst);
+    /* Simpson on the samples now returns exactly 1 ... */
+    const p2 = new Float64Array(S.N + 1);
+    for (let i = 0; i <= S.N; i++) p2[i] = S.psi[i] * S.psi[i];
+    close('and Simpson on psi^2 gives 1', nqCumSimpson(p2, S.h, S.N)[S.N], 1, 1e-12);
+    /* ... and so does the trapezoid, to machine precision — which is NOT the
+       h^2 gap you would expect, and is the point worth pinning.
+
+       This assertion was written the other way round first, demanding second
+       order, and it failed at 2.2e-16 -> 8.9e-16. The reason is
+       Euler-Maclaurin: the trapezoid's error series is carried entirely by
+       ODD DERIVATIVES AT THE ENDPOINTS, and a bound state vanishes at both
+       walls together with all its derivatives. Every term therefore cancels and
+       the trapezoid is superconvergent here, beyond any finite order.
+
+       So the quadrature order genuinely does not matter for a state that has
+       decayed at the walls, and this is NOT an instance of the dyForce defect
+       however much it looks like one. Simpson is kept because it is never worse
+       and does matter for a state still appreciable at the boundary, where the
+       endpoint terms no longer vanish. Pinned so nobody "fixes" it back on the
+       strength of the resemblance. */
+    const trap = R => {
+      let s = 0;
+      for (let i = 0; i < R.N; i++) s += (R.psi[i]*R.psi[i] + R.psi[i+1]*R.psi[i+1]) / 2 * R.h;
+      return Math.abs(s - 1);
+    };
+    ok('the trapezoid agrees with it to machine precision, by Euler-Maclaurin',
+       trap(box[2]) < 1e-13, trap(box[2]));
   })();
   /* the harmonic oscillator: V = x^2/2 gives E_n = n + 1/2 exactly, and nothing
      in the solver knows that. A wide box makes the walls irrelevant. */
@@ -3164,6 +3322,34 @@ ok('scalar mode div is the Laplacian', sf('x^2+y^2+z^2').laplacian !== null);
   close('accumulating cos reaches sin(pi)=0', acc.As[400], 0, 1e-10);
   close('and halfway is sin(pi/2)=1', acc.As[200], 1, 1e-10);
 
+  /* nqCumSimpson — the running integral of SAMPLES a stepper already produced.
+     Two properties carry the whole design: the last entry must BE composite
+     Simpson, so a total quoted in a panel cannot disagree with a curve drawn
+     from the array, and the convergence must be fourth order, so it can be laid
+     over an RK4 trajectory without reporting its own truncation instead of the
+     physics. Both are measured, not asserted. */
+  (function(){
+    const f = t => Math.exp(-0.4 * t) * Math.sin(2.7 * t) * t;
+    const exact = nqAdaptive(f, 0, 5, 1e-13);
+    const run = n => {
+      const h = 5 / n, g = new Float64Array(n + 1);
+      for(let i = 0; i <= n; i++) g[i] = f(i * h);
+      let simp = 0;
+      for(let i = 0; i <= n; i++) simp += ((i === 0 || i === n) ? 1 : (i % 2 ? 4 : 2)) * g[i];
+      return { c: nqCumSimpson(g, h, n), simp: simp * h / 3, h, n };
+    };
+    const r = run(320);
+    close('nqCumSimpson ends exactly on composite Simpson', r.c[320] - r.simp, 0, 1e-14);
+    close('and on the true integral', r.c[320], exact, 1e-9);
+    ok('its intermediate nodes track the running integral too',
+       Math.abs(r.c[160] - nqAdaptive(f, 0, 2.5, 1e-13)) < 1e-7,
+       r.c[160] - nqAdaptive(f, 0, 2.5, 1e-13));
+    const e1 = Math.abs(run(160).c[160] - exact), e2 = Math.abs(run(320).c[320] - exact);
+    const ord = Math.log2(e1 / e2);
+    ok('and it is measured to be fourth order, by halving h', ord > 3.6 && ord < 4.4, ord);
+    close('the first node is zero', r.c[0], 0, 0);
+  })();
+
   /* multiple integrals */
   close('double integral of xy over the unit square', nqDoubleRect((x, y) => x * y, 0, 1, 0, 1), 0.25, 1e-12);
   close('the area of the triangle under y = x',
@@ -4453,6 +4639,42 @@ ok('scalar mode div is the Laplacian', sf('x^2+y^2+z^2').laplacian !== null);
     ok('a stiffer damper removes more', dyForceRun((x, v) => -k * x - 1.2 * v, m, 1.2, 0, 4 * T, 6000).wNon < Dp.wNon);
     const ord = dyForceOrder(damped, m, 1.2, 0, T, 40);
     ok('the stepper is measured to be fourth order', ord > 3.5 && ord < 4.5, ord);
+
+    /* J9 — THE CASE THAT SHIPPED WRONG, pinned against the closed form.
+       This is the stage's own default: -4x - 0.3v, m = 0.5, from x = 1.5 at
+       rest, for 12 s at n = 2400. Twelve seconds is eight damping times, so the
+       net work is the 1.9e-3 J residue of a 13.5 J sum that nearly cancels — a
+       cancellation factor of 7000. The trapezoid in dx that stood here is second
+       order against an RK4 trajectory that is fourth, so its own truncation
+       error came to 1.4988e-4 J, SEVEN POINT EIGHT PER CENT of the answer, and
+       the panel printed it as "they differ by 0".
+
+       The tolerances below are the measured error of the second route, not a
+       guess: work vs the closed form is 4.6e-9 at this n, and the relative gap
+       2.54e-6. The old code gives 7.79e-2 — so the 1e-4 bound fails by 780× on
+       the arrangement that shipped, which is the point of writing it that way. */
+    const jm = 0.5, jk = 4, jc = 0.3, jx0 = 1.5, jT = 12;
+    const jg = jc / jm / 2, jwd = Math.sqrt(jk / jm - jg * jg);
+    const jB = jg * jx0 / jwd;
+    const jv = t => Math.exp(-jg * t) *
+      ((-jg * jx0 + jwd * jB) * Math.cos(jwd * t) + (-jg * jB - jwd * jx0) * Math.sin(jwd * t));
+    const jx = t => Math.exp(-jg * t) * (jx0 * Math.cos(jwd * t) + jB * Math.sin(jwd * t));
+    const jdK = 0.5 * jm * jv(jT) * jv(jT);
+    const J = dyForceRun((x, v) => -jk * x - jc * v, jm, jx0, 0, jT, 2400);
+    close('a damped run for eight damping times ends where the closed form says', J.x, jx(jT), 1e-8);
+    close('and ∫F·dx matches that closed form', J.work, jdK, 1e-7);
+    ok('a work integral laid over RK4 must be fourth order too, or it measures itself',
+       J.gapWork < 1e-4 * Math.max(Math.abs(J.dK), Math.abs(J.work)),
+       J.gapWork + ' of ' + J.dK + ' = ' + (J.gapWork / Math.abs(J.dK)));
+    ok('so the residue of a 7000-fold cancellation is still good to five figures',
+       J.gapWork / Math.abs(J.dK) < 1e-5, J.gapWork / Math.abs(J.dK));
+    const je = k => Math.abs(dyForceRun((x, v) => -jk * x - jc * v, jm, jx0, 0, jT, k).work - jdK);
+    const jord = Math.log2(je(600) / je(2400)) / 2;
+    ok('measured by halving h, the quadrature is fourth order', jord > 3.6 && jord < 4.4, jord);
+    /* and the ledger plot is drawn from the same running integral the panel
+       quotes, so the picture and the numbers cannot drift apart */
+    close('the potential curve ends exactly on the conservative work', J.Us[J.n] + J.wCons, 0, 0);
+    close('and starts at zero', J.Us[0], 0, 0);
   })();
   (function(){
     /* AN ACCELERATION PROGRAMME. The four constant-acceleration equations are

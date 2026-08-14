@@ -161,7 +161,7 @@ STAGES.rlDyn = {
       ${kv('E in joules', fmtNum(E * MEV_J, 4) + ' J')}
       ${kv('E² − (pc)²', fmtNum(E * E - p * p, 6) + ' MeV²')}
       ${kv('(mc²)²', fmtNum(m * m, 6) + ' MeV²')}
-      ${kv('residual', fmtNear(E * E - p * p - m * m))}
+      ${kv('residual', fmtAgree(E * E - p * p, m * m, 'MeV²'))}
       <p class="help">That residual is the invariance of mass, checked numerically. Push β past 0.99 and
       watch E run away while the residual does not move: all the added energy is going into momentum
       along the hyperbola, and none of it into mass. This is why "relativistic mass" was abandoned —

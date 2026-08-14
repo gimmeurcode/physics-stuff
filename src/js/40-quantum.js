@@ -158,9 +158,21 @@ function qmBoundStates(V, x0, x1, count, N){
     }
     const E = (a + b) / 2;
     const S = qmShoot(V, E, x0, x1, N);
-    /* normalise, by the trapezoid rule on ψ² */
-    let s = 0;
-    for(let i = 0; i < N; i++) s += (S.psi[i] * S.psi[i] + S.psi[i + 1] * S.psi[i + 1]) / 2 * S.h;
+    /* Normalise by Simpson on ψ². qmShoot is Numerov — the 1 − h²f/12
+       coefficients are what make it fourth order — so this LOOKS like the order
+       mismatch that had dyForce (31a) print a real 7.8% disagreement as "0".
+
+       Measured, it is not one, and the reason is worth keeping. Euler–Maclaurin
+       puts the whole of the trapezoid's error series in the ODD DERIVATIVES AT
+       THE ENDPOINTS, and a bound state vanishes at both walls along with all of
+       them, so every term cancels and the trapezoid is superconvergent here:
+       the two rules agree to 2e-16, and a test asserting the expected h² was
+       written, run, and failed. Simpson is kept only because it is never worse
+       and does matter for a state still appreciable at the wall, where those
+       endpoint terms stop vanishing. Do not cite this as a J9 instance. */
+    const p2 = new Float64Array(N + 1);
+    for(let i = 0; i <= N; i++) p2[i] = S.psi[i] * S.psi[i];
+    const s = nqCumSimpson(p2, S.h, N)[N];
     const A = s > 0 ? 1 / Math.sqrt(s) : 1;
     const psi = new Float64Array(N + 1);
     for(let i = 0; i <= N; i++) psi[i] = S.psi[i] * A;
@@ -325,6 +337,15 @@ function qmScatter(V, E, x0, x1, N){
    an independent second opinion on qmScatter rather than a rearrangement of it —
    and where the two disagree, the disagreement is the approximation being caught
    out, which is worth more than either number alone. */
+/* NOTE, so nobody "generalises" the Simpson fix above into here. This integrand
+   is √(2(V−E)), which has a SQUARE-ROOT branch point at each turning point where
+   V = E. Its derivative is infinite there, so the trapezoid rule converges at
+   h^1.5 rather than h², and Simpson does not converge any faster — raising the
+   order of a rule buys nothing against a singularity that violates its
+   smoothness hypothesis. Matching the order of the stepper is the right rule
+   only where the integrand is smooth; here the honest fix would be a
+   substitution that removes the branch point, and the panel already treats the
+   WKB result as an approximation whose disagreement is the point. */
 function qmGamow(V, E, x0, x1, N){
   N = N || 4000;
   const h = (x1 - x0) / N;

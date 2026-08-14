@@ -217,9 +217,17 @@ STAGES.ftConv = {
       for(let m = 0; m < N; m++) conv[n] += sig[m] * imp[(n - m + N) % N];
     /* route 2: multiply in frequency */
     const viaF = ftConvolveFFT(sig, imp);
-    let worst = 0;
-    for(let i = 0; i < N; i++) worst = Math.max(worst, Math.abs(conv[i] - viaF[i]));
-    return { N, sig, imp, conv, viaF, worst };
+    let worst = 0, scale = 0;
+    for(let i = 0; i < N; i++){
+      worst = Math.max(worst, Math.abs(conv[i] - viaF[i]));
+      scale = Math.max(scale, Math.abs(conv[i]));
+    }
+    /* the peak of the convolution itself, because `worst` is meaningless
+       without it: 2.4e-15 beside a peak of 1 is the FFT working, and beside a
+       peak of 1e-14 it is the FFT failing. The verdict below is relative for
+       the same reason — an absolute 1e-9 threshold passes any signal small
+       enough, which is the J9 mistake in threshold form. */
+    return { N, sig, imp, conv, viaF, worst, scale };
   },
   frame(st, dt, ctx, W, H){
     const d = this.build(st);
@@ -262,8 +270,8 @@ STAGES.ftConv = {
     const cur = ftConvCur(st);
     return `<div class="card tight"><div class="ttl">The two routes agree</div>
       ${cur.custom ? kv('filter', esc(cur.hName)) : ''}
-      ${kv('largest difference', ckEng(d.worst, ''))}
-      ${kv('verdict', d.worst < 1e-9 ? '✓ identical to rounding error' : 'check the transform')}
+      ${kv('largest difference', fmtGap(d.worst, d.scale))}
+      ${kv('verdict', d.worst < 1e-9 * Math.max(1e-300, d.scale) ? '✓ identical to rounding error' : 'check the transform')}
       ${cur.custom ? kv('ringing — h[n] 12 samples out', fmtNum(cur.ring * 100, 3) + '% of its peak') : ''}
       ${kv('cost of convolving', ckEng(N * N, '') + ' operations')}
       ${kv('cost via the FFT', ckEng(3 * ftFFTCost(N) + N, '') + ' operations')}
@@ -288,7 +296,7 @@ STAGES.ftConv = {
   },
   chip(st){ const d = st.last;
     return `<div class="k">cutoff at bin ${st.cut}</div>
-      ${d ? `<div style="color:var(--c-grad)">routes differ by ${ckEng(d.worst,'')}</div>` : ''}`; },
+      ${d ? `<div style="color:var(--c-grad)">routes differ by ${fmtGap(d.worst, d.scale)}</div>` : ''}`; },
   legend(){ return [['var(--c-grad)', 'the signal, and the frequency-domain result'],
                     ['var(--c-curl)', 'the filter\'s impulse response'],
                     ['var(--c-pos)', 'the time-domain convolution']]; }

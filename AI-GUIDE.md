@@ -5,6 +5,9 @@ everything is; this says *how* to change it and what will bite you.
 **`MASTER-PLAN.md` says what is built, what is left, and the rules anything new
 must be written to** — read it first if you are choosing work rather than
 editing something already chosen.
+**`SITE-RULES.md` outranks both** — the laws the site obeys, and the rule that a
+defect found in one wing is fixed in every wing it exists in. Read it before
+settling any question of what is allowed; read this before typing.
 
 ---
 
@@ -12,7 +15,8 @@ editing something already chosen.
 
 A single self-contained page — no build step beyond concatenation, no
 dependencies, no network. 40 wings, 593 guided experiments, 178 canvas stages,
-4175 unit tests (measured 2026-08-13 — **re-measure rather than quote**).
+4249 unit tests (measured 2026-08-14 — **re-measure rather than quote**;
+`./auditdocs.ps1` fails the build when a figure here drifts from the site).
 Everything on screen is computed live from the actual mathematics: symbolic
 differentiation, adaptive quadrature, a nodal circuit solver, Lorentz boosts,
 Schwarzschild geodesics, exact wavefunctions.
@@ -21,13 +25,14 @@ Schwarzschild geodesics, exact wavefunctions.
 src/head.html      <- <meta>, title
 src/styles.css     <- the whole design system
 src/shell.html     <- the DOM skeleton (header, canvas, dock, rail, palette)
-src/js/*.js        <- 230 modules, concatenated in filename order
+src/js/*.js        <- 231 modules, concatenated in filename order
         |
         v  ./build.ps1
-vector-calculus.html   (5 339 257 bytes, the deployable artifact)
+vector-calculus.html   (5 409 933 bytes on 2026-08-14, the deployable artifact)
 ```
 
 **Never edit `vector-calculus.html`.** It is overwritten on every build.
+**Nor any generated document** — `MAP.md` comes from `./map.ps1`.
 
 ---
 
@@ -36,22 +41,36 @@ vector-calculus.html   (5 339 257 bytes, the deployable artifact)
 ```powershell
 ./build.ps1        # src/ -> vector-calculus.html          (~1 s)
 ./smoke.ps1        # does the bundle parse and boot at all?              (~10 s)
-./runtests.ps1     # 4175 engine unit tests, must say "0 failed"   (~30 s)
+./runtests.ps1     # 4249 engine unit tests, must say "0 failed"   (~30 s)
+./measure.ps1      # the headline counts, from the booted app         (~15 s)
+./auditdocs.ps1    # do these documents still describe the site?     (~1 min)
+./auditdocs.ps1 -Fix   #   ... and rewrite the stale counts, then read the diff
 ./auditcontrast.ps1 # WCAG contrast + the 12px type floor              (~1 s)
 ./map.ps1          # regenerate MAP.md after adding/renaming files
 ./runapp.ps1 -Wing integral -Demo '1.0' -Tag x    # screenshot one demo
 ./runall.ps1       # full audit: every demo, every control  (~18 min)
 ./auditcustom.ps1  # drive the "type your own" path on every stage    (~1 min)
+./auditclaims.ps1  # recompute what the preset tables assert          (~30 s)
+./auditlink.ps1    # does a permalink reproduce the view it was copied from? (~2 min)
 ./auditpanel.ps1   # leave every stage and come back — do the panels survive? (~20 s)
 ./auditperf.ps1    # what a frame costs        (~40 s; -Where attributes it)
 ./auditzoom.ps1    # pan/zoom every plot, and prove mkPlot's identity (~1 min)
 ./auditframe.ps1   # how much of each curve falls outside its window  (~1 min)
+./auditmarks.ps1   # are the key points drawn on a plot real?         (~1 min)
+./auditresid.ps1   # is any residual printed as though it were a measurement? (~1 min)
+./auditsize.ps1    # eight canvas shapes — layouts that break at another ratio (~2 min)
+./auditviewport.ps1 # sixteen real window sizes, and the page around the canvas (~3 min)
+./auditartifact.ps1 # does it survive publication as a Claude artifact? (~1 min)
 ./audittext.ps1    # harvest what every panel SAYS         (~4 min)
 ./auditscan.ps1    # scan that harvest for notation defects (~20 s)
 ./auditderive.ps1  # measure every derivation ladder       (~40 s)
 ./auditprose.ps1   # inventory what the essays assert       (~1 s, reads the harvest)
 ./clean.ps1        # delete everything the above regenerate (~2 s, -WhatIf to list)
 ```
+
+That is the whole harness — `Get-ChildItem *.ps1` is the authority on how many
+there are, and `./auditdocs.ps1` fails if a script exists that this list, or
+`MASTER-PLAN.md` §1.6 and §4.2, does not mention.
 
 `runall.ps1` proves every demo *runs*. `audittext.ps1` + `auditscan.ps1` prove
 every demo is *readable* — they drive all 593 experiments, harvest the
@@ -87,6 +106,50 @@ change to a picker, an accessor or the `pk*` helpers. It drives `<textarea>`
 inputs too — the netlist and the lens prescription are not one-line formulas —
 and a textarea must carry a `data-audit` attribute holding something valid for
 its own format, because no generic expression could be.
+
+`auditlink.ps1` must end `findings=0`. A permalink puts the reader's whole view
+in the URL (`#w=<wing>&d=<group.item>&c.<id>=<value>`) and restores it by driving
+the real controls, so it is the one gate that asks whether every control's value
+can be written **back**. Three things follow for anything you add:
+
+- **An element id is a key.** Two panels both using `ciR` meant `getElementById`
+  returned whichever came first, and a `wireSlider` call could attach to the
+  wrong element entirely. The gate fails on any duplicate id under `#dock`.
+- **Never fill a box the reader types into with `fmtNum`.** It emits U+2212 and
+  real superscripts, and `parseFloat('−0.7')` is `NaN`. Three panels did, and
+  every negative component of û and n̂ silently became `0` through a `|| 0`.
+  Use **`fmtEdit(v, sig)`** for anything typed into, `fmtNum` for what is read.
+- **A control read as part of a group** — û is `du`/`dv`/`dw`, one handler, one
+  re-normalisation — must tolerate all of it being assigned before any of it is
+  notified, which is how `plApply` restores.
+
+It runs two routes, because the obvious one is worthless alone: comparing the
+**controls** still passed on a build where the restore filled every box and told
+no stage anything, so it also compares the text the visible panels **print from**
+those controls.
+
+## Printing a difference — pick the helper, never the raw number
+
+Four formatters, and the choice is mechanical (`10-math.js`). A residual is
+meaningless without the scale it is read against, so **none of these is
+`fmtNum`**, whose `sig` counts *decimals* below 1 and renders a real gap in
+[1e-4, 5×10⁻ˢⁱᵍ) as the string `0`:
+
+| you have | use |
+|---|---|
+| **both routes** in scope | **`fmtAgree(a, b, unit)`** — derives the scale from the two numbers, so it cannot be handed the wrong one. Reach for this first |
+| only the gap | `fmtGap(gap, scale, unit)` — an accumulated drift, a worst case over a sweep |
+| either, on a **canvas** | `fmtAgreeTight` / `fmtGapTight` — same verdict and floor, no prose, Unicode only, fits a fixed column |
+| a magnitude whose whole meaning is its size | `fmtSig(v, sig)` — never `toFixed`, which printed a perfect fit as `0.00000` |
+| inside a circuit | `ckGap` / `ckEngF` (`48a`) |
+
+**`toExponential` is not one of them.** It emits ASCII `8.10e-11` where the site
+requires `8.10×10⁻¹¹` (§1.7), and it carries no scale at all.
+
+The gate is `./auditresid.ps1`, and it reads **five rendered surfaces** —
+readout, chip, derive ladder, legend, and the `*Own` reader-supplied panels.
+It cannot read a **canvas**, so a `ctText`/`wsNum`/`rlText` that prints a
+difference is on you.
 
 `auditderive.ps1` must end `flagged=0 OK`. It calls every stage's `derive(st)`,
 which **nothing else does** — not `runtests`, which only sees engines, and not

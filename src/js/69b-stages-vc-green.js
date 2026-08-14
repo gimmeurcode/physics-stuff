@@ -154,7 +154,7 @@
     return `<div class="card tight"><div class="ttl">Circulation form — both sides</div>
       ${kv('∮ P dx + Q dy', fmtNum(circ, 8))}
       ${kv('∬ (Q<sub>x</sub> − P<sub>y</sub>) dA', fmtNum(dbl, 8))}
-      ${kv('difference', fmtNum(Math.abs(circ - dbl), 4))}
+      ${kv('difference', fmtAgree(circ, dbl))}
       <p class="help">The line integral is a one-dimensional adaptive quadrature along a parametrised
       curve. The double integral is a two-dimensional Gauss rule in polar coordinates over the region.
       They share no code and no assumptions — the agreement is the theorem.</p>
@@ -162,7 +162,7 @@
     <div class="card tight"><div class="ttl">Flux form — both sides</div>
       ${kv('∮ F·n̂ ds  =  ∮ P dy − Q dx', fmtNum(flux, 8))}
       ${kv('∬ (P<sub>x</sub> + Q<sub>y</sub>) dA', fmtNum(dblDiv, 8))}
-      ${kv('difference', fmtNum(Math.abs(flux - dblDiv), 4))}
+      ${kv('difference', fmtAgree(flux, dblDiv))}
       <p class="help">Apply the circulation form to the rotated field ⟨−Q, P⟩ and the flux form falls out
       immediately. One theorem, two costumes — and it is the two-dimensional ancestor of both Stokes'
       theorem and the divergence theorem, which is why those two look so alike.</p>
@@ -170,7 +170,7 @@
     <div class="card tight"><div class="ttl">The planimeter</div>
       ${kv('½∮ (x dy − y dx)', fmtNum(areaB, 8))}
       ${kv('∬ 1 dA', fmtNum(areaD, 8))}
-      ${kv('difference', fmtNum(Math.abs(areaB - areaD), 4))}
+      ${kv('difference', fmtAgree(areaB, areaD))}
       <p class="help">The area of the region, computed without ever visiting its interior. Choose the
       cardioid and check against 3πa²/2; choose the square and check against 4a². The same integral, run on
       the vertices of a polygon, is the shoelace formula that every mapping package uses.</p>
@@ -343,7 +343,7 @@ STAGES.vcSurface = {
       ${kv('parameters', `${S.ul} ∈ [${fmtNum(S.u0, 3)}, ${fmtNum(S.u1, 3)}],  ${S.vl} ∈ [${fmtNum(S.v0, 3)}, ${fmtNum(S.v1, 3)}]`)}
       ${kv('∬ |r_u × r_v| du dv', fmtNum(area, 8))}
       ${kv('the known area', fmtNum(S.exactArea, 8))}
-      ${kv('difference', fmtNum(Math.abs(area - S.exactArea), 4))}
+      ${kv('difference', fmtAgree(area, S.exactArea))}
       ${kv(`the ${st.nu} × ${st.nv} mesh sum`, fmtNum(meshA, 7))}
       ${kv('boundary', S.boundary)}
     </div>

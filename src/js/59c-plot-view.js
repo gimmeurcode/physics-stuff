@@ -231,6 +231,56 @@ function pvFitY(fn, x0, x1, n){
               step, or a finite sample beside a non-finite one — a pole or a
               genuine discontinuity, and labelled as neither since sampling
               cannot tell them apart */
+/* Is the gap between two neighbouring samples a real discontinuity, or just a
+   place where the curve is steep?
+
+   THE OLD TEST COULD NOT TELL, and said "pole" to both. It compared the step
+   against 12× the MEDIAN step of the whole curve, which asks whether this part
+   of the curve is steeper than the rest of it — a completely different question.
+   Any curve with a long flat tail and a short steep head answers it wrongly, so
+   a damped oscillation's first swing, 1/s near the origin, and every decay curve
+   in the nuclear wing grew a picket fence of dashed yellow "pole" markers across
+   a stretch that is perfectly continuous.
+
+   REFINEMENT IS THE HONEST TEST, and it is available because the plot registry
+   keeps each curve's own function. Halve the interval and look at the midpoint:
+   on a continuous stretch, however steep, the midpoint lands between its
+   endpoints — that is what continuity means at this scale. Near a pole it runs
+   AWAY from both, because the function is growing without bound in there.
+
+   With no `fn` to refine with, fall back to a LOCAL comparison — the step
+   against its immediate neighbours — rather than the global median. For a
+   smooth curve consecutive differences are comparable, since |Δy| ≈ |f′|h and
+   f′ cannot change much in one step; at a jump, one difference dwarfs both of
+   its neighbours.
+
+   Two shapes count, and between them they are what "unbounded in here" looks
+   like on a sampled curve:
+
+     · the midpoint is not finite, or is FURTHER OUT than both endpoints — the
+       function is still growing inside the interval;
+     · the two endpoints straddle zero with large magnitudes — the curve has
+       gone up one side of a pole and come back the other.
+
+   The second clause is not decoration. A first attempt used only the midpoint,
+   and the named control in ./auditmarks.ps1 caught it dropping BOTH of tan's
+   real poles: when the pole sits off-centre in its interval the midpoint lands
+   on one branch and is no larger than the endpoint on that side, so a test
+   asking only "is the middle bigger" says no to a genuine pole. `mag` is the
+   curve's own scale — the median |y| — so "large" is measured against the
+   curve rather than against a constant. */
+function pvBreakReal(x0, x1, y0, y1, fn, nb, mag){
+  /* up one side of a pole and back down the other */
+  if((y0 < 0) !== (y1 < 0) && Math.min(Math.abs(y0), Math.abs(y1)) > mag * 4) return true;
+  if(typeof fn === 'function'){
+    const m = fn((x0 + x1) / 2);
+    if(!Number.isFinite(m)) return true;          /* it left the reals in there */
+    /* still climbing inside the interval, rather than interpolating across it */
+    return Math.abs(m) > Math.max(Math.abs(y0), Math.abs(y1)) * 4;
+  }
+  return Number.isFinite(nb) && Math.abs(y1 - y0) > nb * 8;
+}
+
 function pvFeatures(xs, ys, fn){
   const F = [], n = xs.length;
   if(n < 3) return F;
@@ -242,12 +292,28 @@ function pvFeatures(xs, ys, fn){
   steps.sort((a, b) => a - b);
   const med = steps[Math.floor(steps.length / 2)] || 0;
   const big = Math.max(med * 12, 1e-12);
+  /* the curve's own vertical scale, so "a large value" is judged against this
+     curve rather than against a constant that knows nothing about its units */
+  const mags = [];
+  for(let i = 0; i < n; i++) if(Number.isFinite(ys[i])) mags.push(Math.abs(ys[i]));
+  mags.sort((a, b) => a - b);
+  const mag = mags.length ? (mags[Math.floor(mags.length / 2)] || 0) : 0;
   for(let i = 1; i < n; i++){
     const a = ys[i - 1], b = ys[i];
     const fa = Number.isFinite(a), fb = Number.isFinite(b);
     if(fa !== fb){ F.push({ t:'break', x:xs[fa ? i - 1 : i], y:fa ? a : b }); continue; }
     if(!fa) continue;
-    if(Math.abs(b - a) > big && steps.length > 8){ F.push({ t:'break', x:(xs[i - 1] + xs[i]) / 2, y:(a + b) / 2 }); continue; }
+    if(Math.abs(b - a) > big && steps.length > 8){
+      /* the step is large for this curve — now find out whether it is a
+         discontinuity or merely a steep stretch. See pvBreakReal. */
+      const dl = (i >= 2 && Number.isFinite(ys[i - 2])) ? Math.abs(a - ys[i - 2]) : NaN;
+      const dr = (i + 1 < n && Number.isFinite(ys[i + 1])) ? Math.abs(ys[i + 1] - b) : NaN;
+      const nb = Math.max(Number.isFinite(dl) ? dl : 0, Number.isFinite(dr) ? dr : 0) || NaN;
+      if(pvBreakReal(xs[i - 1], xs[i], a, b, fn, nb, mag)){
+        F.push({ t:'break', x:(xs[i - 1] + xs[i]) / 2, y:(a + b) / 2 });
+        continue;
+      }
+    }
     if(a === 0){ F.push({ t:'zero', x:xs[i - 1], y:0 }); continue; }
     if((a < 0) !== (b < 0)){
       /* Linear interpolation first, and for the marker that is already enough:

@@ -25,7 +25,7 @@ STAGES.wvSHM = {
             `= ${n(R.Tenergy)} s, with the turning-point singularity removed by x = c + R sin θ`),
           drvSay('and it is checked against the motion itself, which knows nothing of energy',
             R.motionOK
-              ? 'Integrating x″ = F(x)/m by Runge–Kutta and timing the returns of v to zero gives ' + n(R.Tmotion) + ' s. The two differ by ' + fmtNum(R.gap, 3) + ' s and share no line of code, so their agreement is the claim about energy being tested rather than assumed.'
+              ? 'Integrating x″ = F(x)/m by Runge–Kutta and timing the returns of v to zero gives ' + n(R.Tmotion) + ' s. The two differ by ' + fmtAgree(R.Tenergy, R.Tmotion, 's') + ' and share no line of code, so their agreement is the claim about energy being tested rather than assumed.'
               : 'The integrated motion did not come back, which means this energy is above the rim of the well.'),
           drvStep('now compare the number the approximation offers',
             `${dv('T')}_harm ${dop('=')} 2π√(${dv('m')}/${dv('k')}), &nbsp; ${dv('k')} ${dop('=')} ${dop('−')}${dv('F')}′(${dv('x')}₀)`,
@@ -272,7 +272,7 @@ STAGES.wvSHM = {
         ${kv('from the energy integral', nm(R.Tenergy) + ' s')}
         ${kv('from integrating the motion', R.motionOK ? nm(R.Tmotion) + ' s'
               : (R.escaped ? 'the mass never came back' : 'no second turning point was reached'))}
-        ${R.motionOK ? kv('difference', fmtNum(R.gap, 3) + ' s') : ''}
+        ${R.motionOK ? kv('difference', fmtAgree(R.Tenergy, R.Tmotion, 's')) : ''}
         ${R.motionOK ? kv('verdict', R.gap < 1e-5 * R.Tenergy
             ? '✓ they agree — energy conservation really does fix the period'
             : 'the two disagree; the step is too coarse for a well this sharp') : ''}
@@ -691,7 +691,7 @@ STAGES.wvWave = {
       <div class="card tight"><div class="ttl">Source motion is not the same as observer motion</div>
         ${kv('source approaching at ' + fmtNum(Math.abs(st.vs), 4), fmtNum(A.f, 6) + ' Hz')}
         ${kv('observer approaching at the same speed', fmtNum(obsA.f, 6) + ' Hz')}
-        ${kv('difference', fmtNum(Math.abs(A.f - obsA.f), 5) + ' Hz')}
+        ${kv('difference', fmtAgree(A.f, obsA.f, 'Hz'))}
         <p class="help">The two are <i>not</i> equal, and that asymmetry is a fingerprint of the medium: a
         moving source compresses the wavelength, a moving observer meets the wavefronts more often. Only
         one of those is a property of the wave itself.</p>
@@ -732,8 +732,7 @@ STAGES.wvWave = {
         right is cheap; getting the corner right is not.</p>
       </div>
       <div class="card tight"><div class="ttl">Fourier against d’Alembert</div>
-        ${kv('largest gap between the two routes', fmtNum(R.gap, 3) + ' m')}
-        ${kv('as a fraction of the displacement', fmtNum(R.rel, 3))}
+        ${kv('largest gap between the two routes', fmtGap(R.gap, R.shapeMax, 'm'))}
         ${kv('modes kept', String(R.N))}
         ${kv('verdict', R.rel < 0.01 ? '✓ the series has caught the shape'
               : 'the series is still short of it — add modes and watch this fall')}
@@ -746,8 +745,7 @@ STAGES.wvWave = {
       <div class="card tight"><div class="ttl">Parseval — is any energy missing?</div>
         ${kv('∫y² dx over the shape', nm(R.energy))}
         ${kv('(L/2)Σb<sub>n</sub>² over the modes', nm(R.parseval))}
-        ${kv('shortfall', fmtNum(R.parsevalGap, 3))}
-        ${kv('as a fraction', fmtNum(R.parsevalRel, 3))}
+        ${kv('shortfall', fmtAgree(R.parseval, R.energy))}
         <p class="help">Energy cannot hide. Whatever the first ${R.N} modes fail to account for shows up
         here as a shortfall, and it is always a shortfall — a truncated series can only ever have too
         little. Raise the mode count and both this and the gap above shrink together, because they are two

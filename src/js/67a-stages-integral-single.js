@@ -440,7 +440,7 @@ STAGES.igFTC = {
       ${kv('A(x) = ∫ₐˣ f dt', fmtNum(A, 8))}
       ${kv("A′(x), by differencing A", fmtNum(Ap, 8))}
       ${kv('f(x)', fmtNum(K.f(st.x), 8))}
-      ${kv('difference', fmtNum(Math.abs(Ap - K.f(st.x)), 3))}
+      ${kv('difference', fmtAgree(Ap, K.f(st.x)))}
       <p class="help">A(x) is built by quadrature and knows nothing about antiderivatives; the derivative
       above is a central difference of that quadrature. They agree, which is the theorem holding rather
       than being assumed.</p>
@@ -450,7 +450,7 @@ STAGES.igFTC = {
       ${K.Fi ? kv('F(b)', fmtNum(K.Fi(b), 8)) : ''}
       ${K.Fi ? kv('F(a)', fmtNum(K.Fi(a), 8)) : ''}
       ${K.Fi ? kv('F(b) − F(a)', fmtNum(K.Fi(b) - K.Fi(a), 10)) : kv('an elementary antiderivative', 'none exists — Part 2 is unusable here')}
-      ${K.Fi ? kv('difference from the quadrature', fmtNum(Math.abs(total - (K.Fi(b) - K.Fi(a))), 3)) : ''}
+      ${K.Fi ? kv('difference from the quadrature', fmtAgree(total, (K.Fi(b) - K.Fi(a)))) : ''}
       <p class="help">${K.Fi
         ? 'Two entirely different routes to one number. Part 2 is an enormous computational shortcut — but it is a shortcut, not the definition.'
         : 'e^(−x²) has no antiderivative in terms of elementary functions — Liouville proved it, it is not a failure of ingenuity. Part 1 still guarantees an antiderivative <i>exists</i> (it is the accumulation function itself, and it is called erf); it simply cannot be written with the usual symbols. The integral is perfectly well defined and perfectly computable.'}</p>
@@ -621,7 +621,7 @@ STAGES.igApply = {
       ${kv('limits', `a = ${fmtNum(a, 5)},  b = ${fmtNum(b, 5)}`)}
       ${kv(`the sum of ${st.n} slices`, fmtNum(approx, 8))}
       ${kv('the integral', fmtNum(exact, 8))}
-      ${kv('difference', fmtNum(Math.abs(approx - exact), 3))}
+      ${kv('difference', fmtAgree(approx, exact))}
     </div>
     <div class="card tight"><div class="ttl">The same region, every way</div>
       ${kv('area between the curves', fmtNum(between, 7))}

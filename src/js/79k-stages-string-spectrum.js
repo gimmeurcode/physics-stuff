@@ -258,7 +258,7 @@ STAGES.wsModes = {
       ${kv('  ln of that', fmtNum(Math.log(cnt), 6))}
       ${kv('leading term 2π√(cN/6)', fmtNum(wsCardyLog(c, nInt), 6))}
       ${kv('full saddle point', fmtNum(wsSaddleLog(nInt, c), 6))}
-      ${kv('  difference from the exact count', fmtNum(Math.log(cnt) - wsSaddleLog(nInt, c), 4))}
+      ${kv('  difference from the exact count', fmtAgree(Math.log(cnt), wsSaddleLog(nInt, c)))}
       <p class="help">The leading term alone is a poor match at these levels — the ratio is still well under
       one — and quoting only it would look like a failure. Evaluating the whole contour integral, prefactor
       included, brings the two together: the difference above falls off like 1/√N and is the honest measure
@@ -463,7 +463,7 @@ STAGES.wsRegge = {
       ${kv('σ = 1/2πα′', fmtNum(wsTension(f.alphaP), 5) + ' GeV²')}
       ${kv('  in MeV per femtometre', fmtNum(sig, 5))}
       ${kv('  the atom wing\'s Cornell value', fmtNum(SIGMA_STRING, 4) + ' MeV/fm')}
-      ${kv('  difference', fmtNum(Math.abs(sig - SIGMA_STRING), 3) + ' MeV/fm  (' +
+      ${kv('  difference', fmtAgree(sig, SIGMA_STRING, 'MeV/fm  (') +
             fmtNum(100 * Math.abs(sig - SIGMA_STRING) / SIGMA_STRING, 3) + '%)')}
       ${kv('as an ordinary force', fmtNum(wsTensionNewton(f.alphaP), 4) + ' N')}
       ${kv('  which is about', fmtNum(wsTensionNewton(f.alphaP) / 9.80665 / 1000, 3) + ' tonnes weight')}
@@ -533,7 +533,7 @@ STAGES.wsVen = {
           'a field theory falls off as a power; this falls off faster than any power, which is the softness that makes loop integrals converge'),
         drvStep('and at high energy, fixed t, it is a pure power of s',
           `|${dv('A')}| ${dop('∼')} ${dv('s')}^α(${dv('t')})`,
-          `the exponent measured off this stage is ${fmtNum(sl.slope, 6)} against α(t) = ${fmtNum(sl.alphaT, 6)} — a gap of ${fmtNum(sl.gap, 3)}`),
+          `the exponent measured off this stage is ${fmtNum(sl.slope, 6)} against α(t) = ${fmtNum(sl.alphaT, 6)} — a gap of ${fmtAgree(sl.slope, sl.alphaT)}`),
         drvSay('and in 2024 it was shown to be forced',
           'Recent S-matrix bootstrap work derived the Veneziano amplitude as the UNIQUE solution to crossing symmetry together with two mild conditions — faster-than-power-law high-energy falloff, and a level-truncation property. The string spectrum comes out as an OUTPUT of that argument rather than an input. Weakening the assumptions to "the amplitude merely vanishes at high energy" opens a three-parameter family containing the Veneziano, Coon and hypergeometric amplitudes, so the boundary of the result is now mapped as well.')
       ],
@@ -632,7 +632,7 @@ STAGES.wsVen = {
       }
       wsNum(ctx, P.px + 16, P.py + 24, 'measured slope', fmtNum(sl.slope, 6), TH.curl);
       wsNum(ctx, P.px + 16, P.py + 42, 'α(t) it should equal', fmtNum(sl.alphaT, 6), TH.accent);
-      wsNum(ctx, P.px + 16, P.py + 60, 'difference', fmtNum(sl.gap, 3), TH.pos);
+      wsNum(ctx, P.px + 16, P.py + 60, 'difference', fmtAgreeTight(sl.slope, sl.alphaT), TH.pos);
       wsNum(ctx, P.px + 16, P.py + 78, 'r² of the log–log fit', fmtNum(sl.r2, 7), TH.dim);
       rlText(ctx, P.px + 16, P.py + 104,
         'a fixed exponent means one exchanged trajectory, not one exchanged particle',
@@ -689,7 +689,7 @@ STAGES.wsVen = {
                             : fmtNum(B.value, 6))}
       ${kv('Regge exponent, measured', fmtNum(sl.slope, 6))}
       ${kv('  α(t), which it must equal', fmtNum(sl.alphaT, 6))}
-      ${kv('  difference', fmtNum(sl.gap, 3))}
+      ${kv('  difference', fmtAgree(sl.slope, sl.alphaT))}
       ${kv('  r² of the log–log fit', fmtNum(sl.r2, 7))}
       ${kv('fixed-angle ln|A| at s = 40', fmtNum(wsFixedAngleLog(40, 0, st.ap, st.a0), 5))}
       ${kv('  a power law s⁻⁴ would give', fmtNum(-4 * Math.log(40), 5))}

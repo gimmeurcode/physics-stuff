@@ -325,7 +325,7 @@ STAGES.clApply = {
       return `<div class="card tight"><div class="ttl">The iteration</div>
         ${rows.join('')}
         ${kv('root', converged ? fmtNum(N.root, 12) : 'did not converge')}
-        ${kv('residual |f(root)|', fmtNum(N.residual, 3))}
+        ${kv('residual |f(root)|', fmtGap(N.residual, N.residScale))}
       </div>
       <div class="card tight"><div class="ttl">Quadratic convergence</div>
         ${N.path.slice(0, -1).map((x, i) => {
@@ -403,7 +403,7 @@ STAGES.clApply = {
         ${kv("x′  (given)", '0.6 m/s')}
         ${kv("y′ = −x x′ / y", fmtNum(r.yd, 6) + ' m/s')}
         ${kv('the same, by finite difference', fmtNum(num, 6) + ' m/s')}
-        ${kv('difference', fmtNum(Math.abs(r.yd - num), 3))}
+        ${kv('difference', fmtAgree(r.yd, num))}
         ${kv('x² + y² − L²', fmtNum(s.x * s.x + s.y * s.y - S.L * S.L, 3))}
       </div>
       <div class="card tight"><div class="ttl">What happens at the end</div>
@@ -462,7 +462,7 @@ STAGES.clApply = {
     if(st.mode === 'newton'){
       const N = clNewton(st.F.f, st.F.d1, st.x0, 10);
       return `<div class="k">Newton</div><div style="color:var(--c-curl)">${fmtNum(N.root, 8)}</div>
-        <div>|f| = ${fmtNum(N.residual, 3)}</div>`;
+        <div>|f| = ${fmtGapTight(N.residual, N.residScale)}</div>`;
     }
     if(st.mode === 'lhop') return `<div class="k">L'Hôpital</div><div>0/0 and ∞/∞ only</div>`;
     if(st.mode === 'optim'){

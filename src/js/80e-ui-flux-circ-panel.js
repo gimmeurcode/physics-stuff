@@ -79,8 +79,12 @@ function buildCircPanel(){
   $('ciPaddle').addEventListener('change', e=>{ S.circ.paddle=e.target.checked; });
   $('ciR').value=S.circ.r;
   $('ciR').addEventListener('input', e=>{ S.circ.r=+e.target.value; inst.circ=null; refreshCircPanel(); });
+  /* ctlParse rather than parseFloat, and for the same two reasons as û in
+     80c-ui-probe-panel.js: a reader may type 1/sqrt(2), and parseFloat could
+     not read back the U+2212 the box itself had been filled with. */
   for(const id of ['cnx','cny','cnz']) $(id).addEventListener('change', ()=>{
-    S.circ.n = v3(parseFloat($('cnx').value)||0, parseFloat($('cny').value)||0, parseFloat($('cnz').value)||0);
+    const num = i => { const v = ctlParse($(i).value); return Number.isFinite(v) ? v : 0; };
+    S.circ.n = v3(num('cnx'), num('cny'), num('cnz'));
     if(vlen(S.circ.n)<1e-9) S.circ.n=v3(0,0,1);
     inst.circ=null; refreshCircPanel();
   });
@@ -118,7 +122,11 @@ function refreshCircPanel(){
     $('ciSweep').innerHTML='';
     return;
   }
-  $('cnx').value=fmtNum(n.x,3); $('cny').value=fmtNum(n.y,3); $('cnz').value=fmtNum(n.z,3);
+  /* editable boxes hold ASCII their own handler can parse — see fmtEdit. Eight
+     figures for the same reason as û in 80c: this box is what a permalink
+     carries, and four figures moved the circulation printed beside it. */
+  for(const [id, v] of [['cnx', n.x], ['cny', n.y], ['cnz', n.z]])
+    if($(id) !== document.activeElement) $(id).value = fmtEdit(v, 8);
   recomputeInstruments();
   const p=S.probe, res=inst.circ;
   const cu=F.curlAt(p.x,p.y,p.z), exact=vdot(cu,n);

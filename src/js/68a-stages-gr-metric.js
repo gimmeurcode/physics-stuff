@@ -443,7 +443,7 @@ STAGES.rlOrbit = {
     <div class="card tight"><div class="ttl">How much it turns</div>
       ${kv('integrated from the geodesic', fmtNum(measured, 6) + ' rad/orbit')}
       ${kv('6πGM/(c²a(1−e²))', fmtNum(formula, 6) + ' rad/orbit')}
-      ${kv('difference', fmtNum(Math.abs(measured - formula) / Math.max(1e-30, formula) * 100, 4) + '%')}
+      ${kv('difference', fmtAgree(measured, formula, '%'))}
       ${kv('in arcseconds per orbit', fmtNum(measured * ARCSEC, 6) + '″')}
       ${S.P ? kv('orbits per century', fmtNum(36525 / S.P, 6)) : ''}
       ${S.P ? kv('arcseconds per century', fmtNum(measured * ARCSEC * 36525 / S.P, 5) + '″') : ''}

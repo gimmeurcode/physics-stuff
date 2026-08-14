@@ -163,7 +163,7 @@ STAGES.wsCrit = {
       ${kv('the divergent piece 1/ε²', fmtNum(1 / (st.eps * st.eps), 10))}
       ${kv('what is left', fmtNum(rem, 12))}
       ${kv('−1/12', fmtNum(-1 / 12, 12))}
-      ${kv('difference', fmtNum(Math.abs(rem + 1 / 12), 3))}
+      ${kv('difference', fmtAgree(rem, -1 / 12))}
       ${kv('next term in the expansion, ε²/240', fmtNum(st.eps * st.eps / 240, 4))}
       <p class="help">The difference above is not a numerical error — it is the ε²/240 term beside it,
       which is the leading correction and which vanishes as ε → 0. Compare the two numbers as you slide ε
@@ -172,9 +172,9 @@ STAGES.wsCrit = {
     <div class="card tight"><div class="ttl">Route two — analytic continuation, carried out</div>
       ${kv('ζ(2), summed by Euler–Maclaurin', fmtNum(wsZetaEM(2), 14))}
       ${kv('  π²/6, for comparison', fmtNum(Math.PI * Math.PI / 6, 14))}
-      ${kv('  difference', fmtNum(Math.abs(wsZetaEM(2) - Math.PI * Math.PI / 6), 3))}
+      ${kv('  difference', fmtAgree(wsZetaEM(2), Math.PI * Math.PI / 6))}
       ${kv('ζ(−1) from the functional equation', fmtNum(zc, 14))}
-      ${kv('  difference from −1/12', fmtNum(Math.abs(zc + 1 / 12), 3))}
+      ${kv('  difference from −1/12', fmtAgree(zc, -1 / 12))}
       <p class="help">Nothing in this calculation knows the answer in advance. ζ(2) is summed directly;
       the functional equation — a theorem about the zeta function, proved long before physics needed it —
       carries that number to s = −1. The exponential cutoff on the left and this continuation share no step,
@@ -187,7 +187,7 @@ STAGES.wsCrit = {
       ${kv('solving that gives D', fmtNum(D, 4))}
       ${kv('total conformal anomaly', sup ? '3D/2 − 15' : 'D − 26')}
       ${kv('setting it to zero gives D', fmtNum(Da, 4))}
-      ${kv('the two routes differ by', fmtNum(Math.abs(D - Da), 3))}
+      ${kv('the two routes differ by', fmtAgree(D, Da))}
       <p class="help">Two arguments that share no ingredient — one counts the polarisations a massless
       vector is allowed to have, the other demands that a symmetry of the worldsheet survive quantisation —
       return the same integer. There is no parameter to adjust and no way to soften the conclusion. It is
@@ -398,7 +398,7 @@ STAGES.wsCircle = {
           'Exchange n with w and simultaneously send R to α′/R, and the first two terms swap places while the third is untouched. The spectrum is identical. Not approximately — identically.'),
         drvStep('the check, run on your own numbers',
           `${dv('M')}²(${dv('n')},${dv('w')},${dv('R')}) ${dop('=')} ${dv('M')}²(${dv('w')},${dv('n')},α′/${dv('R')})`,
-          `${fmtNum(chk.m2a, 10)} against ${fmtNum(chk.m2b, 10)} — they differ by ${fmtNum(chk.gap, 3)}`),
+          `${fmtNum(chk.m2a, 10)} against ${fmtNum(chk.m2b, 10)} — they differ by ${fmtAgree(chk.m2a, chk.m2b)}`),
         drvSay('so there is no such thing as a circle smaller than √α′',
           'A circle of radius R/10 is the SAME physics as a circle of radius 10R described in the other variables. Shrinking past the self-dual radius √α′ does not produce a smaller space; it produces the same space again, with the labels on the two towers exchanged. Whatever a string measures distance with, it stops resolving below √α′ — which is a very different statement from "we have not looked yet".'),
         drvSay('and the duality survives interactions',
@@ -496,7 +496,7 @@ STAGES.wsCircle = {
     const bx = P.px + 14, by = P.py + P.ph - 84;
     wsNum(ctx, bx, by,      'M² at R', fmtNum(chk.m2a, 8), TH.pos);
     wsNum(ctx, bx, by + 17, 'M² at α′/R, n ↔ w', fmtNum(chk.m2b, 8), TH.warn);
-    wsNum(ctx, bx, by + 34, 'difference', fmtNum(chk.gap, 3), TH.accent);
+    wsNum(ctx, bx, by + 34, 'difference', fmtAgreeTight(chk.m2a, chk.m2b), TH.accent);
     stageNote(ctx, 'shrinking the circle past √α′ does not make a smaller space — it makes the same space again', W, H);
   },
   readout(st){
@@ -520,7 +520,7 @@ STAGES.wsCircle = {
     <div class="card tight"><div class="ttl">The duality, checked</div>
       ${kv('M² at R = ' + fmtNum(st.R, 4), fmtNum(chk.m2a, 12))}
       ${kv('M² at α′/R = ' + fmtNum(Rd, 4) + ', with n ↔ w', fmtNum(chk.m2b, 12))}
-      ${kv('difference', fmtNum(chk.gap, 3))}
+      ${kv('difference', fmtAgree(chk.m2a, chk.m2b))}
       ${kv('self-dual radius √α′', fmtNum(wsSelfDualR(st.ap), 6))}
       ${kv('are you above or below it', st.R > wsSelfDualR(st.ap) ? 'above — momentum states are the light ones'
                                                                   : st.R < wsSelfDualR(st.ap) ? 'below — winding states are the light ones'

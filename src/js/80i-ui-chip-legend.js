@@ -62,8 +62,26 @@ function updateLegend(){
   $('legend').style.display = rows.length ? '' : 'none';
 }
 
+/* ONLY THE EXPERIMENT ON SCREEN DOES ANY WORK.
+
+   When a stage is open, applyWingSections() hides every field-pipeline panel —
+   the probe, the flux box, the circulation loop, the directional derivative and
+   the derivation table. Hidden, but not idle: this function was still
+   evaluating the field, its divergence, its curl and a Jacobian at the probe,
+   rebuilding five panels' worth of HTML, and writing all of it into elements
+   with `display:none`. Every one of the 178 stages carried that cost for
+   panels its reader cannot see, and the stale contents were also what made
+   ./auditlink.ps1 report 119 differences no reader could ever have noticed.
+
+   The guard is safe precisely because the hiding is all-or-nothing: a stage
+   hides ALL of RAIL_SECTIONS, so there is no wing in which a stage is open and
+   one of these panels is still showing. And the way BACK is covered: the only
+   route from a stage to a visible field panel is applyDemo() choosing a field
+   demo, which calls stageExit() first and applyField() — hence refreshAll —
+   afterwards, by which time stageActive() is false again. */
 function refreshAll(){
   if(!S.field) return;
+  if(stageActive()) return;
   refreshProbe();
   refreshDerivation();
   updateLegend();

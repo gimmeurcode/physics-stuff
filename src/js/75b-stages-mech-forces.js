@@ -283,27 +283,36 @@ STAGES.dyForce = {
     <div class="card tight"><div class="ttl">The work–energy theorem, measured</div>
       ${kv('∫F·dx along the trajectory', fmtNum(D.work, 7) + ' J')}
       ${kv('½m(v² − v₀²) from the two ends', fmtNum(D.dK, 7) + ' J')}
-      ${kv('difference', fmtNum(D.gapWork, 3) + ' J')}
-      ${kv('relative to the work done', fmtNum(D.gapWork / scale, 3))}
+      ${kv('difference', fmtGap(D.gapWork, scale, 'J'))}
       ${kv('kinetic energy at the start', fmtNum(D.K0, 6) + ' J')}
       ${kv('and at the end', fmtNum(D.K1, 6) + ' J')}
-      <p class="help">The left-hand side is a <b>line integral along the path</b> — every step weighted by
-      the dx that step took, so a run that doubles back subtracts as it comes home. It travelled
+      <p class="help">The left-hand side is a <b>line integral along the path</b>. Along a path that is
+      being traced out in time it is ∫F·<b>v</b> dt, with v <i>signed</i>, so a run that doubles back
+      subtracts as it comes home — which is not ∫F dt, the impulse. It travelled
       ${fmtNum(D.travel, 4)} m to end up ${fmtNum(D.net, 4)} m from where it started, so the two are very
-      different sums. The right-hand side looks only at the first and last velocity. They agree.</p>
+      different sums. The right-hand side looks only at the first and last velocity.</p>
+      <p class="help">The difference is quoted <b>relative</b> as well as absolutely, because absolutely
+      is not readable on its own: a damped run that has come almost to rest has a net work of a
+      thousandth of a joule, and a millionth of a joule beside it is either a triumph or a
+      catastrophe depending on which. The quadrature is <b>fourth order, the same as the stepper</b> —
+      match those and the difference measures the theorem; leave the quadrature second order and it
+      measures the quadrature.</p>
     </div>
     <div class="card tight"><div class="ttl">And is your force conservative?</div>
       ${kv('∫F₀·dx along the actual path', fmtNum(D.wCons, 7) + ' J')}
       ${kv('∫F₀·dx straight from x₀ to x₁', fmtNum(D.wStraight, 7) + ' J')}
-      ${kv('difference', fmtNum(D.gapPath, 3) + ' J')}
+      ${kv('difference', fmtGap(D.gapPath, Math.max(1e-12, Math.abs(D.wCons)), 'J'))}
       ${kv('so the potential ΔU = −∫F₀·dx', fmtNum(D.dU, 6) + ' J')}
       ${kv('work done by the rest of the force', fmtNum(D.wNon, 6) + ' J')}
       ${kv('change in mechanical energy K + U', fmtNum(D.dE, 6) + ' J')}
-      ${kv('difference between those two', fmtNum(D.gapEnergy, 3) + ' J')}
+      ${kv('and the identity those two imply', fmtGap(D.gapEnergy, Math.max(1e-12, Math.abs(D.wNon)), 'J'))}
       <p class="help">F₀(x) = F(x, 0, 0) is the part of your law that depends on position alone.
       Integrating it along a path that wanders and integrating it straight between the endpoints are
       genuinely different sums, and they come out equal — <b>that is what conservative means</b>, and it is
-      why a potential energy can be defined at all.</p>
+      why a potential energy can be defined at all. That row and the difference in the card above are the
+      two <i>measurements</i> here; the last row is not a third. W<sub>non</sub> = W<sub>tot</sub> −
+      W<sub>cons</sub> by the linearity of the integral, so the last difference is the first two rearranged,
+      and it is shown because an identity that failed would mean the arithmetic had gone wrong.</p>
       <p class="help">${cons
         ? 'Everything in your force is that part, so the mechanical energy does not move: the thick line on the right-hand plot is flat and the phase portrait closes on itself.'
         : 'The rest of your force — whatever mentions v or t — is <i>not</i> path-independent, and the two rows above say exactly how much energy it moved. The phase portrait spirals rather than closing, and the total on the right-hand plot slopes by that same amount.'}</p>
@@ -395,9 +404,16 @@ STAGES.dyForce = {
   chip(st){
     if(st.scene === 'custom'){
       const D = STAGES.dyForce.own(st);
+      /* the relative gap, not the absolute one, and the colour follows it. The
+         absolute gap alone once read "they differ by 0" in the affirmative
+         colour over two rows that disagreed by 100%. */
+      const rel = D.gapWork / Math.max(1e-12, Math.abs(D.dK), Math.abs(D.work));
+      const good = rel < 1e-4;
       return `<div class="k">∫F·dx vs ΔKE</div>
         <div style="color:var(--c-warn)">${fmtNum(D.work, 5)} J</div>
-        <div style="color:var(--c-pos)">they differ by ${fmtNum(D.gapWork, 2)}</div>`;
+        <div style="color:var(--c-${good ? 'pos' : 'neg'})">${good
+          ? 'agreeing to ' + Math.max(0, Math.floor(-Math.log10(Math.max(1e-300, rel)))) + ' figures'
+          : 'differing by ' + fmtSig(100 * rel, 3) + '%'}</div>`;
     }
     const S = DY_SCENES[st.scene];
     if(st.scene === 'incline'){ const r = S.solve(st.m, st.ang, st.mu);
@@ -580,13 +596,13 @@ STAGES.dyEnergy = {
       ${kv('lost to friction', fmtNum(p.lost, 5) + ' J')}
       ${kv('total', fmtNum(p.KE + p.PE + p.lost, 6) + ' J')}
       ${kv('at the start', fmtNum(R.E0, 6) + ' J')}
-      ${kv('drift', fmtNum(Math.abs(p.KE + p.PE + p.lost - R.E0), 3) + ' J')}
+      ${kv('drift', fmtAgree(p.KE + p.PE + p.lost, R.E0, 'J'))}
     </div>
     <div class="card tight"><div class="ttl">Speed from height alone</div>
       ${kv('height dropped', fmtNum(drop, 5) + ' m')}
       ${kv('v = √(2g·drop), frictionless', fmtNum(vFree, 5) + ' m/s')}
       ${kv('actual speed', fmtNum(Math.abs(p.v), 5) + ' m/s')}
-      ${kv('difference', fmtNum(Math.abs(vFree - Math.abs(p.v)), 4) + ' m/s')}
+      ${kv('difference', fmtAgree(vFree, Math.abs(p.v), 'm/s'))}
       <p class="help">${st.mu < 1e-6
         ? 'With no friction the two agree: the speed depends only on how far the object has fallen, and not at all on the shape of the path it fell along. That is exactly what it means for gravity to be a conservative force.'
         : 'With friction the object arrives slower, and the shortfall is precisely the energy the friction has removed. The path now matters, because a longer route rubs for longer.'}</p>

@@ -17,9 +17,18 @@ function buildProbePanel(){
   const bind = (sl, nu, key) => {
     const s=$(sl), n=$(nu);
     s.min=-S.extent; s.max=S.extent; s.step=0.02;
-    s.value=S.probe[key]; n.value=fmtNear(S.probe[key]);
-    s.addEventListener('input', ()=>{ S.probe[key]=+s.value; n.value=(+s.value).toFixed(2); onProbeMoved(); });
-    n.addEventListener('change', ()=>{ const v=parseFloat(n.value); if(Number.isFinite(v)){ S.probe[key]=v; s.value=v; onProbeMoved(); } });
+    /* fmtEdit, not fmtNear: this box is typed into, and fmtNear goes through
+       fmtNum, so a negative coordinate opened as −0.9 with a U+2212 that
+       parseFloat below reads as NaN. Editing round it then did nothing at all —
+       the guard swallowed it — and the probe stayed where it was. */
+    s.value=S.probe[key]; n.value=fmtEdit(S.probe[key], 6);
+    /* one formatter for both paths: the box used to be filled by .toFixed(2)
+       when the slider moved and by the formatter above when the panel rebuilt,
+       so the same probe position read as -0.90 or -0.9 depending on how it got
+       there — two strings for one number, and a permalink carries whichever
+       happened to be showing */
+    s.addEventListener('input', ()=>{ S.probe[key]=+s.value; n.value=fmtEdit(+s.value, 6); onProbeMoved(); });
+    n.addEventListener('change', ()=>{ const v=ctlParse(n.value); if(Number.isFinite(v)){ S.probe[key]=v; s.value=v; onProbeMoved(); } });
   };
   bind('pbx','pbxn','x'); bind('pby','pbyn','y'); bind('pbz','pbzn','z');
 }
@@ -43,8 +52,13 @@ function buildDirPanel(){
     <div id="ddSweep"></div>`;
   $('ddOn').checked = S.show.dirderiv;
   $('ddOn').addEventListener('change', e=>{ S.show.dirderiv=e.target.checked; updateLegend(); });
+  /* ctlParse, not parseFloat: these boxes are typed into, and every other
+     numeric box in the laboratory accepts 1/sqrt(2) and π/4. parseFloat also
+     could not read the box's OWN previous contents once they were negative —
+     see fmtEdit in 10-math.js for what that cost. */
   for(const id of ['du','dv','dw']) $(id).addEventListener('change', ()=>{
-    const u=v3(parseFloat($('du').value)||0, parseFloat($('dv').value)||0, parseFloat($('dw').value)||0);
+    const num = i => { const v = ctlParse($(i).value); return Number.isFinite(v) ? v : 0; };
+    const u=v3(num('du'), num('dv'), num('dw'));
     S.dirU = vlen(u)>1e-9 ? vnorm(u) : v3(1,0,0);
     refreshDirPanel();
   });
@@ -70,7 +84,18 @@ function refreshDirPanel(keepPlane){
   if(!keepPlane){ ddPlane = rosePlane(d); $('ddAng').value = 0; $('ddAngv').textContent='0°'; }
   else $('ddAngv').textContent = $('ddAng').value+'°';
 
-  $('du').value=fmtNum(d.u.x,3); $('dv').value=fmtNum(d.u.y,3); $('dw').value=fmtNum(d.u.z,3);
+  /* fmtEdit, not fmtNum: these are editable boxes and must hold something their
+     own change handler can read back. Never over the top of whoever is typing —
+     the same rule wireSlider's typed box follows.
+
+     Eight figures rather than the four these used to show, because the box is
+     now also what a permalink carries: û rounded to four figures reproduced a
+     directional derivative that differed in the fourth figure it is PRINTED to,
+     so a shared link showed a slightly different number from the one its author
+     was looking at. Eight leaves four orders of margin under the printed
+     precision and is still short enough to read. */
+  for(const [id, v] of [['du', d.u.x], ['dv', d.u.y], ['dw', d.u.z]])
+    if($(id) !== document.activeElement) $(id).value = fmtEdit(v, 8);
   $('ddIntro').innerHTML = F.f
     ? 'How fast <b>f</b> changes as you step along û. It equals ∇f·û, so the picture is exactly the projection of ∇f onto û — the thick bar is the value.'
     : 'How fast <b>F</b> changes along û. The vector (û·∇)F = J û is the full rate of change; the thick bar is its component along û — the stretching rate in that direction.';
@@ -97,6 +122,20 @@ function refreshDirPanel(keepPlane){
     <div class="mat-wrap"><table class="mat"><tr><td class="hd">û</td><td class="hd">${d.valName.replace(/<[^>]*>/g,'')}</td><td class="hd">cos θ</td></tr>
     ${dirs.map(([nm,w])=>{const val=dirValueAlong(vnorm(w));return `<tr><td class="hd" style="text-align:left">${nm}</td><td>${fmtNear(val)}</td><td>${fmtNum(d.max>1e-12?val/d.max:0,3)}</td></tr>`;}).join('')}
     </table></div></div>`;
+
+  /* This function is what runs whenever û moves — the angle slider, the three
+     boxes and the five snap buttons all end here — and it used to leave the two
+     places the same number is ALSO printed untouched. Both were refreshed only
+     by refreshProbe(), so swinging û redrew the arrow on the canvas while the
+     chip and the panel's own tag kept a Dû belonging to a direction no longer
+     on screen. For a static field nothing ever corrected them: frame() calls
+     updateChip() only for an animated one.
+
+     Found by ./auditlink.ps1 — a permalink restored û exactly, refreshed the
+     chip on the way in, and so disagreed with the stale chip it was compared
+     against. The link was right and the laboratory was wrong. */
+  $('tagDir').textContent = fmtNear(d.value);
+  updateChip();
 }
 function syncProbeInputs(){
   for(const [s,n,k] of [['pbx','pbxn','x'],['pby','pbyn','y'],['pbz','pbzn','z']]){

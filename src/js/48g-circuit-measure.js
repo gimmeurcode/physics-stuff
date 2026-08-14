@@ -95,8 +95,31 @@ function ckMeasure(ck, x, h, method, mode, t){
   let pIn = 0, pOut = 0;
   for(const s of states){ if(s.p > 0) pIn += s.p; else pOut -= s.p; }
   const energy = states.reduce((a, s) => a + (s.energy || 0), 0);
+  /* The largest quantity of each kind in this solution. A readout needs them to
+     know what its own round-off looks like: an LU solve carries about
+     ε·κ(A)·‖x‖ of arithmetic, so a quantity a billionth of the largest one is
+     the solver talking, not the circuit, and printing it as "29.7 fA" claims a
+     current that is not there. See ckEngF/ckGap in 48a. */
+  let vScale = 1e-12, pScale = 1e-12, eScale = 1e-24;
+  for(let k = 1; k < ck.nm.count; k++) vScale = Math.max(vScale, Math.abs(nodeV[k]));
+  for(const s of states){
+    vScale = Math.max(vScale, Math.abs(s.v));
+    pScale = Math.max(pScale, Math.abs(s.p));
+    eScale = Math.max(eScale, Math.abs(s.energy || 0));
+  }
+  /* and the floor physics sets regardless of the arithmetic — see ckNoiseI in
+     48a. A settled circuit has no scale of its own left, so the relative floor
+     above cannot help it and this is what stops it reading 29.7 fA. */
+  let Rmin = Infinity, Rmax = 0;
+  for(const e of ck.els) if(e.kind === 'R' && e.c && e.c.val > 0){
+    Rmin = Math.min(Rmin, e.c.val); Rmax = Math.max(Rmax, e.c.val);
+  }
+  const noiseI = ckNoiseI(Number.isFinite(Rmin) ? Rmin : 0, h);
+  const noiseV = ckNoiseV(Rmax, h);
   return { states, nodeV, kcl, kclMax, kclNode, kclRel: kclMax / scale,
-           absorbed: pIn, delivered: pOut, residual: pIn - pOut, energy, scale };
+           absorbed: pIn, delivered: pOut, residual: pIn - pOut, energy,
+           scale, iScale: scale, vScale, pScale, eScale,
+           noiseI, noiseV, noiseP: noiseI * noiseV };
 }
 
 /* ============================================================================

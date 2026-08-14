@@ -383,7 +383,7 @@ STAGES.smSpeed = {
       ${kv('⟨p·dε/dp⟩, integrated', R.virial.toExponential(8) + ' J')}
       ${kv('d·kT', R.dkT.toExponential(8) + ' J')}
       ${kv('ratio', n(R.equip, 9))}
-      ${kv('departure from 1', Math.abs(R.equip - 1).toExponential(2))}
+      ${kv('departure from 1', fmtAgree(R.equip, 1))}
       <p class="help">One integration by parts makes this identity <b>exact</b> for any ε that grows,
       in any dimension — so the number above is not a physical result that happens to be near 1. It is
       1, and what you see is the quadrature error. The familiar ½kT per quadratic degree of freedom is
@@ -392,7 +392,7 @@ STAGES.smSpeed = {
     <div class="card tight"><div class="ttl">The heat capacity, two ways</div>
       ${kv('C, measured as d⟨ε⟩/dT', n(R.Cok, 6) + ' k')}
       ${kv('the power n, fitted to ε(p)', n(R.n, 6))}
-      ${kv('residual of that fit', R.fitResid.toExponential(3))}
+      ${kv('residual of that fit', fmtSig(R.fitResid, 3) + ' in ln ε')}
       ${kv('so d/n predicts', n(R.CokPred, 6) + ' k')}
       ${kv('they differ by', Number.isFinite(R.CokPred) ? fmtNum(100 * Math.abs(R.Cok - R.CokPred) / Math.max(1e-12, R.CokPred), 4) + '%' : '—')}
       <p class="help">${R.fitResid < 1e-4

@@ -34,7 +34,7 @@ STAGES.emGauss = {
           `${n(D.Q)} of a total ${n(D.Qtot)}`),
         drvStep('and the flux, over the surface, from that field',
           `∯ ${dv('E')} ${dop('·')} d${dv('A')} ${dop('=')} ${dv('R')}² ∫dΩ ${dv('E')}(${dv('c')} ${dop('+')} ${dv('R')}n̂) ${dop('·')} n̂`,
-          `${n(D.flux)} — apart from Q_enc by ${D.gap.toExponential(2)}`),
+          `${n(D.flux)} — apart from Q_enc by ${fmtAgree(D.flux, D.Q)}`),
         drvStep('the differential form, checked pointwise',
           `∇${dop('·')}${dv('E')} ${dop('=')} ρ`,
           `at the centre: ∇·E = ${n(D.divE)} against ρ = ${n(D.rhoHere)}`),
@@ -289,7 +289,7 @@ STAGES.emGauss = {
       ${kv('ρ(x, y, z)', pkPretty(st.rho))}
       ${kv('∮E·dA, from the integrated field', '<b>' + n(D.flux) + '</b>')}
       ${kv('Q enclosed, by its own quadrature', '<b>' + n(D.Q) + '</b>')}
-      ${kv('difference', D.gap.toExponential(3) + (Number.isFinite(D.rel) ? '  (' + fmtNum(100 * D.rel, 4) + '%)' : ''))}
+      ${kv('difference', fmtAgree(D.flux, D.Q))}
       ${kv('total charge in the whole space', n(D.Qtot))}
       ${kv('the grid holds', n(D.gridSum) + ' of it, in ' + D.cells + ' cells')}
       <p class="help">Neither number is a count. The field is Coulomb's law integrated over your
@@ -300,7 +300,7 @@ STAGES.emGauss = {
     <div class="card tight"><div class="ttl">The differential form, at the centre</div>
       ${kv('∇·E, differentiated from the field', n(D.divE))}
       ${kv('ρ at that point', n(D.rhoHere))}
-      ${kv('difference', Math.abs(D.divE - D.rhoHere).toExponential(3))}
+      ${kv('difference', fmtAgree(D.divE, D.rhoHere))}
       <p class="help">∮E·dA = Q is about a region; ∇·E = ρ is about a point, and no amount of counting
       charges can test it. Here the integrated field is differentiated numerically and compared with
       the density at that very point. The divergence theorem is the reason the two forms are the same
@@ -327,7 +327,7 @@ STAGES.emGauss = {
     return `<div class="card tight"><div class="ttl">Surface at (${fmtNum(st.c.x,2)}, ${fmtNum(st.c.y,2)}), R = ${fmtNum(st.R,2)}</div>
       ${kv('∮E·dA  (summed over the sphere)', '<b>' + fmtNum(flux, 4) + '</b>')}
       ${kv('Q enclosed', fmtNum(q, 4))}
-      ${kv('difference', fmtNum(flux - q, 4) + ' — integration error only')}
+      ${kv('difference', fmtAgree(flux, q) + ' — integration error only')}
       ${kv('|E| at the centre', fmtNear(vlen(f.E)))}
     </div>
     <div class="card tight"><div class="ttl">Why it works</div>

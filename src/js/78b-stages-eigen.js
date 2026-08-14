@@ -170,7 +170,7 @@ STAGES.laEigen = {
           const resid = Math.hypot(Ae[0] - l * e[0], Ae[1] - l * e[1]);
           return kv('λ' + (i + 1), fmtNum(l, 6)) +
                  kv('  eigenvector', '⟨' + e.map(z => fmtNum(z, 4)).join(', ') + '⟩') +
-                 kv('  |Av − λv|', fmtNum(resid, 3));
+                 kv('  |Av − λv|', fmtGap(resid, Math.max(Math.abs(l) * Math.hypot(e[0], e[1]), 1e-12)));
         }).join('')
       : kv('λ', fmtNum(E.re, 5) + ' ± ' + fmtNum(E.im, 5) + ' i') +
         `<p class="help">The discriminant tr² − 4det is negative, so there is no real direction

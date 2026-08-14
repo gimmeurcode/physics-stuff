@@ -256,8 +256,8 @@ STAGES.dyMoment = {
       ${kv('they arrived at Δu =', fmtNum(st.u1 - st.u2, 6) + ' m/s')}
       ${kv('they left at', fmtNum(-(C.v1 - C.v2), 6) + ' m/s')}
       ${kv('so e = −(v₁−v₂)/(u₁−u₂)', fmtNum(C.e, 8))}
-      ${kv('energy drift over the encounter', fmtNum(C.Edrift, 3) + ' J')}
-      ${kv('momentum drift', fmtNum(C.dP, 3) + ' kg·m/s')}
+      ${kv('energy drift over the encounter', fmtGap(C.Edrift, Math.abs(C.K0), 'J'))}
+      ${kv('momentum drift', fmtGap(C.dP, Math.abs(C.p0), 'kg·m/s'))}
       <p class="help">${cons
         ? 'With no dashpot the interaction is <b>conservative</b>, and the measured restitution comes out at 1 — a perfectly elastic collision, which the integrator was never told to produce. Change the stiffness of V by a factor of a hundred and it stays at 1: how hard the wall is sets how long the encounter lasts and nothing else.'
         : 'The dashpot removes energy while the two are in contact, and e drops below 1. It is not a parameter here — it is read off the outcome, which is what makes it worth comparing against the algebra below.'}</p>
@@ -267,7 +267,7 @@ STAGES.dyMoment = {
       ${kv('v₁ from momentum and e', fmtNum(C.algV1, 8) + ' m/s')}
       ${kv('v₂ from the integration', fmtNum(C.v2, 8) + ' m/s')}
       ${kv('v₂ from momentum and e', fmtNum(C.algV2, 8) + ' m/s')}
-      ${kv('largest difference', fmtNum(C.gapAlg, 3) + ' m/s')}
+      ${kv('largest difference', fmtGap(C.gapAlg, Math.max(Math.abs(C.v1), Math.abs(C.v2)), 'm/s'))}
       ${kv('centre-of-mass velocity', fmtNum(C.vcm, 6) + ' m/s')}
       <p class="help">The right-hand rows never integrated anything. They solve two lines of algebra —
       momentum conserved, and the separation speed a fraction e of the approach speed — and land on the
@@ -278,7 +278,7 @@ STAGES.dyMoment = {
       ${kv('K after', fmtNum(C.K1, 6) + ' J')}
       ${kv('lost', fmtNum(C.lost, 6) + ' J')}
       ${kv('½μ(Δu)²(1 − e²) says', fmtNum(C.closed, 6) + ' J')}
-      ${kv('difference', fmtNum(C.gapLost, 3) + ' J')}
+      ${kv('difference', fmtAgree(C.lost, C.closed, 'J'))}
       <p class="help">Only the relative motion can be lost. The centre of mass carries ½(m₁+m₂)v_cm² that
       no internal force can touch, and what is left over — ½μ(Δu)² — is all that is ever available to
       dissipate. The factor (1 − e²) says how much of it went.</p>
@@ -309,7 +309,7 @@ STAGES.dyMoment = {
       ${kv('ΔK', fmtNum(C.dK, 6) + ' J')}
       ${kv('energy lost', fmtNum(C.lost, 6) + ' J')}
       ${kv('½μ(Δu)²(1−e²)', fmtNum(predicted, 6) + ' J')}
-      ${kv('difference', fmtNum(Math.abs(C.lost - predicted), 3))}
+      ${kv('difference', fmtAgree(C.lost, predicted))}
       <p class="help">Momentum is conserved at every e — drag the slider and watch Δp stay at zero to the
       last digit. The energy loss matches the reduced-mass formula exactly, and it is zero only at e = 1.</p>
     </div>

@@ -56,6 +56,31 @@ one-liner and it will find yours.
 ## Traps
 
 - **Name collisions are silent.** Prefix everything and grep case-sensitively.
+  **Element ids collide the same way** — one document, `getElementById` is
+  first-wins. The complex wing's contour radius and the circulation loop's
+  radius were both `ciR`, both in the dock, so which slider a `wireSlider` call
+  reached depended on document order. `./auditlink.ps1` fails on a duplicate id.
+- **A display formatter must never fill a box the reader types into.** `fmtNum`
+  emits U+2212 and real superscripts, and `parseFloat('−0.7')` is `NaN`. Three
+  panels filled editable inputs with `fmtNum`/`fmtNear` and read them back with
+  `parseFloat`: every negative component of û and n̂ became `0` through a `|| 0`,
+  silently, the moment a neighbouring box was edited. **Use `fmtEdit(v, sig)`
+  (`10-math.js`) for anything typed into**, `fmtNum` only for what is read.
+- **A difference gets a difference formatter.** `fmtAgree(a, b, unit)` when both
+  routes are in scope — it *derives* the scale, so it cannot be given the wrong
+  one — `fmtGap(gap, scale, unit)` when only the gap is, and
+  `fmtAgreeTight`/`fmtGapTight` on a canvas, where the long form will not fit a
+  fixed column. `fmtNum` is wrong (below 1 its `sig` counts decimals, so a real
+  gap prints `0`), `toExponential` is wrong (ASCII `8.10e-11`, and no scale) and
+  `toFixed` is wrong (`0.00000` for a perfect fit). `./auditresid.ps1` reads
+  readout, chip, **derive**, legend and the **`*Own`** panels — the last two were
+  invisible to it until 2026-08-14 and were hiding thirteen defects — but it
+  cannot read canvas text, so `ctText`/`wsNum`/`rlText` are on you.
+- **A control's value must be restorable.** `82a-permalink.js` puts the reader's
+  whole view in the URL by driving the real controls, so a new control needs an
+  id, and a group read together by one handler (û as `du`/`dv`/`dw`) must
+  tolerate being assigned before any of it is notified. `./auditlink.ps1`
+  measures it over all 593 demos.
 - **An engine that takes caller-supplied objects must carry their tags through
   its return.** `rtRaceRun` rebuilt each result row from the entry it was given
   and dropped the `own`/`short` fields the stage had put there; the stage then

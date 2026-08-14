@@ -250,7 +250,7 @@ STAGES.rtInertia = {
       ${kv('M', fmtNum(st.M, 4) + ' kg')}${kv(B.param, fmtNum(st.R, 4) + ' m')}
       ${kv('I from the formula', fmtNum(Icm, 8) + ' kg·m²')}
       ${kv('I = ∫r²dm, integrated', fmtNum(Iint, 8) + ' kg·m²')}
-      ${kv('difference', fmtNum(Math.abs(Icm - Iint), 3))}
+      ${kv('difference', fmtAgree(Icm, Iint))}
       ${kv('radius of gyration √(I/M)', fmtNum(k, 6) + ' m')}
       ${kv('as a fraction of the size', fmtNum(k / st.R, 5))}
     </div>
@@ -296,7 +296,7 @@ STAGES.rtInertia = {
     <div class="card tight"><div class="ttl">I about that axis, computed twice</div>
       ${kv('∫r²dm, integrated directly', '<b>' + fmtNum(R.direct, 8) + '</b> kg·m²')}
       ${kv('I_cm + Md², by the theorem', fmtNum(R.theorem, 8) + ' kg·m²')}
-      ${kv('difference', fmtNum(R.gap, 3) + '  (' + fmtNum(rel, 3) + ' relative)')}
+      ${kv('difference', fmtAgree(R.direct, R.theorem, 'kg·m²'))}
       ${kv('I_cm, integrated', fmtNum(R.directCm, 8))}
       ${kv('I_cm, from the pieces', fmtNum(R.Icm, 8))}
       ${kv('radius of gyration √(I/M)', fmtNum(R.k, 6) + ' m')}
@@ -323,7 +323,7 @@ STAGES.rtInertia = {
       const R = STAGES.rtInertia.ownProps(st);
       return `<div class="k">your body · ${B.pieces.length} pieces</div>
         <div style="color:var(--c-grad)">I = ${fmtNum(R.direct, 6)} kg·m²</div>
-        <div>theorem differs by ${fmtNum(R.gap, 2)}</div>`;
+        <div>theorem differs by ${fmtAgreeTight(R.direct, R.theorem)}</div>`;
     }
     const B = RT_BODIES[st.key];
     return `<div class="k">I</div><div style="color:var(--c-grad)">${fmtNum(B.I(st.M, st.R), 6)} kg·m²</div>
@@ -571,7 +571,7 @@ STAGES.rtRoll = {
       ${kv('total mass M', fmtNum(B.M, 5) + ' kg')}
       ${kv('I about the centre of mass, by quadrature', fmtNum(B.I, 6) + ' kg·m²')}
       ${kv('the same by the parallel-axis theorem', fmtNum(B.Icm, 6) + ' kg·m²')}
-      ${kv('difference', fmtNum(B.gapCm, 3) + ' kg·m²')}
+      ${kv('difference', fmtAgree(B.I, B.Icm, 'kg·m²'))}
       ${kv('rolling radius R', fmtNum(st.R, 4) + ' m')}
       ${kv('shape factor c = I/MR², measured', fmtNum(me.c, 6))}
       ${kv('centre of mass, off the axle by', fmtNum(B.off, 4) + ' m')}
@@ -583,7 +583,7 @@ STAGES.rtRoll = {
     <div class="card tight"><div class="ttl">Two routes to the acceleration</div>
       ${kv('a, from eliminating f between the two laws', fmtNum(me.a, 7) + ' m/s²')}
       ${kv('a, from g sin θ/(1+c)', fmtNum(me.aClosed, 7) + ' m/s²')}
-      ${kv('difference', fmtNum(Math.abs(me.a - me.aClosed), 3) + ' m/s²')}
+      ${kv('difference', fmtAgree(me.a, me.aClosed, 'm/s²'))}
       ${kv('static friction the constraint demands', fmtNum(me.f, 6) + ' N')}
       ${kv('minimum μ that can supply it', fmtNum(me.muMin, 5))}
       <p class="help">The first row comes from solving <b>Ma + f = Mg sin θ</b> and <b>(I/R)a − Rf = 0</b>
@@ -594,7 +594,7 @@ STAGES.rtRoll = {
     <div class="card tight"><div class="ttl">The run, integrated over ${fmtNum(RT_RAMP_L, 3)} m</div>
       ${kv('finishing time, from the integrated track', fmtNum(me.t, 7) + ' s')}
       ${kv('from √(2L/a)', fmtNum(me.tClosed, 7) + ' s')}
-      ${kv('difference', fmtNum(Math.abs(me.t - me.tClosed), 3) + ' s')}
+      ${kv('difference', fmtAgree(me.t, me.tClosed, 's'))}
       ${kv('arrival speed, integrated', fmtNum(me.v, 7) + ' m/s')}
       ${kv('from √(2gL sin θ/(1+c))', fmtNum(me.vClosed, 7) + ' m/s')}
       ${kv('largest slip |v − ωR| along the run', fmtNum(me.slip, 3) + ' m/s')}
@@ -860,8 +860,8 @@ STAGES.rtAngular = {
       ${kv('L₀ = I(0)·ω(0)', fmtNum(D.L0, 7) + ' kg·m²/s')}
     </div>
     <div class="card tight"><div class="ttl">Conservation, as an outcome</div>
-      ${kv('largest |I(t)ω(t) − L₀| along the run', fmtNum(D.dL, 3) + ' kg·m²/s')}
-      ${kv('largest |ω − L₀/I(t)| along the run', fmtNum(D.gapW, 3) + ' rad/s')}
+      ${kv('largest |I(t)ω(t) − L₀| along the run', fmtGap(D.dL, Math.abs(D.L0), 'kg·m²/s'))}
+      ${kv('largest |ω − L₀/I(t)| along the run', fmtGap(D.gapW, Math.max(Math.abs(D.w0), Math.abs(D.wEnd)), 'rad/s'))}
       ${kv('ω at the end, from the stepper', fmtNum(D.wEnd, 8) + ' rad/s')}
       ${kv('ω at the end, from L₀/I(T)', fmtNum(D.wAlg, 8) + ' rad/s')}
       ${kv('order of the stepper, measured by halving h', ordTxt)}
@@ -875,7 +875,7 @@ STAGES.rtAngular = {
       ${kv('K at the end', fmtNum(D.K1, 6) + ' J')}
       ${kv('change', fmtNum(D.dK, 6) + ' J')}
       ${kv('work done, ∫ −½ İ ω² dt', fmtNum(D.work, 6) + ' J')}
-      ${kv('difference', fmtNum(D.gapWork, 3) + ' J')}
+      ${kv('difference', fmtGap(D.gapWork, Math.max(1e-12, Math.abs(D.dK), Math.abs(D.work)), 'J'))}
       ${kv('K = L²/2I at the end, for comparison', fmtNum(D.L0 * D.L0 / (2 * D.I1), 6) + ' J')}
       <p class="help">${D.dK >= 0
         ? 'The body pulled itself in, so I fell, ω rose, and the energy rose with it. It did not come from nowhere: something had to haul the mass inwards against its tendency to keep going straight, and the work row is exactly how much.'

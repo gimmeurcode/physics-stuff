@@ -212,7 +212,7 @@ STAGES.agInverse = {
     return `<div class="card tight"><div class="ttl">At x = ${fmtNum(st.x, 4)}</div>
       ${kv('f(x)', fmtNum(y, 6))}
       ${kv('f⁻¹(f(x))', fmtNum(back, 6))}
-      ${kv('difference from x', fmtNum(Math.abs(back - st.x), 3))}
+      ${kv('difference from x', fmtAgree(back, st.x))}
       <p class="help">${Math.abs(back - st.x) < 1e-6
         ? 'The round trip returns where it started, which is the whole definition.'
         : 'The round trip does <b>not</b> return where it started — the inverse has sent you to the other branch, because this function is not one-to-one here.'}</p>

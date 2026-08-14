@@ -397,7 +397,7 @@ STAGES.pbRegress = {
       ${kv('SS explained by the line', fmtNum(R.ssReg, 6))}
       ${kv('SS left over', fmtNum(R.ssRes, 6))}
       ${kv('their sum', fmtNum(R.ssReg + R.ssRes, 6))}
-      ${kv('difference from SS total', fmtNum(Math.abs(R.ssTot - R.ssReg - R.ssRes), 3))}
+      ${kv('difference from SS total', fmtAgree(R.ssTot, R.ssReg + R.ssRes))}
       <p class="help">The two pieces add back to the whole exactly — that identity is what makes r²
       interpretable as a fraction at all.</p>
     </div>
