@@ -463,8 +463,12 @@ STAGES.wsRegge = {
       ${kv('σ = 1/2πα′', fmtNum(wsTension(f.alphaP), 5) + ' GeV²')}
       ${kv('  in MeV per femtometre', fmtNum(sig, 5))}
       ${kv('  the atom wing\'s Cornell value', fmtNum(SIGMA_STRING, 4) + ' MeV/fm')}
-      ${kv('  difference', fmtAgree(sig, SIGMA_STRING, 'MeV/fm  (') +
-            fmtNum(100 * Math.abs(sig - SIGMA_STRING) / SIGMA_STRING, 3) + '%)')}
+      ${/* the hand-built percentage that used to follow this row is gone: it
+            predated fmtAgree, which derives and prints the relative gap itself,
+            and the two together rendered "18.5 MeV/fm ( (2.06% — agreeing to 1
+            figure)2.06%)" — the unit argument still carrying the opening
+            bracket of a bracket nothing closed. */''}
+      ${kv('  difference', fmtAgree(sig, SIGMA_STRING, 'MeV/fm'))}
       ${kv('as an ordinary force', fmtNum(wsTensionNewton(f.alphaP), 4) + ' N')}
       ${kv('  which is about', fmtNum(wsTensionNewton(f.alphaP) / 9.80665 / 1000, 3) + ' tonnes weight')}
       <p class="help">Two fits with no data in common — light-meson spins here, heavy-quarkonium level

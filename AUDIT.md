@@ -4296,3 +4296,78 @@ either class fails the build the moment it lands.
 Two smaller things, not fixed: `wsRegge` prints its percentage twice with an
 unbalanced bracket, and `dyEnergy`'s frictionless case reports **5.82%** under
 prose reading "with no friction the two agree".
+
+## 2026-08-15 — the ten false alarms, fixed, and three defects hiding behind them
+
+The entry above (2026-08-14) found ten claims where two routes agree to
+round-off and the panel announces ~100% disagreement, and left them unfixed. All
+ten are now fixed and the gate's FALSE-SCALE baseline is **0**.
+
+**`fmtAgreeGross(a, b, gross, unit)`** is the fix, and the gross is the quantity
+the cancellation came from — §2.1's "print what the zero cancelled".
+
+| where | the gross now used |
+|---|---|
+| `dyMoment` ×2 | `C.K0`, the kinetic energy before the collision |
+| `smBoltz` ×2 | kT — ⟨E⟩ is zero to 170 decimal places for hydrogen at 300 K, by both routes |
+| `vcGreen` ×2 | `max(∮\|F\|\|dr\|, ∬\|curl\| dA)` and the same with div |
+| `vcStokes`, `vcDiverg` ×3 | `gross` returned by `vcStokesCheck` / `vcDivergenceCheck` |
+| `cxContourInt` | `cxContourGross` = ∮\|f\|\|dz\| |
+| `igMass` | ∬\|(x−x₀)²ρ\| dA |
+
+**Two things about it were wrong first, and the unit tests caught both.**
+
+*The gross sets a FLOOR; it does not rescale.* The first version took
+`max(|a|,|b|,|gross|)` as the scale, which reports a real **50%** disagreement
+as **5%** whenever the gross is ten times larger — burying precisely the defect
+this family exists to surface. The test asserting a real gap still bites is what
+failed. Above the floor the ordinary `fmtAgree` verdict now stands untouched.
+
+*And the gross is `|F||dr|`, not `|F·dr|`.* Integrating the absolute value of the
+**dot product** returns zero for a field pointwise perpendicular to its element —
+a vortex round a circle, an inverse-square field along one, a swirl across a
+sphere. The gross was then zero itself and rescued nothing: the count went 10 → 4,
+not 10 → 0. The direction is part of what cancelled.
+
+**Three defects that were not residuals at all**, found because the sweep drove
+presets nothing else had:
+
+- **`igMass` printed ȳ = −11 538 634 339 406 766** as a centroid. The `edge`
+  density is ρ = y, which over a region symmetric about the x-axis integrates to
+  **exactly zero**, so the panel divided by M = −1.8×10⁻¹⁶. `igLamina` now
+  returns `Mabs = ∬|ρ|dA` and a `massless` flag; readout, chip, canvas note and
+  the parallel-axis card all say "not defined — the net mass is zero". The
+  parallel-axis theorem has no content without a centroid, so it says that too
+  rather than computing four more NaNs. **This was visible on the default view
+  of that preset and no gate had ever looked**: `fmtNum(NaN)` renders `—`, so
+  the `NaN` grep never had anything to find, and the number itself was finite.
+- **`cxContourInt` opened on a contour through two poles.** Radius 1 about the
+  origin; `1/(z−1)(z+1)` has poles at ±1. The midpoint rule samples the midpoint
+  of each chord, which lies just *inside* the circle, so |f| reached ~10⁶ and
+  the sum stayed finite — a number printed beside a residue sum of 0, differing
+  by π. New `cxPoleClearance` measures the approach **in units of the quadrature
+  step**, because the midpoint rule's error near a simple pole grows like
+  (h/d)²; below 8 steps both readout and chip say ∮f dz is not defined.
+- **`wsRegge` printed its percentage twice** inside an unclosed bracket:
+  `18.5 MeV/fm ( (2.06% — agreeing to 1 figure)2.06%)`. A hand-built percentage
+  predating `fmtAgree` survived the J9 conversion with its opening bracket left
+  inside the unit argument.
+
+**A harness defect that had been eating runs.** Under
+`$ErrorActionPreference = 'Stop'`, PowerShell 5.1 turns every stderr line from a
+**native** command into a terminating `NativeCommandError`. Chrome writes to
+stderr for reasons that are not failures — USB device enumeration, "Created
+TensorFlow Lite XNNPACK delegate for CPU", GCM registration, a default web-app
+install that did not happen; all four appeared on this machine in one session.
+**19 of the 20 Chrome-driving scripts had this shape.** It killed an
+eighteen-minute `runall` *after* the sweep had finished and *before* the DOM was
+written. All 20 are guarded now. The guard is a window, not a blanket: each
+script sets `'Stop'` again immediately after the invocation and still checks its
+own result.
+
+Gates after all of it: `build` 231 modules · `smoke` OK · `runtests`
+**4261 passed, 0 failed** (14 added: 6 on `fmtAgreeGross`, 6 on `igLamina`'s
+massless case, plus the two it caught being wrong) · `auditsides` **falsescale 0,
+presetgap 14, OK** · `auditresid` **findings=0** noscale=7 · `auditcustom`
+**bad=0 OK** · `auditclaims` 249 claims **bad=0 OK** · `runall` demos=593
+controls=6462 **caught=0 OK**.

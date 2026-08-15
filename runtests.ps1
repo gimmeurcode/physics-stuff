@@ -45,8 +45,15 @@ $chrome = 'C:\Program Files\Google\Chrome\Application\chrome.exe'
 # — which shows up here as an empty dom.txt rather than as an error.
 $prof   = Join-Path $dir 'cprof-tests'
 $url    = 'file:///' + ($testPath -replace '\\','/')
+# Chrome writes to stderr for reasons that are not failures (USB enumeration, an
+# XNNPACK delegate, GCM registration). Under ErrorActionPreference = 'Stop' each
+# such line becomes a terminating NativeCommandError and the run dies AFTER the
+# sweep and BEFORE the DOM is written, throwing the result away. See MASTER-PLAN
+# 3.4. The exit status is still checked below; nothing is being swallowed.
+$ErrorActionPreference = 'Continue'
 & $chrome --headless --disable-gpu --no-sandbox --virtual-time-budget=15000 --user-data-dir="$prof" --dump-dom $url |
   Out-File -FilePath (Join-Path $dir 'dom.txt') -Encoding utf8
+$ErrorActionPreference = 'Stop'
 
 $dom = Get-Content (Join-Path $dir 'dom.txt') -Raw
 $open = $dom.IndexOf('<pre id="out">')

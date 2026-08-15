@@ -70,7 +70,23 @@ one-liner and it will find yours.
   routes are in scope — it *derives* the scale, so it cannot be given the wrong
   one — `fmtGap(gap, scale, unit)` when only the gap is, and
   `fmtAgreeTight`/`fmtGapTight` on a canvas, where the long form will not fit a
-  fixed column. `fmtNum` is wrong (below 1 its `sig` counts decimals, so a real
+  fixed column.
+- **…and `fmtAgreeGross(a, b, gross, unit)` when BOTH routes can vanish.**
+  `fmtAgree` derives its scale as `max(|a|,|b|)`, which is right until the
+  quantity itself is zero — then the derived scale *is* the round-off and a
+  perfect result prints as a 100% disagreement in the affirmative colour. That
+  is J9 inverted and there were ten of them. `gross` is what the zero cancelled
+  (§2.1): `∮|F||dr|`, `∬|F||dS|`, `∮|f||dz|`, `∬|ρ|dA`, kT, the energy before
+  the collision. **Magnitudes, not the absolute value of the dot product** — a
+  swirl is tangential to every sphere, so `∬|F·n̂|` is zero too and rescues
+  nothing. `vcStokesCheck`, `vcDivergenceCheck`, `igParallelAxis` and `igLamina`
+  return theirs; `vcLineGross`, `vcSurfFluxAbs` and `cxContourGross` compute one.
+  **`./auditsides.ps1` fails on a new one** — its FALSE-SCALE baseline is 0.
+- **A quantity that is a ratio needs its denominator checked, not assumed.**
+  `igLamina` divided by a mass that a sign-changing density had cancelled to
+  exactly zero and printed a centroid of −1.15×10¹⁶. It now flags `massless` and
+  the panels say "not defined". `fmtNum(NaN)` renders `—`, so the `NaN` grep
+  cannot see this class: only a preset sweep can. `fmtNum` is wrong (below 1 its `sig` counts decimals, so a real
   gap prints `0`), `toExponential` is wrong (ASCII `8.10e-11`, and no scale) and
   `toFixed` is wrong (`0.00000` for a perfect fit). `./auditresid.ps1` reads
   readout, chip, **derive**, legend and the **`*Own`** panels — the last two were

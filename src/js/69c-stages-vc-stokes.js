@@ -120,7 +120,7 @@ STAGES.vcStokes = {
     return `<div class="card tight"><div class="ttl">Both sides</div>
       ${kv('∮ F·dr around the unit circle', fmtNum(cur.circ, 8))}
       ${kv('∬ (∇×F)·dS through the cap', fmtNum(cur.flux, 8))}
-      ${kv('difference', fmtAgree(cur.circ, cur.flux))}
+      ${kv('difference', fmtAgreeGross(cur.circ, cur.flux, cur.gross))}
       ${kv('curl at the moving point', ctVec3f(fld.curl(p.x, p.y, p.z)))}
       ${kv('F there', ctVec3f(fld.F(p.x, p.y, p.z)))}
     </div>
@@ -296,10 +296,15 @@ STAGES.vcDiverg = {
       r:(u, v) => vmul(v3(Math.sin(u) * Math.cos(v), Math.sin(u) * Math.sin(v), Math.cos(u)), a) };
     const flux = vcSurfFlux(S, fld.F, 1);
     const vol = vcBallDivIntegral(fld, a);
+    /* ∯|F·n̂| dA, the gross the signed flux is read against. The swirl field has
+       exactly zero net flux through any closed surface, so on that preset the
+       signed answer IS the mesh error and dividing it by itself reported a 100%
+       disagreement where the physics is exact. */
+    const gross = vcSurfFluxAbs(S, fld.F);
     const V = vcCur3(st);
     const half = vcSurfFlux(S, fld.F, 1);
     /* a cylinder, as a second region — the theorem is not about spheres */
-    const cylFlux = (() => {
+    const cyl = (() => {
       /* u is the angle and v the height, which makes
          r_u × r_v = (a cos u, a sin u, 0) — radially outward, the orientation
          the theorem asks for. Taking the two parameters the other way round
@@ -315,13 +320,18 @@ STAGES.vcDiverg = {
         r:(u, v) => v3(u * Math.cos(v), u * Math.sin(v), 1.4) };
       const bot = { u0:0, u1:a, v0:0, v1:2 * Math.PI,
         r:(u, v) => v3(u * Math.cos(v), u * Math.sin(v), 0) };
-      return vcSurfFlux(side, fld.F, 1) + vcSurfFlux(top, fld.F, 1) - vcSurfFlux(bot, fld.F, 1);
+      return {
+        flux: vcSurfFlux(side, fld.F, 1) + vcSurfFlux(top, fld.F, 1) - vcSurfFlux(bot, fld.F, 1),
+        /* the same three pieces unsigned: what the net flux cancelled out of */
+        gross: vcSurfFluxAbs(side, fld.F) + vcSurfFluxAbs(top, fld.F) + vcSurfFluxAbs(bot, fld.F)
+      };
     })();
+    const cylFlux = cyl.flux;
     const cylVol = vcCylDivIntegral(fld, a, 1.4);
     return `<div class="card tight"><div class="ttl">The sphere of radius ${fmtNum(a, 3)}</div>
       ${kv('∯ F·dS  (outward)', fmtNum(flux, 8))}
       ${kv('∭ ∇·F dV', fmtNum(vol, 8))}
-      ${kv('difference', fmtAgree(flux, vol))}
+      ${kv('difference', fmtAgreeGross(flux, vol, gross))}
       ${kv('surface area 4πa²', fmtNum(4 * Math.PI * a * a, 7))}
       ${kv('volume 4πa³/3', fmtNum(4 * Math.PI * a * a * a / 3, 7))}
       ${kv('average of F·n̂ over the surface', fmtNum(flux / (4 * Math.PI * a * a), 7))}
@@ -330,7 +340,7 @@ STAGES.vcDiverg = {
     <div class="card tight"><div class="ttl">A cylinder, to show it is not about spheres</div>
       ${kv('∯ F·dS  (side + two caps)', fmtNum(cylFlux, 7))}
       ${kv('∭ ∇·F dV', fmtNum(cylVol, 7))}
-      ${kv('difference', fmtAgree(cylFlux, cylVol))}
+      ${kv('difference', fmtAgreeGross(cylFlux, cylVol, cyl.gross))}
       <p class="help">Three separate surface integrals — the curved side and the two flat caps, each with
       its normal chosen to point out of the solid — added up and compared with one volume integral. Getting
       the cap orientations right is most of the work in a hand calculation, and it is the step where signs

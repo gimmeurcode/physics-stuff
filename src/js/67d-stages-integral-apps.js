@@ -104,14 +104,21 @@ STAGES.igMass = {
       ctx.fillRect(P.px + i * cw - 0.5, P.py + P.ph - (j + 1) * chh - 0.5, cw + 1, chh + 1);
     }
     const L = igLamina(Rg, rho, this.order(st));
-    /* the centroid, and the balance lines through it */
-    ctPath(ctx, P, [{ x:L.cx, y:P.y0 }, { x:L.cx, y:P.y1 }], rgbCss(TH.text, 0.5), 1.2, [5, 4]);
-    ctPath(ctx, P, [{ x:P.x0, y:L.cy }, { x:P.x1, y:L.cy }], rgbCss(TH.text, 0.5), 1.2, [5, 4]);
-    ctDot(ctx, P, L.cx, L.cy, 8, rgbCss(TH.warn), rgbCss(TH.bg));
-    ctText(ctx, P.X(L.cx) + 11, P.Y(L.cy) - 9, 'centre of mass', rgbCss(TH.warn), '600 11px ' + FONT_UI);
+    /* the centroid, and the balance lines through it — drawn only when there IS
+       one. A sign-changing density can cancel to zero net mass, and the cross
+       hairs were then placed at My/M and Mx/M of two vanishing quantities:
+       ȳ came out at −1.15×10¹⁶, so the "balance point" was drawn some quadrillion
+       units off the canvas while the caption still promised where the plate
+       would balance on a pin. */
+    if(!L.massless){
+      ctPath(ctx, P, [{ x:L.cx, y:P.y0 }, { x:L.cx, y:P.y1 }], rgbCss(TH.text, 0.5), 1.2, [5, 4]);
+      ctPath(ctx, P, [{ x:P.x0, y:L.cy }, { x:P.x1, y:L.cy }], rgbCss(TH.text, 0.5), 1.2, [5, 4]);
+      ctDot(ctx, P, L.cx, L.cy, 8, rgbCss(TH.warn), rgbCss(TH.bg));
+      ctText(ctx, P.X(L.cx) + 11, P.Y(L.cy) - 9, 'centre of mass', rgbCss(TH.warn), '600 11px ' + FONT_UI);
+    }
     /* the parallel axis */
     ctPath(ctx, P, [{ x:st.axis, y:P.y0 }, { x:st.axis, y:P.y1 }], rgbCss(TH.neg), 2, [3, 3]);
-    if(st.show.gyr){
+    if(st.show.gyr && !L.massless){
       /* the radius of gyration about the y-axis, drawn as a pair of lines: the
          distance at which all the mass could sit and give the same I */
       ctPath(ctx, P, [{ x:L.ry, y:P.y0 }, { x:L.ry, y:P.y1 }], rgbCss(TH.curl, 0.8), 1.6);
@@ -120,7 +127,9 @@ STAGES.igMass = {
       ctx.strokeStyle = rgbCss(TH.pos, 0.7); ctx.lineWidth = 1.6;
       ctx.beginPath(); ctx.arc(P.X(0), P.Y(0), L.r0 * P.u, 0, 6.2832); ctx.stroke();
     }
-    stageNote(ctx, 'colour is the density · the cross-hairs mark where the plate would balance on a pin', W, H);
+    stageNote(ctx, L.massless
+      ? 'colour is the density · this ρ changes sign and sums to zero, so there is no balance point'
+      : 'colour is the density · the cross-hairs mark where the plate would balance on a pin', W, H);
   },
   readout(st){
     const Rg = igRegCur(st);
@@ -135,19 +144,29 @@ STAGES.igMass = {
       ${kv('average density m/A', fmtNum(L.M / area, 7))}
       ${kv('M<sub>y</sub> = ∬xρ dA', fmtNum(L.My, 7))}
       ${kv('M<sub>x</sub> = ∬yρ dA', fmtNum(L.Mx, 7))}
-      ${kv('x̄ = M<sub>y</sub>/m', fmtNum(L.cx, 7))}
-      ${kv('ȳ = M<sub>x</sub>/m', fmtNum(L.cy, 7))}
-      ${kv('inside the region?', igInRegion(Rg, L.cx, L.cy) ? 'yes' : 'no — the centroid lies outside the plate')}
+      ${L.massless
+        ? `${kv('x̄ = M<sub>y</sub>/m', 'not defined — the net mass is zero')}
+           ${kv('ȳ = M<sub>x</sub>/m', 'not defined — the net mass is zero')}
+           <p class="help"><b>This density changes sign.</b> ρ = y is negative below the axis, and over a
+           region symmetric about it the positive and negative halves cancel exactly: ∬ρ dA = 0, against
+           ∬|ρ| dA = ${fmtNum(L.Mabs, 6)}. There is no centre of mass to find — dividing by that zero
+           printed a centroid of −1.15×10¹⁶ until 2026-08-14. Read ρ here as a signed weight, of the kind
+           a charge density is, and the moments below as its dipole moments.</p>`
+        : `${kv('x̄ = M<sub>y</sub>/m', fmtNum(L.cx, 7))}
+           ${kv('ȳ = M<sub>x</sub>/m', fmtNum(L.cy, 7))}
+           ${kv('inside the region?', igInRegion(Rg, L.cx, L.cy) ? 'yes' : 'no — the centroid lies outside the plate')}`}
     </div>
     <div class="card tight"><div class="ttl">Moments of inertia</div>
       ${kv('I<sub>x</sub> = ∬y²ρ dA', fmtNum(L.Ix, 7))}
       ${kv('I<sub>y</sub> = ∬x²ρ dA', fmtNum(L.Iy, 7))}
       ${kv('I₀ = ∬r²ρ dA', fmtNum(L.I0, 7))}
       ${kv('I<sub>x</sub> + I<sub>y</sub>', fmtNum(L.Ix + L.Iy, 7))}
-      ${kv('difference', fmtAgree(L.I0, L.Ix + L.Iy))}
-      ${kv('radius of gyration about ŷ  √(I<sub>y</sub>/m)', fmtNum(L.ry, 7))}
-      ${kv('about x̂', fmtNum(L.rx, 7))}
-      ${kv('about the origin', fmtNum(L.r0, 7))}
+      ${kv('difference', fmtAgreeGross(L.I0, L.Ix + L.Iy, L.Mabs))}
+      ${L.massless
+        ? kv('radius of gyration √(I/m)', 'not defined — the net mass is zero')
+        : `${kv('radius of gyration about ŷ  √(I<sub>y</sub>/m)', fmtNum(L.ry, 7))}
+           ${kv('about x̂', fmtNum(L.rx, 7))}
+           ${kv('about the origin', fmtNum(L.r0, 7))}`}
       <p class="help">The perpendicular-axis identity <b>I₀ = I<sub>x</sub> + I<sub>y</sub></b> holds for any flat plate and
       is checked above; it is nothing but <b>r² = x² + y²</b> integrated. The radius of gyration is the
       distance at which a point mass equal to m would have the same moment of inertia — a way of quoting
@@ -155,18 +174,30 @@ STAGES.igMass = {
     </div>
     <div class="card tight"><div class="ttl">The parallel-axis theorem, checked</div>
       ${kv('axis at x =', fmtNum(st.axis, 5))}
-      ${kv('distance d from the centroid', fmtNum(pa.d, 6))}
-      ${kv('I about that axis, integrated', fmtNum(pa.Ishift, 7))}
-      ${kv('I about the centroid', fmtNum(pa.Icen, 7))}
-      ${kv('I_centroid + m d²', fmtNum(pa.predicted, 7))}
-      ${kv('difference', fmtAgree(pa.Ishift, pa.predicted))}
-      <p class="help">Two independent integrals and one prediction, agreeing. The theorem says the moment
-      of inertia is smallest about an axis through the centre of mass, and grows quadratically as you move
-      away — which is why a door hinged at its edge is harder to swing than one pivoted at its middle.</p>
+      ${pa.massless
+        ? `${kv('distance d from the centroid', 'there is no centroid to measure from')}
+           ${kv('I about that axis, integrated', fmtNum(pa.Ishift, 7))}
+           <p class="help">The theorem is <b>I = I_cm + md²</b>, and every term in it is measured from the
+           centre of mass. This density has no centre of mass — see the first card — so the statement has
+           nothing to say here rather than something false. Choose a density that does not change sign and
+           it comes back.</p>`
+        : `${kv('distance d from the centroid', fmtNum(pa.d, 6))}
+           ${kv('I about that axis, integrated', fmtNum(pa.Ishift, 7))}
+           ${kv('I about the centroid', fmtNum(pa.Icen, 7))}
+           ${kv('I_centroid + m d²', fmtNum(pa.predicted, 7))}
+           ${kv('difference', fmtAgreeGross(pa.Ishift, pa.predicted, pa.gross))}
+           <p class="help">Two independent integrals and one prediction, agreeing. The theorem says the
+           moment of inertia is smallest about an axis through the centre of mass, and grows quadratically
+           as you move away — which is why a door hinged at its edge is harder to swing than one pivoted at
+           its middle.</p>`}
     </div>`;
   },
   chip(st){
     const L = igLamina(igRegCur(st), igDenCur(st).f, this.order(st));
+    if(L.massless)
+      return `<div class="k">centre of mass</div>
+        <div style="color:var(--c-warn)">none — ρ sums to zero</div>
+        <div>∬|ρ| dA = ${fmtNum(L.Mabs, 4)}</div>`;
     return `<div class="k">centre of mass</div>
       <div style="color:var(--c-warn)">(${fmtNum(L.cx, 4)}, ${fmtNum(L.cy, 4)})</div>
       <div>m = ${fmtNum(L.M, 4)}</div>`;

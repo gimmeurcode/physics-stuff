@@ -658,9 +658,21 @@ Set-Content -Path $out -Value ($head + $body + $tail) -Encoding utf8
 $chrome = 'C:\Program Files\Google\Chrome\Application\chrome.exe'
 $prof = Join-Path $dir 'cprof'
 $url = 'file:///' + ($out -replace '\\','/')
+# CHROME'S STDERR MUST NOT KILL THE RUN. Under $ErrorActionPreference = 'Stop',
+# PowerShell 5.1 turns every stderr line from a NATIVE command into a
+# terminating NativeCommandError -- and Chrome writes to stderr whenever it
+# feels like it, with none of it a failure: USB device enumeration, "Created
+# TensorFlow Lite XNNPACK delegate for CPU", GCM registration, a default web-app
+# install that did not happen. All four appeared on this machine in one session,
+# and the second of them killed an eighteen-minute run AFTER the sweep had
+# finished but BEFORE the DOM was written, so the result was thrown away.
+# 19 of the 20 Chrome-driving scripts here still have this shape -- see
+# MASTER-PLAN 3.4. Nothing is being ignored: the exit code is checked below.
+$ErrorActionPreference = 'Continue'
 & $chrome --headless --disable-gpu --no-sandbox --window-size=1680,1000 --virtual-time-budget=120000 `
           --user-data-dir="$prof" --dump-dom $url |
   Out-File (Join-Path $dir 'dom-all.txt') -Encoding utf8
+$ErrorActionPreference = 'Stop'
 
 $dom = Get-Content (Join-Path $dir 'dom-all.txt') -Raw -Encoding UTF8
 $m = 'id="REPORT">'

@@ -278,7 +278,7 @@ STAGES.dyMoment = {
       ${kv('K after', fmtNum(C.K1, 6) + ' J')}
       ${kv('lost', fmtNum(C.lost, 6) + ' J')}
       ${kv('½μ(Δu)²(1 − e²) says', fmtNum(C.closed, 6) + ' J')}
-      ${kv('difference', fmtAgree(C.lost, C.closed, 'J'))}
+      ${kv('difference', fmtAgreeGross(C.lost, C.closed, C.K0, 'J'))}
       <p class="help">Only the relative motion can be lost. The centre of mass carries ½(m₁+m₂)v_cm² that
       no internal force can touch, and what is left over — ½μ(Δu)² — is all that is ever available to
       dissipate. The factor (1 − e²) says how much of it went.</p>
@@ -309,7 +309,7 @@ STAGES.dyMoment = {
       ${kv('ΔK', fmtNum(C.dK, 6) + ' J')}
       ${kv('energy lost', fmtNum(C.lost, 6) + ' J')}
       ${kv('½μ(Δu)²(1−e²)', fmtNum(predicted, 6) + ' J')}
-      ${kv('difference', fmtAgree(C.lost, predicted))}
+      ${kv('difference', fmtAgreeGross(C.lost, predicted, C.K0))}
       <p class="help">Momentum is conserved at every e — drag the slider and watch Δp stay at zero to the
       last digit. The energy loss matches the reduced-mass formula exactly, and it is zero only at e = 1.</p>
     </div>

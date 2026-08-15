@@ -86,7 +86,7 @@ falls by 2^p, round-off does not move.
    scope means a single stray character takes the whole app down, and the unit
    suite only sees the engine section (10-49) and would not notice. Then
    `./runtests.ps1` must print `0 failed`
-   (4249 unit tests). For anything touching demos or the UI, `./runall.ps1` must end
+   (4261 unit tests). For anything touching demos or the UI, `./runall.ps1` must end
    `caught=0 OK` — it takes ~18 minutes, so run it in the background — and
    `./auditcustom.ps1` must end `bad=0 OK`, because `runall` never selects the
    "type your own" option and so never exercises that path at all.
@@ -201,6 +201,16 @@ is how a 100% disagreement once read as success in the affirmative colour.
 its size. **Never `toExponential`** (ASCII `8.10e-11` where §1.7 wants
 `8.10×10⁻¹¹`, and no scale) and **never `toFixed`** on a residual — it rendered
 a perfect fit as `0.00000`. Those are the same defect in three spellings.
+**When both routes can legitimately vanish, `fmtAgree` cannot get it right and
+`fmtAgreeGross(a, b, gross, unit)` is the form.** Its derived scale is
+`max(|a|,|b|)`, which becomes the round-off itself once the quantity is zero —
+so a perfect result printed as a 100% disagreement. `gross` is what the zero
+cancelled: `∮|F||dr|`, `∬|F||dS|`, `∮|f||dz|`, `∬|ρ|dA`, kT. **Magnitudes, not
+`|F·n̂|`** — a swirl is tangential to every sphere, so that form is zero too.
+**`./auditsides.ps1` drives every preset a reader can select and fails on a new
+one**; it is also the only gate that asks whether the two routes *agree* rather
+than whether the difference is *formatted* properly.
+
 **`./auditresid.ps1` (`findings=0`) fails on a difference printed as bare `0` or
 as unscaled round-off, across five rendered surfaces — readout, chip, derive
 ladder, legend, and the `*Own` reader-supplied panels.** It cannot read a

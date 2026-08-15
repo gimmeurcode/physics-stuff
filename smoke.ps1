@@ -171,9 +171,16 @@ $url  = 'file:///' + ($tmp -replace '\\','/')
 
 # No 2>&1 and no 2>$null: in PowerShell 5.1 redirecting a native command's stderr
 # wraps each line as an ErrorRecord and reports failure on success.
+# Chrome writes to stderr for reasons that are not failures (USB enumeration, an
+# XNNPACK delegate, GCM registration). Under ErrorActionPreference = 'Stop' each
+# such line becomes a terminating NativeCommandError and the run dies AFTER the
+# sweep and BEFORE the DOM is written, throwing the result away. See MASTER-PLAN
+# 3.4. The exit status is still checked below; nothing is being swallowed.
+$ErrorActionPreference = 'Continue'
 & $chrome --headless --disable-gpu --no-sandbox --virtual-time-budget=8000 `
           --user-data-dir="$prof" --dump-dom $url |
   Out-File -FilePath (Join-Path $dir 'smokedom.txt') -Encoding utf8
+$ErrorActionPreference = 'Stop'
 
 $dom = Get-Content (Join-Path $dir 'smokedom.txt') -Raw
 Remove-Item $tmp -Force -ErrorAction SilentlyContinue

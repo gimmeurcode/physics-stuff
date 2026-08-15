@@ -104,9 +104,16 @@ $sizes = @('3840,2160','2560,1440','1920,1080','1680,1050','1512,982','1440,900'
 
 $bad = 0
 foreach ($s in $sizes) {
+# Chrome writes to stderr for reasons that are not failures (USB enumeration, an
+# XNNPACK delegate, GCM registration). Under ErrorActionPreference = 'Stop' each
+# such line becomes a terminating NativeCommandError and the run dies AFTER the
+# sweep and BEFORE the DOM is written, throwing the result away. See MASTER-PLAN
+# 3.4. The exit status is still checked below; nothing is being swallowed.
+$ErrorActionPreference = 'Continue'
   & $chrome --headless --disable-gpu --no-sandbox --window-size=$s --virtual-time-budget=30000 `
             --user-data-dir="$(Join-Path $dir 'cprof-view')" --dump-dom $url |
     Out-File (Join-Path $dir 'dom-viewport.txt') -Encoding utf8
+$ErrorActionPreference = 'Stop'
   $dom = Get-Content (Join-Path $dir 'dom-viewport.txt') -Raw -Encoding UTF8
   $a = $dom.IndexOf('id="REPORT">')
   if ($a -lt 0) { Write-Output ("  {0,-10} NO REPORT" -f $s); $bad++; continue }

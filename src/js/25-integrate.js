@@ -198,11 +198,26 @@ function igLamina(Rg, rho, order){
   const Ix  = igRegionIntegral(Rg, (x, y) => y * y * rho(x, y), order);
   const Iy  = igRegionIntegral(Rg, (x, y) => x * x * rho(x, y), order);
   const I0  = Ix + Iy;                                                // polar moment
+  /* ∬|ρ| dA — the gross the signed mass is read against, and the only thing
+     that can tell a plate of zero net mass from a plate of no mass at all.
+
+     THE DENSITIES HERE CHANGE SIGN. `ρ = y` on any region symmetric about the
+     x-axis integrates to EXACTLY zero, and the cardioid is such a region: M
+     came out at −1.8×10⁻¹⁶ and the panel divided by it, printing a centroid of
+     ȳ = −11 538 634 339 406 766 as though it were a measurement. §2.1 — a ratio
+     of two small numbers is not a measurement, and the panel must say which
+     case it is in rather than print a number. `massless` is that flag; the
+     radii of gyration go with it, because √(I/M) of two vanishing quantities is
+     equally meaningless (and √ of a negative ratio is NaN besides). */
+  const Mabs = igRegionIntegral(Rg, (x, y) => Math.abs(rho(x, y)), order);
+  const massless = !(Math.abs(M) > 1e-9 * Math.max(Mabs, Number.MIN_VALUE));
   return {
-    M, Mx, My, Ix, Iy, I0,
-    cx:My / M, cy:Mx / M,
+    M, Mx, My, Ix, Iy, I0, Mabs, massless,
+    cx:massless ? NaN : My / M, cy:massless ? NaN : Mx / M,
     /* radius of gyration: the distance at which a point mass M has the same I */
-    rx:Math.sqrt(Ix / M), ry:Math.sqrt(Iy / M), r0:Math.sqrt(I0 / M)
+    rx:massless ? NaN : Math.sqrt(Ix / M),
+    ry:massless ? NaN : Math.sqrt(Iy / M),
+    r0:massless ? NaN : Math.sqrt(I0 / M)
   };
 }
 /* the parallel-axis theorem, which the stage verifies rather than quotes:
@@ -210,8 +225,20 @@ function igLamina(Rg, rho, order){
 function igParallelAxis(Rg, rho, order, x0){
   const L = igLamina(Rg, rho, order);
   const Ishift = igRegionIntegral(Rg, (x, y) => (x - x0) * (x - x0) * rho(x, y), order);
-  const Icen   = igRegionIntegral(Rg, (x, y) => (x - L.cx) * (x - L.cx) * rho(x, y), order);
-  return { Ishift, Icen, M:L.M, d:L.cx - x0, predicted:Icen + L.M * (L.cx - x0) * (L.cx - x0) };
+  /* the same integral with |ρ|: on a sign-changing density every term here can
+     cancel to zero and the theorem is then 0 = 0 + 0, which is true and says
+     nothing. 2.4×10⁻¹⁶ out of this 2.44 is round-off; out of itself it is 100% */
+  const gross = igRegionIntegral(Rg, (x, y) => Math.abs((x - x0) * (x - x0) * rho(x, y)), order);
+  /* WITH NO CENTRE OF MASS THERE IS NO THEOREM. Every quantity below is measured
+     from the centroid, so a plate whose net mass cancels to zero has none of
+     them — and computing them anyway propagates the NaN centroid into four more
+     rows. The caller must branch on `massless` and say so in words; §Accuracy
+     forbids letting NaN reach a readout. */
+  if(L.massless)
+    return { Ishift, Icen:NaN, M:L.M, d:NaN, gross, massless:true, predicted:NaN };
+  const Icen = igRegionIntegral(Rg, (x, y) => (x - L.cx) * (x - L.cx) * rho(x, y), order);
+  return { Ishift, Icen, M:L.M, d:L.cx - x0, gross, massless:false,
+           predicted:Icen + L.M * (L.cx - x0) * (L.cx - x0) };
 }
 const IG_DENSITIES = {
   uniform: { name:'ρ = 1  (uniform)',   f:() => 1,                 tex:'1' },

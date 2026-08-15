@@ -101,9 +101,30 @@ setTimeout(function(){
   var EXACT_FIGS = 99;
 
   /* Honest exceptions, with the reason each is honest. A whitelist entry is a
-     claim about the PHYSICS, so it names one and says why -- an entry without a
-     reason is how a gate stops meaning anything. */
-  var ALLOW = {};
+     claim about the MATHEMATICS, so it names one and says why -- an entry
+     without a reason is how a gate stops meaning anything.
+     MASTER-PLAN 3.4 named this one in advance: "whitelist the one honest
+     exception (an inverse-square field on a region containing its singularity)
+     WITH ITS REASON". It turned out to be four, all the same theorem failing
+     the same way, and each is the point of the preset rather than a defect.
+
+     Green's and the divergence theorem both require the field to be defined on
+     the WHOLE region, not merely on its boundary. Every field below has a
+     singularity at the origin, which the region encloses, so the boundary
+     integral is 2π or 4π while the area or volume integral of a curl or
+     divergence that vanishes identically off that one point is 0. The gap IS
+     the theorem's hypothesis failing, and it is exactly what the demo is for:
+     it is where the residue theorem and Gauss's law come from. */
+  var ALLOW = {
+    'vcGreen|readout|difference':
+      'vortex round a circle: curl = 0 off the origin, circulation = 2pi. The hypothesis fails at one point',
+    'vcGreen|readout|difference #2':
+      'source through a circle: div = 0 off the origin, flux = 2pi. Same puncture, flux form',
+    'vcDiverg|readout|difference':
+      'inverse-square through a sphere containing it: div = 0 everywhere it is defined, flux = 4pi. Gauss law',
+    'vcDiverg|readout|difference #2':
+      'the same field through the cylinder, 2pi. Same reason'
+  };
 
   /* ---- collection --------------------------------------------------------- */
   /* claims[key] = {min, max, worstAt, bestAt, gapAt}, key = stage|surface|label */
@@ -319,7 +340,11 @@ $rep = $dom.Substring($a, $b - $a).Replace('&lt;','<').Replace('&gt;','>').Repla
 # THE BASELINE, AND WHY THIS IS A RATCHET RATHER THAN A BARE THRESHOLD.
 #
 # The first run found 10 FALSE-SCALE and 14 PRESET-GAP over 791 preset
-# combinations. Failing on all 24 immediately would have left the build red
+# combinations. FALSE-SCALE is now 0: the whole class was fixed the same day by
+# fmtAgreeGross plus a gross for each vanishing integral, and the baseline is
+# set to 0 so a single new one fails the build.
+#
+# PRESET-GAP stays a ratchet. Failing on all fourteen would leave the build red
 # until every one had been attributed -- and attribution is the expensive half:
 # a PRESET-GAP is equally the signature of a REAL defect and of a demo
 # deliberately showing where a theorem's hypothesis fails. cxMap's conjugate
@@ -333,7 +358,7 @@ $rep = $dom.Substring($a, $b - $a).Replace('&lt;','<').Replace('&gt;','>').Repla
 # MASTER-PLAN 3.4, and each row comes off it as it is attributed and fixed.
 # LOWER THESE as they are cleared -- a baseline that is never tightened is a
 # backlog with a nice name.
-$BASE_FALSE  = 10
+$BASE_FALSE  = 0
 $BASE_PRESET = 14
 
 $false_ = -1; $preset = -1

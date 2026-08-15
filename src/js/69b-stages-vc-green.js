@@ -149,12 +149,30 @@
     const dbl = nqDoublePolar((x, y) => F.curl(x, y), 0, 2 * Math.PI, () => 0, rOf, 5, 40);
     const flux = vcLineFlux(F.P, F.Q, C, C.t0, C.t1, a, b);
     const dblDiv = nqDoublePolar((x, y) => F.div(x, y), 0, 2 * Math.PI, () => 0, rOf, 5, 40);
+    /* THE GROSS EACH SIDE CANCELLED OUT OF. A gradient field has zero curl
+       everywhere and zero circulation round every closed path, so on that
+       preset BOTH sides of the circulation form are exactly zero and the gap is
+       the quadrature's own last bits — which, divided by itself, read as a 100%
+       disagreement. The larger of the two routes' grosses is the honest scale,
+       and it has to be the larger: the curl side is identically zero for a
+       gradient field, so it alone would rescue nothing.
+
+       The square path is integrated straight through its corners here, where
+       the signed version is careful to split at them. That is deliberate: this
+       is a SCALE, not a measurement, and a few percent of error in a number
+       whose only job is to say "the terms were of size 2π, not of size 10⁻¹⁵"
+       changes no verdict. */
+    const lineGross = vcLineGross(F.P, F.Q, C, C.t0, C.t1, a, b);
+    const grossCirc = Math.max(lineGross,
+      nqDoublePolar((x, y) => Math.abs(F.curl(x, y)), 0, 2 * Math.PI, () => 0, rOf, 5, 40));
+    const grossFlux = Math.max(lineGross,
+      nqDoublePolar((x, y) => Math.abs(F.div(x, y)), 0, 2 * Math.PI, () => 0, rOf, 5, 40));
     const areaB = vcAreaByBoundary(C, a, b);
     const areaD = nqDoublePolar(() => 1, 0, 2 * Math.PI, () => 0, rOf, 5, 40);
     return `<div class="card tight"><div class="ttl">Circulation form — both sides</div>
       ${kv('∮ P dx + Q dy', fmtNum(circ, 8))}
       ${kv('∬ (Q<sub>x</sub> − P<sub>y</sub>) dA', fmtNum(dbl, 8))}
-      ${kv('difference', fmtAgree(circ, dbl))}
+      ${kv('difference', fmtAgreeGross(circ, dbl, grossCirc))}
       <p class="help">The line integral is a one-dimensional adaptive quadrature along a parametrised
       curve. The double integral is a two-dimensional Gauss rule in polar coordinates over the region.
       They share no code and no assumptions — the agreement is the theorem.</p>
@@ -162,7 +180,7 @@
     <div class="card tight"><div class="ttl">Flux form — both sides</div>
       ${kv('∮ F·n̂ ds  =  ∮ P dy − Q dx', fmtNum(flux, 8))}
       ${kv('∬ (P<sub>x</sub> + Q<sub>y</sub>) dA', fmtNum(dblDiv, 8))}
-      ${kv('difference', fmtAgree(flux, dblDiv))}
+      ${kv('difference', fmtAgreeGross(flux, dblDiv, grossFlux))}
       <p class="help">Apply the circulation form to the rotated field ⟨−Q, P⟩ and the flux form falls out
       immediately. One theorem, two costumes — and it is the two-dimensional ancestor of both Stokes'
       theorem and the divergence theorem, which is why those two look so alike.</p>

@@ -74,6 +74,59 @@ function cxContour(f, path, n){
   }
   return sum;
 }
+/* ∮|f(z)||dz| — the gross the integral above has to be read against.
+
+   Cauchy's theorem makes ∮f dz EXACTLY zero whenever the contour encloses no
+   pole, which is not a corner case: it is the answer on every analytic preset
+   and on every contour dragged clear of the singularities. There the computed
+   integral is nothing but the last bits of a 3000-term sum, and reading it
+   against itself reported a 100% disagreement where the theorem is exact.
+   Against this it is 2.5×10⁻¹⁵ out of the ~40 the magnitudes actually summed. */
+function cxContourGross(f, path, n){
+  const N = n || 2000;
+  let sum = 0;
+  for(let i = 0; i < N; i++){
+    const t0 = i / N, t1 = (i + 1) / N;
+    const z0 = path(t0), z1 = path(t1);
+    const dz = cxSub(z1, z0);
+    const zm = { re:(z0.re + z1.re) / 2, im:(z0.im + z1.im) / 2 };
+    const v = f(zm);
+    if(!Number.isFinite(v.re) || !Number.isFinite(v.im)) continue;
+    sum += cxAbs(v) * cxAbs(dz);
+  }
+  return sum;
+}
+/* How close does a contour come to a pole, measured in units of the step the
+   quadrature takes along it?
+
+   ∮f dz DOES NOT EXIST when the contour runs through a singularity, and the
+   default view of cxContourInt does exactly that: the circle opens at radius 1
+   about the origin and `1/(z−1)(z+1)` has its poles at precisely ±1. The
+   midpoint rule never samples the pole itself — the midpoint of a chord falls
+   just inside the circle — so nothing overflowed and nothing was NaN. It simply
+   sampled |f| ~ 10⁶ twice and reported a number, and the residue theorem beside
+   it said 0 (the two residues cancel). auditsides saw them differ by π.
+
+   The ratio is what matters, not the distance: the error of the midpoint rule
+   near a simple pole grows like (h/d)², so a pole one step away is fatal and
+   one a hundred steps away is invisible. Returns Infinity when there are no
+   poles, so callers can compare without a special case. */
+function cxPoleClearance(poles, path, n){
+  if(!poles || !poles.length) return Infinity;
+  const N = n || 600;
+  let dmin = Infinity, len = 0, prev = path(0);
+  for(let i = 1; i <= N; i++){
+    const z = path(i / N);
+    len += cxAbs(cxSub(z, prev));
+    prev = z;
+    for(const p of poles){
+      const d = cxAbs(cxSub(z, p));
+      if(d < dmin) dmin = d;
+    }
+  }
+  const h = len / N;
+  return h > 0 ? dmin / h : Infinity;
+}
 /* a circle, the contour every residue calculation actually uses */
 const cxCircle = (c, r) => (t => ({ re:c.re + r * Math.cos(2 * Math.PI * t),
                                     im:c.im + r * Math.sin(2 * Math.PI * t) }));

@@ -94,6 +94,28 @@ function vcLineFlux(P, Q, path, t0, t1, a, b){
     return P(p.x, p.y) * d.y - Q(p.x, p.y) * d.x;
   }, t0, t1, 1e-10);
 }
+/* ∮|F||dr| — THE SIZE OF THE TERMS BEFORE ANY CANCELLATION, which is what a
+   vanishing integral has to be read against. §2.1: "print what the zero
+   cancelled" — a circulation of 8.9×10⁻¹⁶ is round-off in a sum of terms of
+   size 2π and a catastrophe in a sum of terms of size 10⁻¹⁵, and nothing but
+   the gross tells them apart. A gradient field's circulation round any closed
+   path is exactly zero, so this is not an edge case: it is the answer on every
+   conservative preset.
+
+   |F||dr| RATHER THAN |F·dr|, and the difference is not pedantry. The first
+   version integrated the absolute value of the dot product, which is zero for a
+   field POINTWISE PERPENDICULAR to the element — a vortex round a circle, an
+   inverse-square field along one, a swirl across a sphere. There the gross was
+   itself zero and rescued nothing, and auditsides went from ten findings to
+   four rather than to none. The direction is part of what cancelled, so the
+   honest scale is the magnitude of the vector times the length of the element:
+   it is what the sum would have been had every term pointed the same way. */
+const vcLineGross = (P, Q, path, t0, t1, a, b) =>
+  nqAdaptive(t => {
+    const p = path.f(t, a, b), d = path.d(t, a, b);
+    return Math.hypot(P(p.x, p.y), Q(p.x, p.y)) * Math.hypot(d.x, d.y);
+  }, t0, t1, 1e-10);
+
 /* arc length, so the readout can report the average of F·T̂ as well as its sum */
 const vcArcLen = (path, t0, t1, a, b) =>
   nqAdaptive(t => { const d = path.d(t, a, b); return Math.hypot(d.x, d.y); }, t0, t1, 1e-10);
@@ -268,6 +290,23 @@ function vcSurfFlux(S, F, orient){
     return vdot(f, fr.n);
   }, S.u0, S.u1, S.v0, S.v1, 5, 18);
 }
+/* ∬|F||dS| — the gross the signed flux above has to be read against, and the
+   reason the two theorem checks below return one. A swirl field has exactly
+   zero net flux through any closed surface and a shear field exactly zero
+   circulation round the loop that caps it, so on those presets the signed
+   answer is nothing but the mesh's own error; divided by this it is 5×10⁻¹¹
+   out of π, and divided by itself it is 100%. Unsigned, so no orientation.
+
+   |F||n| rather than |F·n|, for the reason on vcLineGross above: the swirl is
+   tangential to every sphere, so its pointwise F·n̂ is zero and a gross built
+   from it is zero too. The magnitude form is what the flux would have been had
+   the field pointed straight out everywhere. */
+const vcSurfFluxAbs = (S, F) =>
+  nqDoubleRect((u, v) => {
+    const fr = vcSurfFrame(S, u, v);
+    const f = F(fr.p.x, fr.p.y, fr.p.z);
+    return Math.hypot(f.x, f.y, f.z) * Math.hypot(fr.n.x, fr.n.y, fr.n.z);
+  }, S.u0, S.u1, S.v0, S.v1, 5, 18);
 
 /* ------------------------------------------------------ 3D fields & operators ---- */
 /* Symbolic P, Q, R with their divergence and curl, taken from the same
@@ -350,18 +389,37 @@ const VC_FIELDS3 = {
 };
 
 /* the two theorems, each with both sides measured */
+/* Each returns `gross` as well as `gap`, and the stages are required to print
+   the gap against it (fmtAgreeGross). Both theorems have presets on which BOTH
+   sides are exactly zero — shear3 on a hemisphere, swirl through any closed
+   surface — and there the gap is the mesh's own error while the derived scale
+   is that same error, so the panel announced a 100% disagreement on the two
+   presets where the physics is perfect. Taking the larger of the two routes'
+   grosses matters: a gradient field cancels the SURFACE side to zero and a
+   shear field cancels the LOOP side to zero, so either one alone is sometimes
+   zero itself and would rescue nothing. */
 function vcStokesCheck(fld, surf, loopPath, orient){
   const flux = vcSurfFlux(surf, (x, y, z) => fld.curl(x, y, z), orient);
   const circ = nqAdaptive(t => {
     const p = loopPath.f(t), d = loopPath.d(t);
     return vdot(fld.F(p.x, p.y, p.z), d);
   }, loopPath.t0, loopPath.t1, 1e-10);
-  return { flux, circ, gap:Math.abs(flux - circ) };
+  const grossFlux = vcSurfFluxAbs(surf, (x, y, z) => fld.curl(x, y, z));
+  const grossCirc = nqAdaptive(t => {
+    const p = loopPath.f(t), d = loopPath.d(t);
+    const f = fld.F(p.x, p.y, p.z);
+    return Math.hypot(f.x, f.y, f.z) * Math.hypot(d.x, d.y, d.z);
+  }, loopPath.t0, loopPath.t1, 1e-10);
+  return { flux, circ, gap:Math.abs(flux - circ),
+           gross:Math.max(grossFlux, grossCirc) };
 }
 function vcDivergenceCheck(fld, surf, volume){
   const flux = vcSurfFlux(surf, fld.F, 1);
   const vol = volume(fld);
-  return { flux, vol, gap:Math.abs(flux - vol) };
+  /* the volume route's integrand is behind an opaque callback, so the gross
+     comes from the surface route alone -- which is the one that vanishes by
+     symmetry on the presets that matter */
+  return { flux, vol, gap:Math.abs(flux - vol), gross:vcSurfFluxAbs(surf, fld.F) };
 }
 /* ∭ ∇·F dV over a ball of radius a, in spherical coordinates */
 const vcBallDivIntegral = (fld, a) =>

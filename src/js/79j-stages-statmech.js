@@ -782,7 +782,12 @@ STAGES.smBoltz = {
           `${n(R.U)} eV`),
         drvStep('and again, by differentiating ln Z',
           `⟨${dv('E')}⟩ ${dop('=')} ${dop('−')}${dfrac('∂ ln ' + dv('Z'), '∂β')} , &nbsp; β ${dop('=')} 1/${dv('k')}${dv('T')}`,
-          `${n(U2)} eV — the two routes differ by ${fmtAgree(R.U, U2, 'eV')}`),
+          /* kT is the scale ⟨E⟩ is read against, and without it this row was
+             nonsense on every preset whose excited states are frozen out: for
+             hydrogen at room temperature ⟨E⟩ is zero to 170 decimal places by
+             both routes, and dividing the 1.81×10⁻¹⁷⁰ eV between them by itself
+             announced a 100% disagreement. Against kT it is what it is — nothing */
+          `${n(U2)} eV — the two routes differ by ${fmtAgreeGross(R.U, U2, SM_KBEV * st.T, 'eV')}`),
         drvStep('the fluctuation in energy gives the heat capacity for free',
           `⟨${dv('E')}²⟩ ${dop('−')} ⟨${dv('E')}⟩² ${dop('=')} ${dv('k')}${dv('T')}²${dv('C')}`,
           `C = ${n(R.C)} eV/K`),
@@ -891,7 +896,7 @@ STAGES.smBoltz = {
     <div class="card tight"><div class="ttl">Two routes to the same energy</div>
       ${kv('⟨E⟩ by summing populations', n(R.U) + ' eV')}
       ${kv('⟨E⟩ by −∂lnZ/∂β', n(U2) + ' eV')}
-      ${kv('difference', fmtAgree(R.U, U2))}
+      ${kv('difference', fmtAgreeGross(R.U, U2, kT, 'eV'))}
       ${kv('heat capacity C', n(R.C) + ' eV/K')}
       ${kv('free energy F', n(R.F) + ' eV')}
       ${kv('entropy S', n(R.S) + ' eV/K')}

@@ -161,6 +161,54 @@ ok('fmtAgree is symmetric in its two routes',
 ok('fmtAgree on two identical routes says every digit agrees',
    fmtAgree(7.25, 7.25, 'J').indexOf('every digit') > 0, fmtAgree(7.25, 7.25, 'J'));
 
+/* ---- fmtAgreeGross: the one case fmtAgree cannot get right alone ----
+   When BOTH routes vanish, fmtAgree's derived scale max(|a|,|b|) IS the
+   round-off, so a perfect result reads as a 100% disagreement. That is J9
+   inverted, and ./auditsides.ps1 found ten of them. These pin both directions:
+   that a real gap still bites, and that a vanishing one stops shouting. */
+ok('fmtAgreeGross: two vanishing routes agree rather than disagree by 100%',
+   fmtAgreeGross(1.78e-15, 0, 9.5, 'J').indexOf('every digit') > 0,
+   fmtAgreeGross(1.78e-15, 0, 9.5, 'J'));
+ok('...where fmtAgree alone calls exactly that case 100%',
+   /100%/.test(fmtAgree(1.78e-15, 0, 'J')), fmtAgree(1.78e-15, 0, 'J'));
+ok('fmtAgreeGross still reports a REAL disagreement at full size',
+   /50%/.test(fmtAgreeGross(1.0, 0.5, 9.5, 'J')), fmtAgreeGross(1.0, 0.5, 9.5, 'J'));
+ok('a gross smaller than the routes is ignored, not believed',
+   fmtAgreeGross(1.0, 0.5, 1e-9, 'J') === fmtAgree(1.0, 0.5, 'J'),
+   fmtAgreeGross(1.0, 0.5, 1e-9, 'J'));
+ok('a gross of 0 degrades to exactly fmtAgree',
+   fmtAgreeGross(3, 3.0001, 0) === fmtAgree(3, 3.0001), fmtAgreeGross(3, 3.0001, 0));
+ok('and the underflow case: 1.8e-170 eV against kT is nothing',
+   fmtAgreeGross(1.81e-170, 0, 0.0258, 'eV').indexOf('every digit') > 0,
+   fmtAgreeGross(1.81e-170, 0, 0.0258, 'eV'));
+
+/* ---- igLamina: a density that changes sign has no centre of mass ----
+   rho = y over a region symmetric about the x-axis integrates to EXACTLY zero,
+   and the panel divided by it: the cardioid printed y-bar = -1.15e16 as a
+   measurement. The flag is what stops that, and the gross is what tells a
+   zero-mass plate from a plate with no material in it. */
+{
+  /* IG_REGIONS.rect is [0,2]x[0,1], so the site's own rho = y does NOT cancel
+     over it -- y - 1/2 is the density that is odd about this region's midline.
+     The first version of this test used rho = y, measured a mass of 1.0 and
+     failed, which is the test doing its job on the test. */
+  const sym = igLamina(IG_REGIONS.rect, (x, y) => y - 0.5, 'dydx');
+  ok('a sign-changing density over a symmetric region has zero net mass',
+     Math.abs(sym.M) < 1e-9 * sym.Mabs, sym.M + ' vs |rho| ' + sym.Mabs);
+  ok('...and is flagged massless rather than given a centroid',
+     sym.massless === true && !Number.isFinite(sym.cx), String(sym.massless) + ' ' + sym.cx);
+  ok('...while its gross mass is a real, positive number',
+     sym.Mabs > 0.1, String(sym.Mabs));
+  const solid = igLamina(IG_REGIONS.rect, () => 1, 'dydx');
+  ok('a uniform plate is NOT flagged and keeps its centroid',
+     solid.massless === false && Number.isFinite(solid.cx), String(solid.massless) + ' ' + solid.cx);
+  const pa = igParallelAxis(IG_REGIONS.rect, (x, y) => y - 0.5, 'dydx', 0);
+  ok('the parallel-axis theorem reports no centroid rather than a NaN one',
+     pa.massless === true && !Number.isFinite(pa.predicted), String(pa.massless));
+  ok('...and still returns a finite gross to read its residual against',
+     Number.isFinite(pa.gross) && pa.gross > 0, String(pa.gross));
+}
+
 /* ---- fmtAgreeTight / fmtGapTight: the same verdict, sized for a canvas ----
    Canvas text is drawn literally, so this must stay Unicode-only and must fit
    a fixed column. The four canvas sites that print a difference had each

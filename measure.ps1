@@ -63,9 +63,16 @@ Set-Content -Path $out -Value ($head + $body + $tail) -Encoding utf8
 
 $chrome = 'C:\Program Files\Google\Chrome\Application\chrome.exe'
 $url    = 'file:///' + ($out -replace '\\','/')
+# Chrome writes to stderr for reasons that are not failures (USB enumeration, an
+# XNNPACK delegate, GCM registration). Under ErrorActionPreference = 'Stop' each
+# such line becomes a terminating NativeCommandError and the run dies AFTER the
+# sweep and BEFORE the DOM is written, throwing the result away. See MASTER-PLAN
+# 3.4. The exit status is still checked below; nothing is being swallowed.
+$ErrorActionPreference = 'Continue'
 & $chrome --headless --disable-gpu --no-sandbox --window-size=1400,900 --virtual-time-budget=90000 `
           --user-data-dir="$(Join-Path $dir 'cprof-measure')" --dump-dom $url |
   Out-File (Join-Path $dir 'dom-measure.txt') -Encoding utf8
+$ErrorActionPreference = 'Stop'
 
 $dom = Get-Content (Join-Path $dir 'dom-measure.txt') -Raw -Encoding UTF8
 # Anchor on the rendered element: the dump contains this script's own source, so

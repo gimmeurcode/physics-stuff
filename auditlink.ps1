@@ -338,9 +338,16 @@ $out = Join-Path $dir 'apptest-link.html'
 Set-Content -Path $out -Value ($head + $body + $probe) -Encoding utf8
 
 $url = 'file:///' + ($out -replace '\\','/')
+# Chrome writes to stderr for reasons that are not failures (USB enumeration, an
+# XNNPACK delegate, GCM registration). Under ErrorActionPreference = 'Stop' each
+# such line becomes a terminating NativeCommandError and the run dies AFTER the
+# sweep and BEFORE the DOM is written, throwing the result away. See MASTER-PLAN
+# 3.4. The exit status is still checked below; nothing is being swallowed.
+$ErrorActionPreference = 'Continue'
 & $chrome --headless --disable-gpu --no-sandbox --window-size=1680,1000 --virtual-time-budget=900000 `
           --user-data-dir="$(Join-Path $dir 'cprof-link')" --dump-dom $url |
   Out-File (Join-Path $dir 'dom-link.txt') -Encoding utf8
+$ErrorActionPreference = 'Stop'
 
 function Get-Report($file) {
   $dom = Get-Content $file -Raw -Encoding UTF8

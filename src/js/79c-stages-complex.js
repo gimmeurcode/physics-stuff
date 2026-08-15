@@ -310,12 +310,30 @@ STAGES.cxContourInt = {
                           .filter(o => o.w !== 0);
     const resSum = inside.reduce((acc, o) => cxAdd(acc, cxScale(F.res[o.i] || cx(0, 0), o.w)), cx(0, 0));
     const pred = cxMul(cx(0, 2 * Math.PI), resSum);
+    /* IS THE INTEGRAL DEFINED AT ALL? A contour through a pole has none, and
+       this stage OPENS on one: radius 1 about the origin, and 1/(z−1)(z+1) has
+       its poles at ±1. The midpoint rule samples just inside the circle rather
+       than on it, so it returned a large finite number instead of failing, and
+       the panel printed it beside a residue sum of zero. Measured in steps of
+       the quadrature, because the error near a simple pole goes like (h/d)². */
+    const clear = cxPoleClearance(F.poles, path, 600);
+    if(clear < 8)
+      return `<div class="card tight"><div class="ttl">The contour runs through a pole</div>
+        ${kv('closest approach', fmtSig(clear, 2) + ' quadrature steps')}
+        <p class="help"><b>∮ f dz is not defined for this contour.</b> It passes through a singularity of
+        f, where the integrand has no finite value, so there is no number for the panel to print — the
+        quadrature would only be reporting how near its sample points happened to land. Cauchy's theorem
+        and the residue theorem both require the poles to be off the contour.</p>
+        <p class="help">Move the radius slider, or drag the contour, until the curve clears the marked
+        poles. The theorem returns as soon as it does.</p>
+      </div>`;
     return `<div class="card tight"><div class="ttl">The integral, computed along the curve</div>
       ${kv('∮ f dz', fmtNum(I.re, 5) + (I.im < 0 ? ' − ' : ' + ') + fmtNum(Math.abs(I.im), 5) + 'i')}
       ${kv('poles enclosed', inside.length)}
       ${inside.map(o => kv('  winding about pole ' + (o.i + 1), o.w)).join('')}
       ${kv('2πi × Σ residues', fmtNum(pred.re, 5) + (pred.im < 0 ? ' − ' : ' + ') + fmtNum(Math.abs(pred.im), 5) + 'i')}
-      ${kv('difference', fmtGap(cxAbs(cxSub(I, pred)), Math.max(cxAbs(I), cxAbs(pred))))}
+      ${kv('difference', fmtGap(cxAbs(cxSub(I, pred)),
+            Math.max(cxAbs(I), cxAbs(pred), cxContourGross(F.f, path, 3000))))}
       <p class="help">Two entirely independent calculations: a quadrature marched along the contour
       you drew, and a count of enclosed poles weighted by their residues. The difference is the
       evidence for the residue theorem.</p>
@@ -330,7 +348,14 @@ STAGES.cxContourInt = {
     </div>`;
   },
   chip(st){
-    const I = cxContour(cxOwnCur(st).f, this.path(st), 1200);
+    const F = cxOwnCur(st), p = this.path(st);
+    /* the same guard as the readout: a contour through a pole has no integral,
+       and the chip is the surface a reader looks at first */
+    if(cxPoleClearance(F.poles, p, 600) < 8)
+      return `<div class="k">∮ f dz</div>
+        <div style="color:var(--c-warn)">not defined</div>
+        <div>the contour meets a pole</div>`;
+    const I = cxContour(F.f, p, 1200);
     return `<div class="k">∮ f dz</div>
       <div style="color:var(--c-warn)">${fmtNum(I.re, 3)} ${I.im < 0 ? '−' : '+'} ${fmtNum(Math.abs(I.im), 3)}i</div>
       <div>2π = ${fmtNum(2 * Math.PI, 4)}</div>`;

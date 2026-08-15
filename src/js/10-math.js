@@ -474,6 +474,38 @@ function fmtGap(gap, scale, unit, floorRel){
          figs + (figs === 1 ? ' figure)' : ' figures)');
 }
 
+/* The one case fmtAgree CANNOT get right on its own: BOTH routes vanish.
+
+   fmtAgree derives its scale as max(|a|,|b|), which is the right answer until
+   the quantity itself is zero — and then the derived scale IS the round-off,
+   so a perfect result reads as a 100% disagreement in the affirmative colour.
+   dyMoment at e = 1 printed "1.78×10⁻¹⁵ J (100% — agreeing to 0 figures)"
+   directly beneath prose promising the two "match exactly"; smBoltz managed the
+   same thing at 1.81×10⁻¹⁷⁰. That is J9 inverted — there a real gap printed as
+   0, here a zero gap prints as total disagreement — and it is the same defect
+   underneath: a residual quoted against a scale that means nothing.
+   ./auditsides.ps1 found ten of them and is what fails if an eleventh lands.
+
+   `gross` is the quantity the cancellation came from — §2.1's "print what the
+   zero cancelled", ∮|B·n̂|dA beside ∮B·dA. A residual of 5×10⁻¹¹ is round-off
+   in a sum of terms of size π and a catastrophe in a sum of terms of size
+   10⁻¹⁰, and only the gross separates them.
+
+   THE GROSS SETS A FLOOR — it does not rescale the verdict. Taking
+   max(|a|,|b|,|gross|) as the scale was tried first and is wrong: it reports a
+   genuine 50% disagreement between two routes as 5% whenever the gross happens
+   to be ten times larger, which buries exactly the defect this family exists to
+   surface. The test pinning that is in tests.js and it failed on the first
+   version. Above the floor the ordinary fmtAgree verdict stands untouched;
+   below it there is nothing left to resolve and it says so. A gross of 0
+   degrades to exactly fmtAgree. */
+function fmtAgreeGross(a, b, gross, unit, floorRel){
+  const gap = Math.abs(a - b);
+  if(gap <= (floorRel || 1e-9) * Math.abs(gross || 0))
+    return '0' + (unit ? ' ' + unit : '') + ' — they agree to every digit either route has';
+  return fmtGap(gap, Math.max(Math.abs(a), Math.abs(b)), unit, floorRel);
+}
+
 /* The same verdict, sized for a CANVAS label.
 
    fmtGap's sentence is right for an HTML row and far too wide for a fixed
