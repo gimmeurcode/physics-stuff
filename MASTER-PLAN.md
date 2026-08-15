@@ -1216,17 +1216,41 @@ Three pieces of infrastructure would have caught most of the fourteen:
    corruption was caught, and **the separation immediately exposed two further
    real FALSE-SCALE sites** the merge had been hiding (8 → 10).
 
-   **Still open, and named so it is not lost:** `dyEnergy`'s frictionless case
-   reports a **5.82%** gap directly under prose reading "with no friction the
-   two agree". It is measured at a height drop of 0.00072 m — the first instant
-   of the run, where the drop is small and the relative error therefore large —
-   so it is very likely a transient being read at the wrong moment rather than a
-   wrong integral. **That is a hypothesis, not a diagnosis**, and §3.10's J9
-   entry is the standing warning about acting on one of those: measure it before
-   fixing it. It sits in the advisory `weak` list, so nothing gates on it.
+   **`dyEnergy` — RESOLVED 2026-08-15, and the recorded hypothesis was wrong.**
+   It was guessed here to be friction or a transient. Measured: μ is already
+   **0**, and on entry the drop is **−1.4×10⁻⁶ m** — the body is a rounding
+   error *above* where it started, so `√(2g·drop)` takes its `max(0, …)` branch
+   and is exactly zero against a real 0.0132 m/s. Two numbers, one of them zero
+   by clamping. **`fmtAgreeGross` was tried and is the wrong tool** — it floors a
+   gap that is *round-off*, and this one is not — so the row now says "not yet —
+   it has not dropped" until there is a drop to compare against, which is §2.1's
+   own instruction. The residue that remains once it is moving decays
+   32% → 8.9% → 2.4% → 0.51% and settles near **0.3%**: the fixed-step
+   integrator's truncation error, now named in the prose beside it.
+
+   **Attributed and fixed the same day:** `igTriple` (see item 3 below — 471%
+   wrong on the tetrahedron, NaN on the box, both reachable by a reader).
+   **Still open:** `odNonhom` at `odNF=custom`, residual 2.37 against the claim
+   that substituting y_p back into the equation gives zero to machine precision.
+   The custom forcing has no source string set at entry, so what `y_p` even is
+   there needs establishing first. Not guessed at.
 3. **Stage-level unit tests.** `runtests.ps1` extracts only 21–49, so none of the
    178 stages' arithmetic is tested. The numeric Fourier path had zero tests,
    which is exactly why a factor of two lived in it.
+
+   **The case for this is now concrete rather than theoretical.** On 2026-08-15
+   `igTriple.volume()` — stage arithmetic in `67c`, outside the window — was
+   found returning **0.952 for a tetrahedron of volume 1/6 (471% wrong)** and
+   **NaN for the box**, on a coordinate system any reader can select. Three
+   existing gates were blind to it by construction: `runtests` cannot see module
+   67; `auditclaims` recomputes `IG_SOLIDS.exactVol` but by the *Cartesian*
+   route, which was always correct; and `runall`'s NaN grep looks for the word,
+   while `fmtNum(NaN)` renders an em dash. It took driving the preset product
+   and reading the rendered number.
+   **The lesson for how D3 is built:** the value is not in testing stage helpers
+   in isolation — it is in testing the ones with **two routes to the same
+   answer**, where a test can assert they agree without knowing which is right.
+   `igTriple` had two and nothing compared them.
 
 **This programme is worth doing before Programme C**, because 22 new wings
 written without it will reproduce the same fourteen defects at scale.

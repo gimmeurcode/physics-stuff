@@ -4430,3 +4430,73 @@ back, gate failed) · `auditsize` **findings=0** · `auditmarks` 2303 → 20,
 controls unchanged · `auditzoom` findings=0 · `auditpanel` bad=0 ·
 `auditlink` findings=0 · `auditviewport` bad=0 · `auditcontrast` OK ·
 `auditscan` OK.
+
+## 2026-08-15 — a triple integral that was 471% wrong, and one that was NaN
+
+Chasing the `PRESET-GAP` rows `auditsides` had left. `igTriple` was flagged at
+`igTS=tetra igTC=cyl` with a gap of 0.785 against an exact volume of 1/6. It is
+a real defect and a reader can reach it: the Cartesian/cylindrical switch is
+offered for **every** solid that does not declare its own `S.cyl` form.
+
+**Two separate bugs in one branch**, found by computing every solid's volume
+both ways and comparing each against its declared exact value:
+
+| solid | exact | Cartesian | cylindrical, before | after |
+|---|---|---|---|---|
+| `box` | 6 | 6.0000000 | **NaN** | 5.9855967 (0.240%) |
+| `tetra` | 0.1666667 | 0.1666667 | **0.9520763 (471%)** | 0.1666781 (0.0069%) |
+| `cyl` | 6.2831853 | 6.2840780 | 6.2831853 | unchanged |
+| `parabsolid` | 25.132741 | 25.132674 | 25.132741 | unchanged |
+| `cone` | 8.3775804 | 8.3775745 | 8.3775804 | unchanged |
+
+**The tetrahedron.** The cylindrical route sweeps a full disc and zeroes the
+slab thickness outside the solid's shadow. It tested only `y` against
+`yLo`/`yHi` and never `x` against the solid's own range — and for x+y+z ≤ 1 the
+upper limit `yHi(x) = 1 − x` **grows** as x goes negative, so every point of the
+disc with x < 0 passed the shadow test and was integrated as solid. Hence 0.95
+against 1/6. The clip now tests both coordinates, and `rmax` samples the y
+extent instead of assuming the x range covers the shadow.
+
+**The box.** A solid either carries its own x/y limits or names a `region` that
+holds them. The Cartesian branch resolved `S.region` through `IG_REGIONS`; the
+cylindrical branch read `S.x0`/`S.yLo` directly and got `undefined`, so the
+volume was **NaN**. The shadow is now resolved once, above both branches, so
+they cannot disagree about what it is.
+
+**Why nothing caught either.** `runtests` extracts modules 21–49 and this is
+stage arithmetic in `67c`, which is Programme D item 3 exactly. `auditclaims`
+recomputes `IG_SOLIDS.exactVol` but by the Cartesian route, which was always
+right. And the NaN never printed the word: `fmtNum(NaN)` renders `—`, so
+`runall`'s NaN grep had nothing to find. **It took driving the preset product
+and reading the rendered number** — which is the whole argument for `auditsides`.
+
+The 0.240% left on the box is honest: a square shadow integrated in polar
+coordinates has corner cells the Gauss rule cannot resolve, and the panel prints
+that difference with its scale, which is what the stage is for.
+
+## 2026-08-15 — the frictionless track, and a fix that was the wrong tool
+
+`dyEnergy` printed "difference 100%" under prose reading "with no friction the
+two agree". Measured, μ is already **0** — the friction hypothesis recorded
+yesterday was wrong. The relative gap decays **100% → 32% → 8.9% → 2.4% →
+0.51%** and settles near **0.3%** as the drop grows, which is this fixed-step
+integrator's own truncation error, largest where the step is a sizeable
+fraction of the motion so far.
+
+The 100% is a different thing again. On entry the drop is **−1.4×10⁻⁶ m** — the
+body is a rounding error *above* where it started — so `√(2g·drop)` takes its
+`max(0, …)` branch and is **exactly zero**, while the actual speed is the
+0.0132 m/s it is moving at.
+
+**`fmtAgreeGross` was tried here first and is the wrong tool.** It floors a gap
+that is *round-off* against the scale the cancellation came from; 0.0132 m/s
+against a 5.16 m/s track is not round-off but a real difference between a real
+speed and a clamped zero. Applying it changed nothing, which is how the mistake
+surfaced. The right fix is §2.1's own instruction — *the panel must say which
+case it is in rather than print a number* — so the row now reads "not yet — it
+has not dropped" until there is a drop to compare against, and the prose says
+what the early residual is and where it settles.
+
+Gates: `build` 231 modules · `smoke` OK · `runtests` **4261 passed, 0 failed** ·
+`auditsides` falsescale=0 presetgap=14 **OK** · `auditclaims` 249 claims
+**bad=0 OK** · `auditresid` **findings=0** · `auditcustom` **bad=0 OK**.

@@ -178,21 +178,50 @@ STAGES.igTriple = {
     const S = igSolidCur(st);
     if(S.cyl) return nqTripleCyl(() => 1, S.cyl.t0, S.cyl.t1, S.cyl.r0, S.cyl.r1, S.cyl.zLo, S.cyl.zHi, 5, 8);
     if(S.sph) return nqTripleSph(() => 1, S.sph.t0, S.sph.t1, S.sph.p0, S.sph.p1, S.sph.r0, S.sph.r1, 5, 8);
+    /* THE SHADOW, RESOLVED ONCE, because the two routes below must agree about
+       what it is. A solid either carries its own x/y limits or names a region
+       that holds them — and the cylindrical branch read S.x0/S.yLo directly, so
+       for every region-based solid it saw `undefined` and returned NaN. The box
+       is region-based, and its volume in cylindrical coordinates was NaN: the
+       panel printed "—" through fmtNum and nothing else noticed, because the
+       literal word never appears and `runall`'s NaN grep looks for the word. */
+    const Rg = S.region ? IG_REGIONS[S.region] : S;
+    const sx0 = Rg.x0, sx1 = Rg.x1, syLo = Rg.yLo, syHi = Rg.yHi;
     if(st.sys === 'cyl'){
       /* the same solid in cylindrical coordinates, where the limits are simpler */
-      const rmax = Math.max(Math.abs(S.x0), Math.abs(S.x1));
+      /* THE DISC MUST CONTAIN THE SHADOW, AND THE CLIP MUST TEST BOTH
+         COORDINATES.
+
+         This route sweeps a full disc and zeroes the slab thickness outside the
+         solid's shadow, which is how a solid with no native cylindrical
+         description still gets integrated in r dz dr dθ. It tested only y
+         against yLo/yHi and never x against the solid's own range — and for the
+         tetrahedron x+y+z ≤ 1 the upper limit yHi(x) = 1 − x GROWS as x goes
+         negative, so every point of the disc with x < 0 passed the shadow test
+         and was integrated as solid. The volume came out near 0.95 against an
+         exact 1/6, and the reader could reach it: the Cartesian/cylindrical
+         switch is offered for every solid that does not declare its own S.cyl.
+
+         rmax likewise has to cover the shadow in BOTH directions — a solid one
+         unit wide in x and three deep in y would otherwise be sliced off by the
+         disc — so the y extent is sampled rather than assumed. */
+      let rmax = Math.max(Math.abs(sx0), Math.abs(sx1));
+      if(syLo) for(let i = 0; i <= 32; i++){
+        const x = sx0 + (sx1 - sx0) * i / 32;
+        rmax = Math.max(rmax, Math.hypot(x, syLo(x)), Math.hypot(x, syHi(x)));
+      }
       return nqTripleCyl(() => 1, 0, 2 * Math.PI, () => 0, () => rmax,
         (r, th) => S.zLo(r * Math.cos(th), r * Math.sin(th)),
         (r, th) => {
           const x = r * Math.cos(th), y = r * Math.sin(th);
           const hi = S.zHi(x, y), lo = S.zLo(x, y);
           /* clip to the solid's shadow: outside it the slab has zero thickness */
-          return (S.yLo && (y < S.yLo(x) - 1e-9 || y > S.yHi(x) + 1e-9)) ? lo : Math.max(lo, hi);
+          const outX = x < sx0 - 1e-9 || x > sx1 + 1e-9;
+          const outY = syLo && (y < syLo(x) - 1e-9 || y > syHi(x) + 1e-9);
+          return (outX || outY) ? lo : Math.max(lo, hi);
         }, 5, 8);
     }
-    if(S.region){ const Rg = IG_REGIONS[S.region];
-      return nqTriple(() => 1, Rg.x0, Rg.x1, Rg.yLo, Rg.yHi, S.zLo, S.zHi, 5, 8); }
-    return nqTriple(() => 1, S.x0, S.x1, S.yLo, S.yHi, S.zLo, S.zHi, 5, 8);
+    return nqTriple(() => 1, sx0, sx1, syLo, syHi, S.zLo, S.zHi, 5, 8);
   },
   readout(st){
     const S = igSolidCur(st);

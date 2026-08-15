@@ -602,9 +602,29 @@ STAGES.dyEnergy = {
       ${kv('height dropped', fmtNum(drop, 5) + ' m')}
       ${kv('v = √(2g·drop), frictionless', fmtNum(vFree, 5) + ' m/s')}
       ${kv('actual speed', fmtNum(Math.abs(p.v), 5) + ' m/s')}
-      ${kv('difference', fmtAgree(vFree, Math.abs(p.v), 'm/s'))}
+      ${/* THE COMPARISON IS UNDEFINED UNTIL THE BODY HAS DROPPED, and saying so
+            is the fix — a formatter is not. On entry the drop is −1.4×10⁻⁶ m:
+            the body is a rounding error ABOVE where it started, so √(2g·drop)
+            takes the max(0, …) branch and is exactly 0 while the actual speed is
+            the 0.0132 m/s it is moving at. Two numbers, one of them zero by
+            clamping, and the panel called them 100% apart underneath prose
+            promising they agree.
+            fmtAgreeGross was tried here first and is the wrong tool: it floors a
+            gap that is ROUND-OFF against the scale that cancelled, and 0.0132
+            m/s against a 5.16 m/s track is not round-off — it is a real
+            difference between a real speed and a clamped zero. §2.1: a ratio of
+            two small numbers is not a measurement, and the panel must say which
+            case it is in rather than print a number.
+            Once the body is genuinely falling the comparison means something
+            again, and the residual it then shows is worth seeing: measured, the
+            relative gap decays 32% → 8.9% → 2.4% → 0.51% and settles near 0.3%,
+            which is this fixed-step integrator's own truncation error, largest
+            where the step is a big fraction of the motion so far. */''}
+      ${drop <= 0
+        ? kv('difference', 'not yet — it has not dropped')
+        : kv('difference', fmtAgree(vFree, Math.abs(p.v), 'm/s'))}
       <p class="help">${st.mu < 1e-6
-        ? 'With no friction the two agree: the speed depends only on how far the object has fallen, and not at all on the shape of the path it fell along. That is exactly what it means for gravity to be a conservative force.'
+        ? 'With no friction the two agree: the speed depends only on how far the object has fallen, and not at all on the shape of the path it fell along. That is exactly what it means for gravity to be a conservative force. Watch the difference early in the run, though — it is largest when almost nothing has been dropped yet, because there the fixed step of the integrator is a sizeable fraction of the motion so far. It falls to about a third of a percent once the object is properly moving, and that residue is the stepper rather than the physics.'
         : 'With friction the object arrives slower, and the shortfall is precisely the energy the friction has removed. The path now matters, because a longer route rubs for longer.'}</p>
     </div>
     <div class="card tight"><div class="ttl">The ledger</div>
