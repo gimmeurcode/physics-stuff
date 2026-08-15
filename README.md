@@ -398,9 +398,14 @@ Published copy: https://claude.ai/code/artifact/289811c9-07a8-4419-87cc-b4b55e04
   nothing about it. Nothing else in the suite touches the viewport at all.
 - `auditframe.ps1` — measures how much of each curve falls outside the window it
   is drawn in, which was previously unmeasurable: a curve leaving its frame is
-  silent. It classifies rather than accuses, because not every overflow is a
+  silent. It classifies before it accuses, because not every overflow is a
   defect — a tangent line is *supposed* to leave the picture, and a Taylor
-  polynomial diverging outside its radius of convergence is the experiment.
+  polynomial diverging outside its radius of convergence is the experiment — and
+  then it fails on whatever is left. The defect it was built for is a window
+  fitted to *some* of the curves a stage draws: the driven-oscillator panel
+  plots three damping curves and sized its window to one of them, so the
+  lightest damping — the tallest, narrowest resonance, which is the whole point
+  — was the curve that got its top cut off.
 - `runapp.ps1` — loads the app headlessly and screenshots it,
   e.g. `./runapp.ps1 -Theme dark -Wing em -Demo '1.0' -Dim 3d -Tag gauss`
   (add `-ShowHome` for the landing page). Headless Chrome fires almost no animation

@@ -157,10 +157,35 @@ foreach ($line in ($rep -split "`n")) {
 $rows | Sort-Object @{e='kind';Descending=$false}, @{e='pct';Descending=$true} |
   Export-Csv (Join-Path $dir 'audit-frame.csv') -NoTypeInformation -Encoding UTF8
 
+# A CUT THAT IS THE POINT OF THE PICTURE, named with the reason it is allowed.
+# MASTER-PLAN 3.10 asked for this script to become a gate rather than a report,
+# and the work was never the exit code -- it was attributing the four stages
+# that were cut. Two of them turned out to be real and are fixed (odSpring
+# fitted its window to one of the three damping curves it drew, so the tallest
+# resonance peak was clipped and its "max 5.71" caption then floated at the top
+# of the canvas with no marker under it; wsADD pinned a slider-dependent curve
+# to a hard-coded top of 12). The three below are not defects:
+#
+# An entry is a claim about the MATHEMATICS and has to say what it is. Adding a
+# stage here to make the build go green, without a reason that survives being
+# read aloud, is how this gate stops meaning anything.
+$ALLOW_CUT = @{
+  srTaylor   = 'Taylor polynomials of e^x diverge away from the centre by construction -- the window is fitted to the FUNCTION so the approximation can be seen leaving it. That divergence is the lesson'
+  atomForces = 'the symlog window is sized to hold its own +/-1000 MeV tick labels; the Yukawa well genuinely plunges to about -70 GeV at small r, which is off any scale that keeps the four-force comparison legible'
+  odSeries   = 'truncated power series outside the radius of convergence -- the stage draws the dashed R = 1 lines beside them for exactly this reason. The window is fitted to the integrated solution, which is the thing being approximated'
+}
+
 Write-Output 'Curves running outside their own window, worst first:'
 Write-Output ''
+$bad = 0
 foreach ($r in ($rows | Where-Object kind -eq 'CUT' | Sort-Object pct -Descending)) {
-  Write-Output ("  CUT   {0,-22} {1,3}% outside   {2}" -f $r.stage, $r.pct, $r.detail)
+  if ($ALLOW_CUT.ContainsKey($r.stage)) {
+    Write-Output ("  allowed {0,-20} {1,3}% outside   {2}" -f $r.stage, $r.pct, $r.detail)
+    Write-Output ("          reason: {0}" -f $ALLOW_CUT[$r.stage])
+  } else {
+    $bad++
+    Write-Output ("  CUT   {0,-22} {1,3}% outside   {2}" -f $r.stage, $r.pct, $r.detail)
+  }
 }
 Write-Output ''
 foreach ($r in ($rows | Where-Object kind -eq 'MINOR' | Sort-Object pct -Descending)) {
@@ -168,4 +193,25 @@ foreach ($r in ($rows | Where-Object kind -eq 'MINOR' | Sort-Object pct -Descend
 }
 Write-Output ''
 Write-Output (($rep -split "`n") | Where-Object { $_.StartsWith('#') })
+
+# A stage on the allowlist that no longer cuts is a stale entry, and a stale
+# allowlist is how the next real defect gets waved through under an old name.
+foreach ($k in $ALLOW_CUT.Keys) {
+  if (-not ($rows | Where-Object { $_.stage -eq $k -and $_.kind -eq 'CUT' })) {
+    Write-Output ''
+    Write-Output "  NOTE: $k is on the allowlist but no longer cuts -- remove it."
+  }
+}
+
+if ($bad -gt 0) {
+  Write-Output ''
+  Write-Output "auditframe FAILED: $bad stage(s) draw a curve outside their own window with"
+  Write-Output '  no pole and no straight line to explain it. Either fit the window to the'
+  Write-Output '  curves the stage actually draws -- note that fitting it to SOME of them is'
+  Write-Output '  the bug odSpring had -- or add the stage to $ALLOW_CUT with the reason the'
+  Write-Output '  cut is the point of the picture.'
+  exit 1
+}
+Write-Output ''
+Write-Output 'auditframe OK'
 

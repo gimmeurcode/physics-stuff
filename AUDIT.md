@@ -4371,3 +4371,62 @@ massless case, plus the two it caught being wrong) · `auditsides` **falsescale 
 presetgap 14, OK** · `auditresid` **findings=0** noscale=7 · `auditcustom`
 **bad=0 OK** · `auditclaims` 249 claims **bad=0 OK** · `runall` demos=593
 controls=6462 **caught=0 OK**.
+
+## 2026-08-15 — the four cut curves, and which two of them were defects
+
+`auditframe` had been a report since it was written: it measures how much of
+each curve falls outside its own window and classifies `LINE` and `POLE` as
+honest, leaving `CUT`. MASTER-PLAN §3.10 asked for it to become a gate. **The
+exit code was five minutes of work; the fortnight-old part was attribution**,
+because a deliberately-chosen window and a wrong one look identical from the
+call site. Measured per curve — every curve's actual y-range against the window
+it is drawn in — the four split **two and two**.
+
+**Real, and fixed:**
+
+- **`odSpring` fitted its window to one of the three curves it draws.** The
+  resonance panel plots the response at `gam*0.35`, `gam` and `gam*2.6`, and
+  fitted `mx` using `gam` alone. **Lighter damping gives a taller, narrower
+  peak** — that is the physics the demo exists to show — so the tallest and most
+  instructive of the three was the one clipped: it reached **5.71** against a
+  window ending at **2.24**. The fit and the draw now share one list, so they
+  cannot disagree about what is on screen.
+- **`wsADD` pinned a slider-dependent curve to a hard-coded top of 12.** The
+  enhancement is n·log₁₀(R/r) and both n and R are the reader's to set; at the
+  defaults it reaches 12.76. The top now follows the curve, rounded up to a
+  multiple of 3 so the tick labels stay on the round numbers they were chosen
+  for, and floored at 12 so the plot does not rescale under every small change.
+
+**Honest, and allowed by name with the mathematics that makes each one so:**
+`srTaylor` (Taylor polynomials of eˣ diverging away from a window fitted to the
+function — the divergence is the lesson), `atomForces` (a symlog window sized to
+hold its own ±1000 MeV tick labels, against a Yukawa well that genuinely reaches
+about −70 GeV at small r), `odSeries` (truncated power series outside the radius
+of convergence, with the dashed R = 1 lines drawn beside them for that reason).
+The gate also **warns when an allowlist entry stops cutting**, so a stale name
+cannot quietly wave through a new defect.
+
+**And the caption that led here.** `auditsize` had reported `odSpring` drawing
+"max 5.71 at 2" at y = −159, off the canvas at all eight aspect ratios.
+`pvDrawFeatures` (59c) clips its markers to the plot box and then **releases that
+clip before drawing the captions**, so a turning point above the top of the
+window had its dot correctly hidden and its caption drawn anyway — after which
+`ctFitText` pulled the caption back inside the canvas, leaving it pinned to the
+top edge with nothing under it. Both loops now read one filtered list. That is
+the same defect J1 fixed for curves, in the one file J1's `ctPath`/`ctDot` change
+could not reach, because these markers are raw `ctx.arc`.
+
+**The population was 1.** Measured before fixing, by instrumenting `pvFeatures`
+against every plot box on all 178 stages: exactly one feature anywhere on the
+site falls outside its window. Recorded because the instinct after J9 and J1 is
+to assume a screenshot means dozens, and here it did not — the fix is still the
+right shape, because it makes the marker and its label unable to disagree, but
+it repaired one instance rather than a class. `auditsize` **8 findings → 0**;
+the eight were one label at eight canvas sizes, not eight defects.
+
+Gates: `build` 231 modules · `smoke` OK · `runtests` **4261 passed, 0 failed** ·
+`auditframe` cut=3 all allowed **OK** (negative control: `wsADD`'s window put
+back, gate failed) · `auditsize` **findings=0** · `auditmarks` 2303 → 20,
+controls unchanged · `auditzoom` findings=0 · `auditpanel` bad=0 ·
+`auditlink` findings=0 · `auditviewport` bad=0 · `auditcontrast` OK ·
+`auditscan` OK.

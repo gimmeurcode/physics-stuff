@@ -412,11 +412,33 @@ function pvDrawFeatures(ctx, P){
     if(!c.xs || c.xs.length < 3) continue;
     for(const f of pvFeatures(c.xs, c.ys, c.fn)) all.push({ f, col:c.col, fn:c.fn });
   }
-  if(!all.length || all.length > 60) return;
-  const label = all.length <= 6;
+  /* A FEATURE OUTSIDE THE WINDOW IS NOT MARKED, AND SO MUST NOT BE LABELLED.
+     The markers below are clipped to the box; the labels are drawn after that
+     clip is released, so a turning point above the top of the window had its dot
+     correctly hidden and its caption drawn anyway — then `ctFitText` pulled the
+     caption back inside the canvas, leaving "max 5.71 at 2" pinned to the top
+     edge of odSpring with nothing under it and the window only reaching 2.243.
+     `./auditsize.ps1` sees it because it deliberately measures the coordinate
+     BEFORE that clamp.
+     Filtering once here rather than in each loop is the point: the marker and
+     its label now cannot disagree about what is on screen, which is the same
+     defect J1 fixed for curves and this file was drawing outside J1's reach —
+     the dots are raw `ctx.arc`, not `ctDot`. A break marker spans the box
+     vertically, so only its x has to be in range. */
+  const shown = all.filter(({ f }) => {
+    const X = P.X(f.x), Y = P.Y(f.y);
+    if(!Number.isFinite(X)) return false;
+    if(X < P.px - 0.5 || X > P.px + P.pw + 0.5) return false;
+    if(f.t === 'break') return true;          // drawn as a full-height gap line
+    return Number.isFinite(Y) && Y >= P.py - 0.5 && Y <= P.py + P.ph + 0.5;
+  });
+  if(!shown.length || shown.length > 60) return;
+  /* counted over what is SHOWN, not over what was found: the "too many to read"
+     rule is about the reader's screen, and off-window features are not on it */
+  const label = shown.length <= 6;
   ctx.save();
   ctx.beginPath(); ctx.rect(P.px - 2, P.py - 2, P.pw + 4, P.ph + 4); ctx.clip();
-  for(const { f, col } of all){
+  for(const { f, col } of shown){
     const X = P.X(f.x), Y = P.Y(f.y);
     if(!Number.isFinite(X) || !Number.isFinite(Y)) continue;
     if(f.t === 'break'){
@@ -435,7 +457,7 @@ function pvDrawFeatures(ctx, P){
   }
   ctx.restore();
   if(!label) return;
-  for(const { f, fn } of all){
+  for(const { f, fn } of shown){
     if(f.t === 'break') continue;
     const X = P.X(f.x), Y = P.Y(f.y);
     if(!Number.isFinite(X) || !Number.isFinite(Y)) continue;

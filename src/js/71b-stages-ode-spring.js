@@ -77,14 +77,27 @@ STAGES.odSpring = {
     if(st.view === 'response'){
       const w0 = odNaturalOmega(m, k);
       const wr = odResonantOmega(m, gam, k);
+      /* ONE LIST, used to fit the window AND to draw — they cannot disagree.
+         The window used to be fitted to `gam` alone while three curves were
+         drawn, and the lightest damping is precisely the one with the tallest
+         peak, so the most instructive curve of the three was the one clipped:
+         its maximum reached 5.71 against a window ending at 2.24. The feature
+         marker then had its dot correctly hidden and its caption "max 5.71 at 2"
+         drawn anyway, pinned to the top of the canvas (see 59c). Lighter damping
+         means a taller, narrower resonance — that IS the lesson here, so cutting
+         its top off removed the thing the reader came for. */
+      const damps = [[gam * 0.35, TH.faint, 1.2], [gam, TH.grad, 2.6], [gam * 2.6, TH.faint, 1.2]];
       let mx = 0;
-      for(let i = 1; i <= 400; i++) mx = Math.max(mx, odDrivenResponse(m, gam, k, F0, i * 5 / 400).amp);
+      for(const [g2] of damps){
+        if(g2 <= 0) continue;
+        for(let i = 1; i <= 400; i++) mx = Math.max(mx, odDrivenResponse(m, g2, k, F0, i * 5 / 400).amp);
+      }
       const hp = (H - 160) / 2;
       const P = mkPlot(74, 46, W - 120, hp, 0, 5, 0, Math.min(mx * 1.12, 40));
       plotFrame(ctx, P, 'driving frequency ω', 'amplitude', 'the resonance curve — amplitude against drive frequency');
       plotTicksX(ctx, P, [0, 1, 2, 3, 4, 5], v => String(v));
       /* the same curve at three dampings, so the width is comparable */
-      for(const [g2, col, wdt] of [[gam * 0.35, TH.faint, 1.2], [gam, TH.grad, 2.6], [gam * 2.6, TH.faint, 1.2]]){
+      for(const [g2, col, wdt] of damps){
         if(g2 <= 0) continue;
         plotCurve(ctx, P, ww => odDrivenResponse(m, g2, k, F0, Math.max(1e-4, ww)).amp, 600, rgbCss(col), wdt);
       }

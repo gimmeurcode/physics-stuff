@@ -131,9 +131,16 @@ falls by 2^p, round-off does not move.
    the pan/zoom layer works on all 178 stages *and* that with no interaction
    `mkPlot` still returns exactly the window it was handed — the invariant that
    keeps the viewport invisible to stages that know nothing about it.
-   `auditframe` measures how much of each curve falls outside its own window,
-   and is a report rather than a pass/fail: a tangent line leaving the frame is
-   correct, a parabola losing both arms is not, and it distinguishes them.
+   `auditframe` measures how much of each curve falls outside its own window and
+   **fails on a `CUT`**: a tangent line leaving the frame is correct, a parabola
+   losing both arms is not, and it distinguishes them. Three stages are allowed
+   by name, each with the mathematics that makes its cut the point of the
+   picture; add a fourth only with a reason that survives being read aloud.
+   **The failure mode it exists for is a window fitted to SOME of the curves a
+   stage draws** — `odSpring` fitted its resonance window to the reader's
+   damping while plotting three, and the lightest damping has the tallest peak,
+   so the one curve worth seeing was the one clipped. Fit over the same list you
+   draw from, and make it literally the same list.
 
    **For anything inside a `frame()`, also `./auditperf.ps1`.** It counts the
    work a frame does, because nothing else measures cost at all. **A per-cell or

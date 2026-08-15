@@ -24,14 +24,18 @@ carried forward.
 | wondering if something was checked | `AUDIT.md` (the accuracy record) |
 | about to reopen a settled question | **§1.7** first — several are already decided with reasons |
 
-**Verified 2026-08-15:** `build` 231 modules · `smoke` OK (wings=40, stages=178,
+**Verified 2026-08-15 — every gate in §1.6 was run, and this is the first day
+that has been true.** `build` 231 modules · `smoke` OK (wings=40, stages=178,
 seelinks=80) · `runtests` **4261 passed, 0 failed** · `runall` demos=593
 controls=6462 **caught=0 OK** · `auditsides` falsescale=0 presetgap=14 **OK** ·
 `auditresid` **findings=0** noscale=7 · `auditcustom` **bad=0 OK** over the 98
-stages carrying typed input ·
-`auditclaims` 249 claims **bad=0 OK** · `auditdocs` **bad=0 OK**.
-Not re-run that day: `audittext`, `auditlink`, `auditperf`, `auditsize`,
-`auditviewport`, `auditpanel`, `auditzoom`, `auditmarks`, `auditartifact`.
+stages carrying typed input · `auditclaims` 249 claims **bad=0 OK** ·
+`auditframe` cut=3, all three allowed by name **OK** · `auditsize`
+**findings=0** · `auditviewport` 16 sizes **bad=0** · `auditpanel` **bad=0** ·
+`auditzoom` **findings=0** · `auditmarks` 2303 → 20 · `auditlink`
+**findings=0** · `auditperf` 0 wasted panel writes, 2 heavy stages ·
+`auditderive` **flagged=0** · `audittext` + `auditscan` **OK** ·
+`auditcontrast` **OK** · `auditartifact` **bad=0** · `auditdocs` **bad=0 OK**.
 
 **Name the gates you ran; never inherit a green.** This paragraph used to read
 "the build is green on every gate", which was an *inherited* claim: the working
@@ -295,7 +299,7 @@ script exists that this table does not describe.
 | `auditmarks.ps1` | ~1 min | *(old → new scores)* | whether the **key points drawn on a plot are real**. `pvFeatures` marked a break wherever a step beat 12× the curve's *median* step — which asks whether this part is steeper than the rest, not whether the curve is broken — so any curve with a long flat tail grew a picket fence of false poles. **2303 → 20 markers** across the stages, with controls proving `tan` and `1/x` keep their real poles: the first attempt scored 2303 → 10 and **silently dropped tan's pole**, which is the whole argument for having a control |
 | `auditdocs.ps1` | ~1 min | `bad=0 OK` | whether **these documents still describe the site**. It re-measures wings, experiments, groups, stages, modules, tests, see-links, scripts and artifact size, then reads every live `.md` and fails on a contradiction; checks that every `*.ps1` on disk is described in §1.6 and §4.2 and listed in `AI-GUIDE.md`; and that every file path a document names exists. **An undated number is a live claim; a number on a line carrying a `YYYY-MM-DD`, or under a dated heading, is a record and is exempt** — that is the only escape hatch, and it is honest because it says when the figure was true. **`-Fix` rewrites the stale counts** (exactly the digits it verified, printing each substitution — then read the diff). **`-SkipTests` makes the run partial and it says so**, because a `bad=0` from a run that did not look is worse than no gate. Nothing else reads a `.md` at all, and eight false counts had survived every other gate indefinitely |
 | `auditzoom.ps1` | ~1 min | `findings=0` | pan/zoom on all 178 stages, **and mkPlot's identity-at-rest** |
-| `auditframe.ps1` | ~1 min | *(a report)* | how much of each curve falls outside its window, classified `LINE`/`POLE`/`MINOR`/`CUT` |
+| `auditframe.ps1` | ~1 min | `auditframe OK` | how much of each curve falls outside its window, classified `LINE`/`POLE`/`MINOR`/`CUT`. **A gate since 2026-08-15** — §3.10 asked for it, and the work was never the exit code but attributing the four stages that were cut. Two were real and are fixed; three are allowed **by name, with the mathematics that makes each one honest**, and it warns when an allowlist entry stops cutting so a stale name cannot wave a new defect through |
 | `auditsize.ps1` | ~2 min | `findings=0` | eight canvas shapes — layouts that only break at another aspect ratio |
 | `auditviewport.ps1` | ~3 min | `bad=0` | sixteen real window sizes, and the page *around* the canvas |
 | `audittext.ps1` | ~4 min | harvest written | what every panel **says** — drives all 593 experiments, harvests `textContent` |
@@ -1579,9 +1583,13 @@ change each covering thirty-odd of the forty pictures. Do those first, each with
 the gate that would have caught it, then the single-stage items.
 
 1. **J5** — one CSS rule, six stages. Trivial and highly visible.
-2. **J1** — clip every `mkPlot` path. **Turn `auditframe.ps1` into a gate**: it
-   already measures how much of each curve leaves its window and classifies the
-   honest cases (`LINE`, `POLE`) apart from the dishonest ones.
+2. ~~**J1** — clip every `mkPlot` path. **Turn `auditframe.ps1` into a gate**~~ —
+   **DONE 2026-08-15.** See the progress table. The lesson worth carrying: the
+   gate was the cheap half. Deciding which of the four cuts were *defects* took
+   a per-stage measurement of every curve's y-range against its window, and the
+   answer was two and two — a ratio that no amount of reading the source would
+   have given, because the honest cases and the broken ones look identical from
+   the call site.
 3. **J2** — a break must be a *discontinuity*, not a steep step. Compare against
    the step the neighbouring samples predict, not the median of all of them, and
    require the jump to survive a refinement. Measure the false-positive count
@@ -1598,6 +1606,7 @@ the gate that would have caught it, then the single-stage items.
 | **J5** textareas | **DONE.** One rule in `styles.css`; six stages; screenshot looked at |
 | **J2** key points | **DONE.** `pvBreakReal` in `59c`; gated by the new **`./auditmarks.ps1`**, which scores the old and new rules in one run: **2303 → 20** markers across 178 stages, with named controls proving `exp(−400x²)` and `exp(−30x)` lose their false fences (64 → 0, 28 → 0) while `tan` and `1/x` keep their real poles. The first attempt scored 2303 → 10 and **silently dropped tan's pole**; only the control caught it, which is the whole argument for having one |
 | **J1** sample density | **DONE** (the resampling half — see the decision above) |
+| **J1** the gate | **DONE 2026-08-15.** `auditframe` fails on a `CUT` now, which is what §3.10 asked for. The exit code was five minutes; the fortnight-old part was attributing the four stages it flagged, and the split was **two real, three honest**. Real: **`odSpring` fitted its y-window to the response curve at the reader's damping while drawing three curves — and the LIGHTEST damping has the tallest peak**, so the most instructive curve of the three was the one clipped (max 5.71 against a window ending at 2.24), and its feature caption then floated at the top of the canvas with no marker under it. The fit and the draw now share one list, so they cannot disagree. **`wsADD`** pinned a slider-dependent curve to a hard-coded top of 12 and overflowed it at the defaults. Honest, allowed by name with reasons: `srTaylor` (Taylor polynomials diverging from a window fitted to the function — the divergence *is* the lesson), `atomForces` (a symlog window sized to hold its own ±1000 MeV ticks, against a Yukawa well that genuinely reaches −70 GeV), `odSeries` (truncated power series outside the radius of convergence, with the R = 1 lines drawn beside them). Negative control: `wsADD`'s window put back, gate failed |
 | **J1** clipping | **DONE, and it was four lines in one file.** `plotCurve` always clipped; **everything else went through `ctPath`, `ctFill`, `ctDot` and `ctArrow`, none of which did** — 310 + 155 call sites inheriting one omission. They clip now. The new **`ctClip`** (61a) is what `pvClip` could not be: `pvClip` skips a `ctBox` because §2.5 frees an aspect-true diagram to point an ARROW past its frame, and that exemption is right for arrows and wrong for curves — the phase plane is a ctBox, and its trajectories were crossing the trace–determinant chart beside it. Curves, fills and markers now clip to any framed box; only `ctArrow` keeps the plot-only rule. Verified by screenshot |
 | **J3** doubled ticks | **DONE.** `ctGrid` labelled at `+4px` with 3 figures and `pvDrawAxes` at `+3px` with 4, **both at once** on a moved view — two minus signs a pixel apart, which is the `=40`. `ctGrid` now yields the whole grid to `pvDrawAxes` once the view has moved, because pv's ticks follow the window and a stage's are a fixed list chosen for the author's window |
 | **compute** | **DONE** (asked for separately). `refreshAll` was evaluating the field, its divergence, curl and Jacobian at the probe and rebuilding five panels of HTML **into elements with `display:none`** on every one of the 178 stages, because `applyWingSections` hides the field panels but nothing stopped them being recomputed. It now returns early while a stage is active. Safe because the hiding is all-or-nothing, and the route back always runs `applyField` after `stageExit` |
@@ -1606,11 +1615,19 @@ the gate that would have caught it, then the single-stage items.
 
 **The lesson for Part 4.** Every one of these was invisible to twenty-three
 gates. The harness measures *behaviour* and *text*; it barely measures *pixels*.
-`auditframe` exists and does not gate; `auditsize` and `auditviewport` check
-layout but never look at what is inside the canvas. **A screenshot audit that
-diffs rendered canvases against approved images is the missing gate**, and it is
-the one piece of infrastructure that would have caught the majority of this
-list. That belongs in Programme D.
+`auditframe` gates as of 2026-08-15 and `auditsize` reads the coordinate of
+every label before it is clamped, but neither looks at what is actually *inside*
+the canvas. **A screenshot audit that diffs rendered canvases against approved
+images is still the missing gate**, and it is the one piece of infrastructure
+that would have caught the majority of this list. That belongs in Programme D.
+
+**And a caution the J1 work earned.** Three of the twenty root causes have now
+been chased to the end, and the population was **55** for J9, **465 call sites**
+for J1's clipping, and **1** for the off-window caption. The instinct after the
+first two is to assume every screenshot stands for dozens; measure it anyway.
+The fix for a population of one is still worth making unrepresentable — the
+marker and its label can no longer disagree about what is on screen — but
+calling it a class fix when it repaired one instance would be a false record.
 
 ---
 
@@ -1648,6 +1665,7 @@ Then, matched to what you touched:
 | **anything that changes a count** — a wing, a demo, a stage, a module, a test, a script | `./auditdocs.ps1`, and fix the documents it names. **This is not optional and not a tidy-up afterwards** — see §4.4 |
 | **anything printing a difference, a residual or a gap** — in a readout, a chip, a **derive rung**, a legend, or a **`*Own` reader-supplied panel**, all five of which it reads | `./auditresid.ps1` |
 | **a preset table, a theorem stage, or either route into a two-route comparison** | `./auditsides.ps1` — `auditresid` checks a difference is printed with its scale; this one checks the two routes actually **agree**, over the whole preset product |
+| **a plot's window, or anything drawn into one** | `./auditframe.ps1` — does a curve leave the box it was framed in? **Fitting the window to some of the curves and not all of them is the failure mode**, and it is invisible from the call site |
 | **`pvFeatures`, `pvDrawFeatures`, or any marker drawn on a curve** | `./auditmarks.ps1` |
 | a stage, a demo, the UI | `./runall.ps1` (~18 min, **background it**) |
 | a picker, an accessor, a `pk*` helper, any typed input | `./auditcustom.ps1` |

@@ -106,11 +106,22 @@ STAGES.wsADD = {
 
     /* right: the force law itself, and where it would break */
     const R = wsADDRadius(st.n, st.Mstar);
-    const Q = mkPlot(W * 0.55, 52, W * 0.40, H - 132, -9, -2, -2, 12);
+    /* THE TOP FOLLOWS THE CURVE, because the curve follows the sliders. The
+       window was fixed at 12 to match the tick list below it, but the
+       enhancement at the left edge is n·log₁₀(R/r) and both n and R are the
+       reader's to set — at the defaults it reaches 12.76 and the top of the
+       curve was simply cut off. Rounded up to a multiple of 3 so the ticks stay
+       on the round numbers they were chosen for, and floored at 12 so the plot
+       does not rescale under every small change. */
+    const peak = R > 1e-9 ? st.n * Math.log10(R / 1e-9) : 0;
+    const yTop = Math.max(12, Math.ceil(Math.max(0, peak) * 1.04 / 3) * 3);
+    const Q = mkPlot(W * 0.55, 52, W * 0.40, H - 132, -9, -2, -2, yTop);
     plotFrame(ctx, Q, 'separation r   (metres)', 'log₁₀ (force ÷ Newton\'s force)',
       'how much stronger gravity would be at short range');
     plotTicksX(ctx, Q, [-9, -7, -5, -3, -2], v => fmtNum(Math.pow(10, v), 3) + ' m');
-    rlYTicks(ctx, Q, [0, 3, 6, 9, 12]);
+    const yTicks = [];
+    for(let v = 0; v <= yTop + 1e-9; v += 3) yTicks.push(v);
+    rlYTicks(ctx, Q, yTicks);
     rlSegment(ctx, Q.px, Q.Y(0), Q.px + Q.pw, Q.Y(0), rgbCss(TH.line2), 1.2);
     plotCurve(ctx, Q, L => {
       const r = Math.pow(10, L);
