@@ -265,7 +265,7 @@ STAGES.slFermi = {
           'The first fills states from the bottom until they run out. The second asks where the chemical potential has to sit so that the smeared occupation still counts the same electrons. They coincide at absolute zero and nowhere else, and the difference is second order in kT/E_F because the density of states is rising: the states gained above μ outnumber those lost below, so μ must fall to compensate. A DOS that falls with energy pushes μ the other way, which you can produce here in one edit.'),
         drvStep('the energy, and the heat capacity by differencing it',
           `${dv('C')} ${dop('=')} ${dfrac('d', 'd' + dv('T'))}∫ ${dv('E')}${dv('g')}${dv('f')} d${dv('E')}`,
-          `${n(slDOSMolar(H.C, st.nd))} J/K per mole of electrons, step ${n(H.h)} K, own error ${H.diffErr.toExponential(2)}`),
+          `${n(slDOSMolar(H.C, st.nd))} J/K per mole of electrons, step ${n(H.h)} K, own error ${fmtSig(H.diffErr, 3)}`),
         drvStep('and the same quantity from one point of g',
           `${dv('C')} ${dop('=')} ${dfrac('π²', '3')}${dv('k')}²${dv('T')} ${dv('g')}(${dv('E')}_F)`,
           `${n(slDOSMolar(H.Csom, st.nd))} J/K — ratio ${n(H.ratio)}`),
@@ -293,7 +293,7 @@ STAGES.slFermi = {
           'fill a sphere in k-space, because energy depends only on |k|'),
         drvStep('solve for the radius of that sphere',
           `${dv('k')}_F ${dop('=')} (3π²${dv('n')})^(1/3)`,
-          `n = ${M.n.toExponential(3)} m⁻³ gives k_F = ${slFermiK(M.n).toExponential(4)} m⁻¹`),
+          `n = ${fmtSig(M.n, 4)} m⁻³ gives k_F = ${fmtSig(slFermiK(M.n), 5)} m⁻¹`),
         drvStep('and convert the radius to an energy',
           `${dv('E')}_F ${dop('=')} ${dfrac('ħ²' + dv('k') + '_F²', '2' + dv('m'))}`,
           `E_F = ${n(EF)} eV — measured for ${M.s}: ${M.EF} eV`),
@@ -370,7 +370,7 @@ STAGES.slFermi = {
       ${kv('dU/dT, differenced', n(slDOSMolar(H.C, st.nd), 6) + ' J/K per mol of electrons')}
       ${kv('(π²/3)k²T g(E_F)', n(slDOSMolar(H.Csom, st.nd), 6) + ' J/K')}
       ${kv('ratio', n(H.ratio, 6))}
-      ${kv('the difference quotient\'s own error', H.diffErr.toExponential(2) + ' (step halved once)')}
+      ${kv('the difference quotient\'s own error', fmtSig(H.diffErr, 3) + ' (step halved once)')}
       ${kv('against the classical (3/2)R', n(1.5 * SL_R, 5) + ' J/K')}
       <p class="help">${Math.abs(H.ratio - 1) < 0.01
         ? 'The two agree, which is the Sommerfeld expansion <b>holding</b> — and it is a real result, because one route integrates g over the whole thermal window with μ re-solved at each step and the other looks at g in a single point. Nothing forces them to match.'
@@ -384,7 +384,7 @@ STAGES.slFermi = {
     const kT = SL_KBEV * st.T;
     const err = Math.abs(EF - M.EF) / M.EF * 100;
     return `<div class="card tight"><div class="ttl">${M.s}, free-electron model</div>
-      ${kv('electron density n', M.n.toExponential(3) + ' m⁻³')}
+      ${kv('electron density n', fmtSig(M.n, 4) + ' m⁻³')}
       ${kv('Fermi energy, computed', n(EF) + ' eV')}
       ${kv('Fermi energy, measured', M.EF + ' eV')}
       ${kv('disagreement', fmtNum(err, 2) + '%')}
@@ -421,7 +421,7 @@ STAGES.slFermi = {
       const d = Math.abs(cur.H.ratio - 1);
       return `<div class="k">your g(E)</div>
         <div>E_F = ${fmtNum(D.F.EF, 4)} eV, found</div>
-        <div>C two ways: ${d < 0.005 ? 'agree to ' + d.toExponential(1) : fmtNum(100 * d, 1) + '% apart'}</div>`;
+        <div>C two ways: ${d < 0.005 ? 'agree to ' + fmtSig(d, 2) : fmtNum(100 * d, 1) + '% apart'}</div>`;
     }
     const M = SL_METALS[st.i];
     return `<div class="k">${M.s}: E_F = ${fmtNum(slFermiEnergy(M.n), 3)} eV</div><div>kT/E_F = ${fmtNum(SL_KBEV * st.T / slFermiEnergy(M.n), 4)}</div>`;
@@ -519,7 +519,7 @@ STAGES.slBand = {
       plotCurve(ctx, C, x => V(x), 160, rgbCss(TH.curl), 2);
       ctText(ctx, C.px, C.py - 3, 'one cell of V(x)', rgbCss(TH.faint), '10.5px ' + FONT_UI);
     }
-    ctText(ctx, P.X(-3), P.Y(-2.55), 'green = allowed bands', rgbCss(TH.pos), '12px ' + FONT_UI);
+    ctText(ctx, P.X(-3), P.Y(-2.55), 'orange = allowed bands', rgbCss(TH.pos), '12px ' + FONT_UI);
 
     /* the band diagram itself, on the right */
     const P2 = mkPlot(P.px + P.pw + 90, 55, W - (P.px + P.pw + 90) - 60, H - 145, 0, 1, -4, Emax);
@@ -740,7 +740,7 @@ STAGES.slSemi = {
       const msg = $('ssMsg');
       if(msg){
         msg.innerHTML = ST.sheetErr || ('Solved: E_F at ' + fmtNum(D.S.EF, 5) +
-          ' eV above the valence edge, n = ' + D.S.n.toExponential(3) + ' cm⁻³.');
+          ' eV above the valence edge, n = ' + fmtSig(D.S.n, 4) + ' cm⁻³.');
         msg.style.color = ST.sheetErr ? 'var(--c-neg)' : 'var(--faint)';
       }
       refreshStageReadout(); updateStageChip(); updateStageLegend();
@@ -849,7 +849,8 @@ STAGES.slSemi = {
       const x = -half + 2 * half * i / 239;
       return { x, y:band(x, M.Eg * 0.55) - M.Eg };
     }), rgbCss(TH.curl), 2.6);
-    ctText(ctx, P.X(-half) + 8, P.Y(M.Eg * 0.55 + bend + 0.12), 'conduction band', rgbCss(TH.grad), '12px ' + FONT_UI);
+    /* centred: at the left edge this sat under the readout chip (J6) */
+    ctText(ctx, P.X(0), P.Y(M.Eg * 0.55 + bend + 0.12), 'conduction band', rgbCss(TH.grad), '12px ' + FONT_UI, 'center');
     ctText(ctx, P.X(-half) + 8, P.Y(M.Eg * 0.55 - M.Eg + bend - 0.02), 'valence band', rgbCss(TH.curl), '12px ' + FONT_UI);
 
     /* the depletion region */
@@ -860,11 +861,17 @@ STAGES.slSemi = {
     ctText(ctx, P.X(-half * 0.75), P.py + 16, 'p-type', rgbCss(TH.neg), '13px ' + FONT_UI);
     ctText(ctx, P.X(half * 0.6), P.py + 16, 'n-type', rgbCss(TH.pos), '13px ' + FONT_UI);
 
-    /* the I–V curve underneath — the diode equation */
+    /* the I–V curve underneath — the diode equation.
+       J18, measured before fixing: the old plot drew I/Is on a 0–20 scale
+       with Is = 10⁻⁹, so the visible knee sat at V_T·ln 20 ≈ 0.08 V and the
+       textbook 0.6–0.7 V turn-on could never appear — the "turn-on voltage"
+       is a property of the CURRENT SCALE you judge "on" at. In milliamps
+       with a real small-signal Is = 10⁻¹² A, 1 mA flows at V_T·ln(10⁹) ≈
+       0.54 V at 300 K, which is the number the reader has met. */
     const P2 = mkPlot(80, P.py + P.ph + 62, W - 170, H - (P.py + P.ph + 62) - 62, -5, 0.8, -2, 20);
-    plotFrame(ctx, P2, 'bias V', 'current (arb.)', 'the Shockley diode equation');
+    plotFrame(ctx, P2, 'bias V', 'current (mA)', 'the Shockley diode equation — Is = 10⁻¹² A');
     ctGrid(ctx, P2);
-    plotCurve(ctx, P2, v => Math.max(-2, Math.min(20, slDiode(v, 1e-9, st.T, 1) * 1e9)), 600,
+    plotCurve(ctx, P2, v => Math.max(-2, Math.min(20, slDiode(v, 1e-12, st.T, 1) * 1e3)), 600,
               rgbCss(TH.text), 2.6);
     ctPath(ctx, P2, [{ x:st.V, y:-2 }, { x:st.V, y:20 }], rgbCss(TH.warn), 2, [4, 3]);
     stageNote(ctx, 'forward bias lowers the hill and current climbs exponentially; reverse bias raises it and almost nothing flows', W, H);
@@ -887,7 +894,7 @@ STAGES.slSemi = {
       steps:[
         drvStep('the band-edge densities of states, from your effective masses',
           `${dv('N')}_c ${dop('=')} 2(${dfrac('2π' + dv('m') + '*' + dv('k') + dv('T'), dv('h') + '²')})^(3/2)`,
-          `N_c = ${D.Nc.toExponential(4)} cm⁻³, N_v = ${D.Nv.toExponential(4)} cm⁻³ at ${st.T} K`),
+          `N_c = ${fmtSig(D.Nc, 5)} cm⁻³, N_v = ${fmtSig(D.Nv, 5)} cm⁻³ at ${st.T} K`),
         drvSay('these are computed rather than looked up, and that is the anchor',
           'Every material in the preset list quotes an N_c and an N_v. Feed the effective mass that produces one of them back through the formula above and it comes back exactly — which is what makes the numbers for a material nobody tabulated worth reading. Silicon\'s conduction density-of-states mass comes out at 1.08 m_e, which is the published value.'),
         drvStep('the Fermi level, from charge neutrality',
@@ -897,10 +904,10 @@ STAGES.slSemi = {
           'The textbook route assumes which term dominates — n ≈ N_d for an n-type sample — and then solves a quadratic. That is a good approximation in the middle of the doping range and it is an approximation. Here the left-hand side is strictly decreasing in E_F, so the root is unique and bisection cannot be fooled, and no term is assumed to dominate anything.'),
         drvStep('the carriers, by the Fermi–Dirac integral',
           `${dv('n')} ${dop('=')} ${dv('N')}_c ${dfrac('2', '√π')}${dv('F')}_(1/2)(η) , &nbsp; η ${dop('=')} ${dfrac(dv('E') + '_F − ' + dv('E') + '_c', dv('k') + dv('T'))}`,
-          `η = ${n(S.etaC)}, giving n = ${S.n.toExponential(4)} cm⁻³`),
+          `η = ${n(S.etaC)}, giving n = ${fmtSig(S.n, 5)} cm⁻³`),
         drvStep('and the same thing by the Boltzmann exponential',
           `${dv('n')} ${dop('≈')} ${dv('N')}_c ${dop('e')}^η`,
-          `${S.nBoltz.toExponential(4)} cm⁻³ — ${n(S.nBoltz / Math.max(1e-300, S.n))}× the integral`),
+          `${fmtSig(S.nBoltz, 5)} cm⁻³ — ${n(S.nBoltz / Math.max(1e-300, S.n))}× the integral`),
         drvSay('the exponential is the TAIL of the integral, not the integral',
           'F_(1/2)(η) → e^η only when η is several units negative, which is to say when the Fermi level sits well inside the gap. Push it towards the band edge and the exponential over-counts, because it goes on counting states that the exclusion principle has already filled. That is the entire content of the word "degenerate".'),
         drvStep('so the law of mass action is a limit, not a law',
@@ -933,7 +940,7 @@ STAGES.slSemi = {
       steps:[
         drvStep('at any temperature some electrons cross the gap',
           `${dv('n')}ᵢ ${dop('=')} √(${dv('N')}𝒸${dv('N')}ᵥ)·${dop('e')}^(−${dv('E')}_g/2${dv('k')}T)`,
-          `${M.s} at ${st.T} K: nᵢ = ${slNi(M, st.T).toExponential(4)} cm⁻³`),
+          `${M.s} at ${st.T} K: nᵢ = ${fmtSig(slNi(M, st.T), 5)} cm⁻³`),
         drvSay('note where the factor of two comes from',
           'It is Eg/2kT, not Eg/kT, because creating a carrier makes a pair — one electron in the conduction band and one hole in the valence band — and the Fermi level sits midway. That halving is why a 1.1 eV gap is workable at room temperature when Eg/kT alone would suggest it is hopeless.'),
         drvStep('the law of mass action holds however you dope it',
@@ -941,9 +948,9 @@ STAGES.slSemi = {
           `always — adding electrons suppresses holes by exactly the same factor`),
         drvStep('with charge neutrality, that fixes both',
           `${dv('n')} ${dop('−')} ${dfrac(dv('n') + 'ᵢ²', dv('n'))} ${dop('=')} ${dv('N')}_d ${dop('−')} ${dv('N')}_a`,
-          `n = ${C.n.toExponential(4)} cm⁻³, p = ${C.p.toExponential(4)} cm⁻³`),
+          `n = ${fmtSig(C.n, 5)} cm⁻³, p = ${fmtSig(C.p, 5)} cm⁻³`),
         drvSay('why the textbook shortcut n ≈ Nd usually works',
-          `Doping at 10^${fmtNum(st.logNd, 1)} against an intrinsic level of ${slNi(M, st.T).toExponential(2)} means the impurities outnumber the thermally generated carriers by a huge factor, and the quadratic collapses to n = Nd. It stops working when the two become comparable — at high temperature, or in a narrow-gap material. This panel solves the quadratic exactly so you can watch the approximation fail.`),
+          `Doping at 10^${fmtNum(st.logNd, 1)} against an intrinsic level of ${fmtSig(slNi(M, st.T), 3)} means the impurities outnumber the thermally generated carriers by a huge factor, and the quadratic collapses to n = Nd. It stops working when the two become comparable — at high temperature, or in a narrow-gap material. This panel solves the quadratic exactly so you can watch the approximation fail.`),
         drvStep('join n-type to p-type and the Fermi levels must line up',
           `${dv('V')}_bi ${dop('=')} ${dfrac(dv('k') + 'T', dop('e'))} ln ${dfrac(dv('N') + '_d' + dv('N') + '_a', dv('n') + 'ᵢ²')}`,
           `${n(J.Vbi)} V`),
@@ -978,12 +985,12 @@ STAGES.slSemi = {
     return `<div class="card tight"><div class="ttl">Your material at ${st.T} K</div>
       ${kv('band gap', n(M.eg, 4) + ' eV')}
       ${kv('effective masses m_c, m_v', n(M.mc, 4) + ', ' + n(M.mv, 4) + ' m_e')}
-      ${kv('N_c, computed from m_c', D.Nc.toExponential(4) + ' cm⁻³')}
-      ${kv('N_v, computed from m_v', D.Nv.toExponential(4) + ' cm⁻³')}
-      ${kv('doping N_d, N_a', M.nd.toExponential(3) + ', ' + M.na.toExponential(3) + ' cm⁻³')}
+      ${kv('N_c, computed from m_c', fmtSig(D.Nc, 5) + ' cm⁻³')}
+      ${kv('N_v, computed from m_v', fmtSig(D.Nv, 5) + ' cm⁻³')}
+      ${kv('doping N_d, N_a', fmtSig(M.nd, 4) + ', ' + fmtSig(M.na, 4) + ' cm⁻³')}
       ${kv('dopant levels E_d, E_a', (M.ed <= 0 ? 'merged with the band' : n(M.ed, 4) + ' meV') + ',  ' +
                                      (M.ea <= 0 ? 'merged with the band' : n(M.ea, 4) + ' meV'))}
-      ${kv('intrinsic nᵢ', S.ni.toExponential(4) + ' cm⁻³')}
+      ${kv('intrinsic nᵢ', fmtSig(S.ni, 5) + ' cm⁻³')}
       <p class="help">N<sub>c</sub> and N<sub>v</sub> are <b>computed</b> from the masses by
       2(2πm*kT/h²)^(3/2) rather than read from a table. That is what makes a material nobody tabulated
       worth reading — and feeding silicon's published N<sub>c</sub> backwards through the same formula
@@ -1001,12 +1008,12 @@ STAGES.slSemi = {
       equation is actually satisfied.</p>
     </div>
     <div class="card tight"><div class="ttl">Two routes to the carriers</div>
-      ${kv('n, by the Fermi–Dirac integral', S.n.toExponential(5) + ' cm⁻³')}
-      ${kv('n, by the Boltzmann exponential', S.nBoltz.toExponential(5) + ' cm⁻³')}
+      ${kv('n, by the Fermi–Dirac integral', fmtSig(S.n, 6) + ' cm⁻³')}
+      ${kv('n, by the Boltzmann exponential', fmtSig(S.nBoltz, 6) + ' cm⁻³')}
       ${kv('the exponential over-counts by', n(boltzOver, 6) + '×')}
-      ${kv('p, by the integral', S.p.toExponential(5) + ' cm⁻³')}
-      ${kv('np', S.np.toExponential(5))}
-      ${kv('nᵢ²', S.niSq.toExponential(5))}
+      ${kv('p, by the integral', fmtSig(S.p, 6) + ' cm⁻³')}
+      ${kv('np', fmtSig(S.np, 6))}
+      ${kv('nᵢ²', fmtSig(S.niSq, 6))}
       ${kv('np ÷ nᵢ² — the law of mass action', n(S.mass, 8))}
       <p class="help">${S.mass > 0.99
         ? 'The two routes agree and np comes back to nᵢ² to five figures, which is the mass-action law <b>holding</b> — and it is a result, because one route is a quadrature over the Fermi–Dirac occupation and the other is the exponential tail of that same integral. Raise the doping until E<sub>F</sub> reaches the band edge and watch the agreement go.'
@@ -1015,8 +1022,8 @@ STAGES.slSemi = {
     <div class="card tight"><div class="ttl">Ionisation — not assumed</div>
       ${kv('donors ionised', fmtNum(100 * S.ionD, 5) + '%')}
       ${kv('acceptors ionised', fmtNum(100 * S.ionA, 5) + '%')}
-      ${kv('N_d⁺', S.ndIon.toExponential(4) + ' cm⁻³')}
-      ${kv('N_a⁻', S.naIon.toExponential(4) + ' cm⁻³')}
+      ${kv('N_d⁺', fmtSig(S.ndIon, 5) + ' cm⁻³')}
+      ${kv('N_a⁻', fmtSig(S.naIon, 5) + ' cm⁻³')}
       <p class="help">${S.merged
         ? 'You have written a dopant level of zero, meaning it has <b>merged with the band</b> — which is what happens above the Mott density, where the impurity wavefunctions overlap and the discrete level broadens into an impurity band. The occupancy formula below stops describing anything there, so the dopants are taken as fully ionised.'
         : (S.ionD > 0.98
@@ -1046,15 +1053,15 @@ STAGES.slSemi = {
       ${kv('band gap', M.Eg + ' eV')}
       ${kv('kT', n(SL_KBEV * st.T) + ' eV')}
       ${kv('E_g ÷ kT', fmtNum(M.Eg / (SL_KBEV * st.T), 4))}
-      ${kv('intrinsic nᵢ', ni.toExponential(4) + ' cm⁻³')}
+      ${kv('intrinsic nᵢ', fmtSig(ni, 5) + ' cm⁻³')}
       <p class="help">${esc(M.note)}</p>
     </div>
     <div class="card tight"><div class="ttl">Doped n-type at 10^${fmtNum(st.logNd, 1)} cm⁻³</div>
-      ${kv('electrons n', C.n.toExponential(4) + ' cm⁻³')}
-      ${kv('holes p', C.p.toExponential(4) + ' cm⁻³')}
-      ${kv('n × p', (C.n * C.p).toExponential(4))}
-      ${kv('nᵢ² for comparison', (ni * ni).toExponential(4))}
-      ${kv('shortcut n ≈ N_d gives', C.nApprox.toExponential(4))}
+      ${kv('electrons n', fmtSig(C.n, 5) + ' cm⁻³')}
+      ${kv('holes p', fmtSig(C.p, 5) + ' cm⁻³')}
+      ${kv('n × p', fmtSig((C.n * C.p), 5))}
+      ${kv('nᵢ² for comparison', fmtSig((ni * ni), 5))}
+      ${kv('shortcut n ≈ N_d gives', fmtSig(C.nApprox, 5))}
       ${kv('error in the shortcut', fmtNum(100 * Math.abs(C.n - C.nApprox) / C.n, 4) + '%')}
       <p class="help">The product np comes back to nᵢ² whatever the doping — that is the law of mass
       action, and it is the same "equilibrium constant" statement as in a chemical reaction, because
@@ -1333,7 +1340,7 @@ STAGES.slHeat = {
           'Dividing by ∫D dw makes C → 3R as T → ∞ for any spectrum whatever, because W(x) → 1. That much is arithmetic. What is not arithmetic is how fast it gets there: expanding W gives C ≈ 3R[1 − ⟨w²⟩/12T²], so the approach is governed by the second moment of your own spectrum — and the panel computes that moment directly and then reads the same number off the measured C(T), which is a real comparison.'),
         drvStep('the anchor — the same machinery on a spectrum with a known answer',
           `${dv('D')} ${dop('=')} ${dv('w')}² &nbsp;⟹&nbsp; 9${dv('R')}(${dv('T')}/θ)³∫₀^(θ/T) ${dv('x')}⁴${dop('e')}^${dv('x')}/(${dop('e')}^${dv('x')}−1)² d${dv('x')}`,
-          `quadrature ${n(S.cal.mine)} against slDebyeC ${n(S.cal.closed)} — ${S.cal.rel.toExponential(2)} apart`),
+          `quadrature ${n(S.cal.mine)} against slDebyeC ${n(S.cal.closed)} — ${fmtSig(S.cal.rel, 3)} apart`),
         drvStep('and the low-temperature exponent, fitted',
           `log₁₀${dv('C')} ${dop('=')} ${dv('p')}·log₁₀${dv('T')} ${dop('+')} const`,
           F.ok ? `p = ${n(F.slope)} over ${n(F.Tlo)}–${n(F.Thi)} K, worst residual ${fmtSig(F.worst, 3)} decades`
@@ -1426,7 +1433,7 @@ STAGES.slHeat = {
     <div class="card tight"><div class="ttl">The anchor — the same integrator on a known case</div>
       ${kv('w² spectrum through this machinery', n(S.cal.mine, 8) + ' J/mol·K')}
       ${kv('slDebyeC, the wing\'s own engine', n(S.cal.closed, 8) + ' J/mol·K')}
-      ${kv('they differ by', S.cal.rel.toExponential(3) + ' relative')}
+      ${kv('they differ by', fmtSig(S.cal.rel, 4) + ' relative')}
       ${kv('the closed form (12π⁴/5)R(T/θ)³', n(S.cal.lowT, 6) + ' J/mol·K')}
       <p class="help">Both are evaluated at θ/4 with θ set to the top of your spectrum, and
       <b>nothing you type moves either of them</b>. One is a quadrature over a typed w²; the other is
@@ -1439,7 +1446,7 @@ STAGES.slHeat = {
       ${kv('as a fraction of 3R', fmtNum(100 * Cnow / (3 * SL_R), 4) + '%')}
       ${kv('3R⟨w²⟩/12, from the moment', n(Hh.pred, 6))}
       ${kv('(3R − C)T² measured at ' + Math.round(Hh.at[1].T) + ' K', n(Hh.at[1].coef, 6))}
-      ${kv('they differ by', Hh.rel.toExponential(2) + ' relative')}
+      ${kv('they differ by', fmtSig(Hh.rel, 3) + ' relative')}
       <p class="help">C → 3R for any spectrum, so Dulong–Petit on its own tests nothing — it follows
       from the normalisation. The <b>rate</b> does not: expanding the Einstein function gives
       C ≈ 3R[1 − ⟨w²⟩/12T²], so the approach is set by the second moment of <i>your</i> spectrum.

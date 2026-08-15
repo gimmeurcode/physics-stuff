@@ -321,6 +321,32 @@ if ($mkBad.Count) {
   $bad = 1
 }
 
+# ---- toExponential is banned outside the formatter core ---------------------
+# §1.7: mathematics displays as mathematics — 8.10×10⁻¹¹, never the ASCII
+# "8.10e-11" that toExponential emits. The 2026-08-15 audit found 79 raw call
+# sites putting 308 e-notation tokens on 124 rendered surfaces across 9 wings,
+# with a dedicated helper (ncBarExp) institutionalising the pattern — because
+# no gate looked. fmtSig/fmtNum produce the ×10ⁿ form and are the replacements;
+# 10-math.js legitimately uses toExponential INSIDE them to build that form.
+# This is the cause-grep; auditscan.ps1's 'ASCII e-notation' rule reads the
+# EFFECT off the harvested panels, so a new spelling (raw `${tiny}` template
+# interpolation, a literal "1e-13" in prose) still gets caught there.
+$expBad = @()
+foreach ($f in $srcFiles) {
+  if ($f.Name -eq '10-math.js') { continue }
+  $lines = [IO.File]::ReadAllLines($f.FullName, [Text.Encoding]::UTF8)
+  for ($i = 0; $i -lt $lines.Count; $i++) {
+    if ($lines[$i] -match '\.toExponential\s*\(') {
+      $expBad += ('  ' + $f.Name + ':' + ($i + 1) + '  ' + $lines[$i].Trim())
+    }
+  }
+}
+if ($expBad.Count) {
+  Write-Output 'smoke FAILED: toExponential outside 10-math.js - use fmtSig/fmtNum, which typeset the x10^n form:'
+  $expBad | ForEach-Object { Write-Output $_ }
+  $bad = 1
+}
+
 # ---- the three cached panels may only be written through uiSetHtml ----------
 # uiSetHtml skips a write whose HTML matches what it last wrote, and keeps that
 # marker on the element. A direct `.innerHTML =` on one of these three elements

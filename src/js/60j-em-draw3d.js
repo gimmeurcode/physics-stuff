@@ -118,12 +118,15 @@ function em3dObject(o, L, selected){
     R.label(vadd(p, v3(0, 0, 0.22)), 'pickup loop', rgbCss(TH.grad), 0, -10, '600 10px ' + FONT_UI);
   }
 }
-/* the ray under the cursor, dropped onto the z = 0 plane */
-function em3dPickPlane(sx, sy){
+/* the ray under the cursor, dropped onto the plane z = z0 (default 0).
+   J11: pinning this to z = 0 was why the sandbox could only ever place
+   objects in one plane — its own caption admitted it. */
+function em3dPickPlane(sx, sy, z0){
+  const zp = z0 || 0;
   const ax = (sx - R.W / 2) / R.focal, ay = -(sy - R.H / 2) / R.focal;
   const dir = vadd(R.fwd, vadd(vmul(R.right, ax), vmul(R.up, ay)));
   if(Math.abs(dir.z) > 1e-4){
-    const t = -R.eye.z / dir.z;
+    const t = (zp - R.eye.z) / dir.z;
     if(t > 0.05) return vadd(R.eye, vmul(dir, t));
   }
   return null;
@@ -216,15 +219,27 @@ STAGES.emSandbox.frame3d = function(st, dt, ctx, W, H){
     R.arrow(pp, vmul(pf.B, 1.0 / bL), rgbCss(TH.neg), 3);
     R.label(vadd(pp, vmul(pf.B, 1.2 / bL)), 'B', rgbCss(TH.neg), 0, 0, '700 12px ' + FONT_UI);
   }
+  /* J11: the placement plane is DRAWN where the next object will land, so
+     "place at z" is visible rather than remembered */
+  const zP = st.placeZ || 0;
+  if(st.tool !== 'probe'){
+    const pc = rgbCss(TH.accent, 0.55);
+    R.line(v3(-L, -L, zP), v3(L, -L, zP), pc, 1.3, 0.6);
+    R.line(v3(L, -L, zP), v3(L, L, zP), pc, 1.3, 0.6);
+    R.line(v3(L, L, zP), v3(-L, L, zP), pc, 1.3, 0.6);
+    R.line(v3(-L, L, zP), v3(-L, -L, zP), pc, 1.3, 0.6);
+    R.line(v3(-L, 0, zP), v3(L, 0, zP), pc, 0.8, 0.35);
+    R.line(v3(0, -L, zP), v3(0, L, zP), pc, 0.8, 0.35);
+  }
   R.flush();
   em3dCaption(ctx, W, H, null,
     st.tool === 'probe'
       ? 'drag to orbit · click to move the probe or select an object · edit positions with the sliders'
-      : 'click to place a ' + st.tool + ' on the z = 0 plane · drag to orbit');
+      : 'click to place a ' + st.tool + ' on the z = ' + fmtNum(zP, 2) + ' plane · drag to orbit');
 };
 STAGES.emSandbox.pick3d = function(st, sx, sy, phase){
   if(phase === 'move' || phase === 'up') return;      // orbiting owns the drag in 3D
-  const w = em3dPickPlane(sx, sy);
+  const w = em3dPickPlane(sx, sy, st.tool === 'probe' ? (st.probeP.z || 0) : (st.placeZ || 0));
   if(!w) return;
   let hit = -1, best = 0.6;
   st.objs.forEach((o, i) => {
@@ -235,7 +250,7 @@ STAGES.emSandbox.pick3d = function(st, sx, sy, phase){
   if(st.tool !== 'probe' && Math.abs(w.x) < 5 && Math.abs(w.y) < 5){
     if(this.place(st, w.x, w.y)){ buildStagePanel(); return; }
   }
-  st.probeP = { x: w.x, y: w.y, z: st.probeP.z || 0 };
+  st.probeP = { x: w.x, y: w.y, z: w.z || 0 };
 };
 
 STAGES.emGauss.frame3d = function(st, dt, ctx, W, H){

@@ -7,13 +7,16 @@
    Prefix: nc
    ============================================================================ */
 
-/* CODATA 2022 / AME2020, in MeV/c² unless marked */
+/* CODATA 2022 / AME2020, in MeV/c² unless marked. The 2026-08-15 audit found
+   this block still carrying the CODATA 2018 masses under this same header —
+   the unit tests now pin NC_MH and NC_ALPHA as RELATIONS to the atom wing's
+   constants, so one stale refresh can no longer hide here. */
 const NC_U    = 931.49410372;      // atomic mass unit, MeV/c²
-const NC_MP   = 938.27208816;      // proton
-const NC_MN   = 939.56542052;      // neutron
-const NC_ME   = 0.51099895000;     // electron
-const NC_MH   = 938.78307348;      // ¹H atom = m_p + m_e − 13.6 eV binding
-const NC_MHE4 = 3727.3794066;      // α particle
+const NC_MP   = 938.27208943;      // proton
+const NC_MN   = 939.56542194;      // neutron
+const NC_ME   = 0.51099895069;     // electron
+const NC_MH   = 938.7830747823;    // ¹H atom = m_p + m_e − 13.598 eV binding
+const NC_MHE4 = 3727.3794118;      // α particle
 const NC_NA   = 6.02214076e23;     // Avogadro, exact since 2019
 
 /* ---- the semi-empirical mass formula ------------------------------------ */
@@ -275,7 +278,9 @@ const ncQ = (inMass, outMass) => inMass - outMass;      // MeV, with c² = 1
 /* Why α decay half-lives span 24 orders of magnitude for a 4 MeV range of
    energies: the Gamow factor is exponential in 1/√E. */
 const NC_HBARC = 197.3269804;      // MeV·fm, CODATA 2022
-const NC_ALPHA = 7.2973525693e-3;  // fine structure constant
+const NC_ALPHA = 1 / 137.035999177; // fine structure constant, CODATA 2022 —
+                                    // same source the atom and string wings use
+                                    // (7.2973525693e-3 was the 2018 value)
 
 function ncCoulombBarrier(Z1, Z2, r){          // MeV at separation r in fm
   return Z1 * Z2 * NC_ALPHA * NC_HBARC / r;

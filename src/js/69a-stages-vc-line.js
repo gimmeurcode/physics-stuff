@@ -447,8 +447,16 @@ STAGES.vcConserv = {
       const G = vcPotGrid(st, F, P);
       const pot = (x, y) => G.at(x, y);
       const rg = ctRange(pot, P, 26);
+      /* J19: a vortex-like field's recovered potential is multivalued, and the
+         line-integral recovery has a branch cut where the path family passes
+         the singularity on different sides. The tear threshold stops each
+         contour AT the cut instead of letting bilinear interpolation invent a
+         dense fan of false crossings along it: a quarter of the plotted range
+         dwarfs any smooth cell-to-cell step at this grid, and only a genuine
+         jump exceeds it. */
       if(Number.isFinite(rg.lo) && Number.isFinite(rg.hi))
-        for(const L of ctLevels(rg.lo, rg.hi, 16)) ctContour(ctx, P, pot, L, rgbCss(TH.pos, 0.45), 1.2, 70);
+        for(const L of ctLevels(rg.lo, rg.hi, 16))
+          ctContour(ctx, P, pot, L, rgbCss(TH.pos, 0.45), 1.2, 70, null, (rg.hi - rg.lo) / 4);
     }
     vcArrows(ctx, P, F.P, F.Q, 16);
     ctGrid(ctx, P, undefined, true);

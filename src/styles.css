@@ -133,7 +133,10 @@ button,input,select,textarea{font:inherit;color:inherit}
 }
 .dock > .sec[open]{max-height:100%; overflow-y:auto}
 .dock > .sec > summary{padding:8px 13px}
-.dock > .sec > .body{padding:0 13px 11px}
+/* J20: the dock itself clips horizontal overflow (a wrap layout needs to),
+   so anything wider than its panel must scroll INSIDE the panel — clipped
+   content was simply gone, with nothing to say so. */
+.dock > .sec > .body{padding:0 13px 11px; overflow-x:auto}
 /* the stage panel is the widest: its controls and its readout sit side by side */
 .dock > #secStage{flex:3 1 700px; max-width:none}
 .dock #stageBody{display:flex; flex-direction:column; gap:7px}

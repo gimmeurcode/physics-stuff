@@ -282,7 +282,7 @@ STAGES.smSpeed = {
           `d = ${st.dim}, so the shell factor is p^${st.dim - 1}`),
         drvStep('and weighted by the Boltzmann factor in YOUR energy',
           `${dv('f')}(${dv('p')}) ${dop('∝')} ${dv('p')}^(${dv('d')}−1) ${dop('e')}^(−ε(${dv('p')})/${dv('k')}${dv('T')}) , &nbsp; ε ${dop('=')} ${pkPretty(st.disp)}`,
-          `${mass.s} at ${fmtNum(st.T, 5)} K, kT = ${R.kT.toExponential(4)} J`),
+          `${mass.s} at ${fmtNum(st.T, 5)} K, kT = ${fmtSig(R.kT, 5)} J`),
         drvSay('the speed is now something to be computed',
           'For ε = p²/2m the speed is p/m and nobody separates the two. In general the speed is the group velocity v = dε/dp, and it is what this panel differentiates the dispersion to get. For ε = pc it is c at every momentum — every particle moves at the same speed and the speed distribution collapses to a spike, which is why a photon gas has no Maxwell curve.'),
         drvStep('the most probable speed carries a Jacobian',
@@ -290,18 +290,18 @@ STAGES.smSpeed = {
           Number.isFinite(R.vMode) ? `v_mp = ${n(R.vMode)} m/s` : 'no interior mode — ε has no curvature'),
         drvStep('equipartition, in the form that survives a general ε',
           `⟨${dv('p')} ${dfrac('dε', 'd' + dv('p'))}⟩ ${dop('=')} ${dv('d')}·${dv('k')}${dv('T')}`,
-          `integrated: ${R.virial.toExponential(6)} J against d·kT = ${R.dkT.toExponential(6)} J — ratio ${n(R.equip)}`),
+          `integrated: ${fmtSig(R.virial, 7)} J against d·kT = ${fmtSig(R.dkT, 7)} J — ratio ${n(R.equip)}`),
         drvSay('and that identity is exact, by one integration by parts',
           'Write p^d·d/dp[e^(−βε)] and integrate by parts: the boundary term dies because the weight does, and what is left is d/β times the normalisation. So the ratio above is not a physical result that might come out near 1 — it is 1, and any departure measures the quadrature. That is why it is worth printing to eight figures.'),
         drvStep('the mean energy that follows',
           `⟨ε⟩ ${dop('=')} ∫ ε ${dv('f')} d${dv('p')} ${dop('/')} ∫ ${dv('f')} d${dv('p')}`,
-          `${R.eAvg.toExponential(6)} J, which is ${n(R.eAvg / R.kT)} kT`),
+          `${fmtSig(R.eAvg, 7)} J, which is ${n(R.eAvg / R.kT)} kT`),
         drvStep('the heat capacity, measured',
           `${dv('C')} ${dop('=')} ${dfrac('d⟨ε⟩', 'd' + dv('T'))}`,
           `${n(R.Cok)} k`),
         drvStep('and predicted, from the power fitted to your dispersion',
           `ε ${dop('∝')} ${dv('p')}^${dv('n')} ${dop('⇒')} ${dv('C')} ${dop('=')} ${dfrac(dv('d'), dv('n'))}${dv('k')}`,
-          `n fitted as ${n(R.n)} with residual ${R.fitResid.toExponential(2)}, so d/n = ${n(R.CokPred)}`),
+          `n fitted as ${n(R.n)} with residual ${fmtSig(R.fitResid, 3)}, so d/n = ${n(R.CokPred)}`),
         drvSay(R.fitResid < 1e-4
           ? 'your dispersion is a power law, and the two agree'
           : 'your dispersion is NOT a power law, and the residual says so',
@@ -370,18 +370,18 @@ STAGES.smSpeed = {
     const R = K.R, mass = SM_KIN_MASSES[st.mi] || SM_KIN_MASSES[4];
     return `<div class="card tight"><div class="ttl">${esc(mass.s)} at ${fmtNum(st.T, 5)} K, in ${st.dim} dimensions</div>
       ${kv('ε(p)', pkPretty(st.disp))}
-      ${kv('mass', R.m.toExponential(5) + ' kg')}
-      ${kv('kT', R.kT.toExponential(5) + ' J')}
-      ${kv('⟨ε⟩', R.eAvg.toExponential(5) + ' J')}
+      ${kv('mass', fmtSig(R.m, 6) + ' kg')}
+      ${kv('kT', fmtSig(R.kT, 6) + ' J')}
+      ${kv('⟨ε⟩', fmtSig(R.eAvg, 6) + ' J')}
       ${kv('⟨ε⟩ ÷ kT', n(R.eAvg / R.kT))}
-      ${kv('momentum cut-off, found by bisection', R.pMax.toExponential(4) + ' kg·m/s')}
+      ${kv('momentum cut-off, found by bisection', fmtSig(R.pMax, 5) + ' kg·m/s')}
       <p class="help">The cut-off is the momentum at which ε has risen by 60 kT — located rather than
       guessed, so the same code handles a quadratic dispersion and one that grows like the fourth
       power without either being told what scale to expect.</p>
     </div>
     <div class="card tight"><div class="ttl">Equipartition, tested</div>
-      ${kv('⟨p·dε/dp⟩, integrated', R.virial.toExponential(8) + ' J')}
-      ${kv('d·kT', R.dkT.toExponential(8) + ' J')}
+      ${kv('⟨p·dε/dp⟩, integrated', fmtSig(R.virial, 9) + ' J')}
+      ${kv('d·kT', fmtSig(R.dkT, 9) + ' J')}
       ${kv('ratio', n(R.equip, 9))}
       ${kv('departure from 1', fmtAgree(R.equip, 1))}
       <p class="help">One integration by parts makes this identity <b>exact</b> for any ε that grows,
@@ -397,7 +397,7 @@ STAGES.smSpeed = {
       ${kv('they differ by', Number.isFinite(R.CokPred) ? fmtNum(100 * Math.abs(R.Cok - R.CokPred) / Math.max(1e-12, R.CokPred), 4) + '%' : '—')}
       <p class="help">${R.fitResid < 1e-4
         ? 'The fit residual is tiny, so your dispersion really is a power law, and the generalised equipartition result C = (d/n)k holds: a Hamiltonian homogeneous of degree n contributes k/n per momentum component. Quadratic gives d/2 — the 3k/2 of a monatomic gas — and linear gives d, which is why a photon gas has 3k.'
-        : 'The residual is <b>' + R.fitResid.toExponential(2) + '</b>, which says your ε(p) is not a single power law at all. A relativistic dispersion is quadratic at low momentum and linear at high, so the heat capacity sits between d/2 and d and moves with temperature. That crossover is the curve on the right, and it is why a relativistic gas has no fixed adiabatic index.'}</p>
+        : 'The residual is <b>' + fmtSig(R.fitResid, 3) + '</b>, which says your ε(p) is not a single power law at all. A relativistic dispersion is quadratic at low momentum and linear at high, so the heat capacity sits between d/2 and d and moves with temperature. That crossover is the curve on the right, and it is why a relativistic gas has no fixed adiabatic index.'}</p>
     </div>
     <div class="card tight"><div class="ttl">The three speeds, from your dispersion</div>
       ${kv('most probable', Number.isFinite(R.vMode) ? n(R.vMode) + ' m/s' : 'no interior mode — ε has no curvature')}
@@ -438,9 +438,9 @@ STAGES.smSpeed = {
       the gas and whatever the temperature.</p>
     </div>
     <div class="card tight"><div class="ttl">Above ${fmtNum(st.v, 0)} m/s</div>
-      ${kv('fraction of molecules', frac < 1e-4 ? frac.toExponential(4) : n(frac))}
-      ${kv('as a percentage', frac < 1e-6 ? frac.toExponential(3) + '%' : fmtNum(100 * frac, 5) + '%')}
-      ${kv('in a mole, that is', (frac * SM_NA).toExponential(4) + ' molecules')}
+      ${kv('fraction of molecules', frac < 1e-4 ? fmtSig(frac, 5) : n(frac))}
+      ${kv('as a percentage', frac < 1e-6 ? fmtSig(frac, 4) + '%' : fmtNum(100 * frac, 5) + '%')}
+      ${kv('in a mole, that is', fmtSig((frac * SM_NA), 5) + ' molecules')}
       ${kv('speed ÷ most probable', fmtNum(st.v / smVmp(m, st.T), 4))}
       <p class="help">Drag well out into the tail and the fraction collapses by orders of magnitude
       for each step. Yet a mole is 6 × 10²³, so even a fraction of 10⁻¹⁵ still leaves hundreds of

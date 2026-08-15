@@ -446,6 +446,30 @@ function fmtSig(v, sig){
   return String(+v.toPrecision(sig || 3)).replace('-','−');
 }
 
+/* Axis tick labels. fmtNum(v, 3) collapsed any axis whose span is ≲ 0.01 into
+   DUPLICATE labels — the statmech speed distribution's density axis read
+   0.002, 0.002, 0.002, 0.002, 0.001 … — because below 1 fmtNum's `sig` counts
+   decimals, not figures (the same clamp J9 documents). A tick label's
+   precision must come from the STEP between ticks, never from a constant:
+   exactly enough decimals that the step is representable, so adjacent ticks
+   can never print the same string. Both owners of axis furniture use this —
+   ctGrid (61a) and pvDrawAxes (59c) — and nothing else may label a tick;
+   ./auditticks.ps1 reads the strings actually drawn and fails on a duplicate
+   in any one row or column. */
+function fmtTick(v, step){
+  if(!Number.isFinite(v)) return '';
+  const a = Math.abs(v), s = Math.abs(step);
+  if(s > 0 && a < s * 1e-9) return '0';            // float noise at the origin
+  if(a >= 1e6) return fmtNum(v, 3);                // 2.50×10⁶ — one label per decade step
+  if(a > 0 && a < 1e-4) return fmtSig(v, 3);       // scientific, and NO dead zone —
+                                                   // fmtNum here is the J9 clamp again
+  let d = 0;
+  while(d < 12 && Math.abs(s - +s.toFixed(d)) > s * 1e-9) d++;
+  let out = v.toFixed(d);
+  if(out.includes('.')) out = out.replace(/0+$/, '').replace(/\.$/, '');
+  return out.replace('-', '−');
+}
+
 /* A residual is not a measurement — §2.1 — and the way it stops being one is to
    print it against the scale it must be read against, and to say what it means.
 

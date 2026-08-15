@@ -272,10 +272,10 @@ STAGES.atomSim = {
     const r = Math.max(0.05, st.probe);
     const led = forceLedger(r);
     const rows = led.rows.map(w => kv(w.name + (led.dom === w.id ? ' ◀ dominant' : ''),
-      (Math.abs(w.V) < 1e-4 && w.V !== 0 ? w.V.toExponential(2) : fmtNum(w.V, 4)) + ' MeV')).join('');
+      fmtNum(w.V, 4) + ' MeV')).join('');
     return `<div class="card tight"><div class="ttl">Potential between two protons at r = ${fmtNum(r, 2)} fm</div>
       ${rows}
-      ${kv('EM / gravity ratio', (Math.abs(vCoulombPP(r) / vGravityPP(r))).toExponential(2))}
+      ${kv('EM / gravity ratio', fmtSig(Math.abs(vCoulombPP(r) / vGravityPP(r)), 3))}
       ${st.zoom === 2 ? kv('Cornell V(r) quark level', fmtNum(vCornell(r), 1) + ' MeV') : ''}
       <p class="help">Same probe, four force laws, evaluated exactly. Slide r: the strong Yukawa wins inside ~2 fm and vanishes beyond (e^(−r/1.4fm)); Coulomb never gives up; the weak term is dead beyond 0.003 fm; gravity is 36 orders down and matters only because it never cancels.</p>
     </div>`;
@@ -370,9 +370,9 @@ STAGES.atomForces = {
   readout(st){
     const r = st.probe, led = forceLedger(r);
     return `<div class="card tight"><div class="ttl">Exact values at r = ${fmtNum(r, 4)} fm</div>
-      ${led.rows.map(w => kv(w.name + (led.dom === w.id ? ' ◀' : ''), (Math.abs(w.V) < 1e-3 && w.V !== 0 ? w.V.toExponential(3) : fmtNum(w.V, 4)) + ' MeV')).join('')}
+      ${led.rows.map(w => kv(w.name + (led.dom === w.id ? ' ◀' : ''), (Math.abs(w.V) < 1e-3 && w.V !== 0 ? fmtSig(w.V, 4) : fmtNum(w.V, 4)) + ' MeV')).join('')}
       ${kv('Cornell (quark level)', fmtNum(vCornell(r), 2) + ' MeV')}
-      ${kv('carrier ranges ħ/mc', 'π: ' + fmtNum(RANGE_PION, 3) + ' fm · W: ' + RANGE_W.toExponential(2) + ' fm')}
+      ${kv('carrier ranges ħ/mc', 'π: ' + fmtNum(RANGE_PION, 3) + ' fm · W: ' + fmtSig(RANGE_W, 3) + ' fm')}
       <p class="help">Yukawa's 1935 argument runs backwards from here: a force of range R needs a carrier of mass ħ/Rc. The 1.4 fm nuclear range predicted a ~140 MeV particle — the pion, found in 1947.</p>
     </div>`;
   },

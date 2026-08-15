@@ -241,7 +241,7 @@ function nmQuadCur(st){
     src:own.f, a:+own.a, b:+own.b, custom:true,
     note:'Your integrand. The order below is measured the same way it is for every preset — halve h, take ' +
       'log₂ of the ratio of successive errors — and the "exact" value it is measured against is adaptive ' +
-      'quadrature at a tolerance of 1e-13, not a closed form. So if your function is badly behaved the ' +
+      'quadrature at a tolerance of 10⁻¹³, not a closed form. So if your function is badly behaved the ' +
       'reference is the first thing to distrust, and an order that refuses to settle is telling you that.' };
 }
 const nmQuadF = st => pkCompile(nmQuadCur(st).src);
@@ -403,7 +403,7 @@ STAGES.nmQuad = {
       const f = Math.sin, exact = Math.cos(1);
       const rows = [1e-1, 1e-3, 1e-5, 1e-8, 1e-11, 1e-14].map(h => {
         const d = (f(1 + h) - f(1 - h)) / (2 * h);
-        return kv('h = ' + h.toExponential(0), 'error ' + fmtNum(Math.abs(d - exact), 3));
+        return kv('h = 10' + supDigits(String(Math.round(Math.log10(h)))), 'error ' + fmtNum(Math.abs(d - exact), 3));
       });
       return `<div class="card tight"><div class="ttl">A central difference for cos 1</div>
         ${rows.join('')}

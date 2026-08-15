@@ -9,8 +9,10 @@
    capacitance with and without a dielectric.
    ============================================================================ */
 
-const ES_K = 8.9875517873681764e9;       // N·m²/C² — 1/(4πε₀)
 const ES_EPS0 = 8.8541878188e-12;        // F/m — CODATA 2022
+const ES_K = 1 / (4 * Math.PI * ES_EPS0);// N·m²/C² — derived, so it can never
+                                         // disagree with ε₀ (c²×10⁻⁷ stopped
+                                         // being exact at the 2019 SI redefinition)
 const ES_E = 1.602176634e-19;            // C — exact, since the 2019 SI
 
 /* ------------------------------------------------------------ point charges ---- */

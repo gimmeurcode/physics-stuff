@@ -45,8 +45,10 @@ function ctFrame(ctx, P, title){
     ctx.fillStyle = rgbCss(TH.dim); ctx.font = '600 11.5px ' + FONT_UI;
     ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
     /* the caption hangs above the box, so a box flush to the top of a short
-       canvas would put it off the edge */
-    ctx.fillText(title, P.px + P.pw / 2, Math.max(P.py - 5, 12));
+       canvas would put it off the edge — and it slides right if the readout
+       chip would cover it (J6, see ctTitleClearChip in 60a) */
+    const fty = Math.max(P.py - 5, 12);
+    ctx.fillText(title, ctTitleClearChip(ctx, P.px + P.pw / 2, fty, title), fty);
   }
 }
 /* a unit grid plus the two axes, with numbers on the ticks.
@@ -110,10 +112,10 @@ function ctGrid(ctx, P, step, labels){
     ctx.fillStyle = rgbCss(TH.faint); ctx.font = '10px ' + FONT_MONO;
     ctx.textAlign = 'center'; ctx.textBaseline = 'top';
     for(let x = Math.ceil(P.x0 / sx) * sx; x <= P.x1; x += sx)
-      if(Math.abs(x) > 1e-9) ctx.fillText(fmtNum(x, 3), P.X(x), P.py + P.ph + 4);
+      if(Math.abs(x) > 1e-9) ctx.fillText(fmtTick(x, sx), P.X(x), P.py + P.ph + 4);
     ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
     for(let y = Math.ceil(P.y0 / sy) * sy; y <= P.y1; y += sy)
-      if(Math.abs(y) > 1e-9) ctx.fillText(fmtNum(y, 3), P.px - 6, P.Y(y));
+      if(Math.abs(y) > 1e-9) ctx.fillText(fmtTick(y, sy), P.px - 6, P.Y(y));
   }
 }
 function ctNiceStep(span){
@@ -244,7 +246,7 @@ function ctArcAngle(ctx, P, cx, cy, rpx, a0, a1, col, w){
    Contours are the whole language of the multivariable wings, and a contour
    that is drawn by colouring pixels instead of tracing the level set looks
    convincing while being subtly wrong near saddles. This traces properly. */
-function ctContour(ctx, P, f, level, col, w, n, dash){
+function ctContour(ctx, P, f, level, col, w, n, dash, tear){
   const N = n || 120;
   const hx = (P.x1 - P.x0) / N, hy = (P.y1 - P.y0) / N;
   ctx.strokeStyle = col; ctx.lineWidth = w || 1.2;
@@ -259,6 +261,13 @@ function ctContour(ctx, P, f, level, col, w, n, dash){
     const v00 = V[j * (N + 1) + i], v10 = V[j * (N + 1) + i + 1];
     const v01 = V[(j + 1) * (N + 1) + i], v11 = V[(j + 1) * (N + 1) + i + 1];
     if(!Number.isFinite(v00) || !Number.isFinite(v10) || !Number.isFinite(v01) || !Number.isFinite(v11)) continue;
+    /* J19: a cell whose corner values span more than `tear` is not a place
+       where f crosses the level — it is a place where f JUMPS (a branch cut
+       of a multivalued potential, the atan2 seam of a recovered θ). Linear
+       interpolation across a jump invents a crossing in nearly every such
+       cell, which is the dense fan of false contours the vortex potential
+       drew along its cut. The contour honestly STOPS at the cut instead. */
+    if(tear && Math.max(v00, v10, v01, v11) - Math.min(v00, v10, v01, v11) > tear) continue;
     const pts = [];
     if((v00 > 0) !== (v10 > 0)) pts.push({ x:ip(x0, x1, v00, v10), y:y0 });
     if((v10 > 0) !== (v11 > 0)) pts.push({ x:x1, y:ip(y0, y1, v10, v11) });

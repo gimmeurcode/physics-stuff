@@ -155,7 +155,10 @@ function updateStageChip(){
   if(!/<div/i.test(h))
     h = h.split(/<br\s*\/?>/i).map((line, i) =>
       `<div${i === 0 ? ' class="k"' : ''}>${line}</div>`).join('');
-  uiSetHtml($('chip'), h);
+  /* J8: the return feeds stageFrame's adaptive cadence — true means the chip
+     is animating and must track the frame, false lets it drop back to the
+     0.4 s timer, so a heavy-but-static chip is never rebuilt per frame */
+  return uiSetHtml($('chip'), h);
 }
 function updateStageLegend(){
   const st = S.stage && STAGES[S.stage];

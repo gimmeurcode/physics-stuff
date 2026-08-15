@@ -10,6 +10,7 @@
 const STAGES = {};
 let ST = null;                       // active stage runtime state
 let stageReadoutTimer = 0;
+let stageChipHot = false;   // J8: true while the chip is changing frame to frame
 
 function stageActive(){ return !!(S.stage && STAGES[S.stage]); }
 
@@ -80,7 +81,19 @@ function stageFrame(dt){
      curve samples the feature markers are read from. */
   if(mode !== '3d') pvDrawOverlay(ctx);
   stageReadoutTimer += dt;
-  if(stageReadoutTimer > 0.4){ stageReadoutTimer = 0; refreshStageReadout(); updateStageChip(); pvSyncBoxes(); }
+  /* J8: a chip printing the running clock beside a canvas title printing the
+     same clock showed two different instants (pcCurve: 7.76 against 6.9),
+     on the stage whose rail text promises the picture and the numbers cannot
+     drift apart. The chip therefore tracks the FRAME while it is changing:
+     the 0.4 s tick arms per-frame refresh, and the first frame whose chip
+     build comes back identical disarms it, so a static chip — however heavy
+     its stage's report is — is never rebuilt at frame rate. */
+  if(stageChipHot) stageChipHot = updateStageChip();
+  if(stageReadoutTimer > 0.4){
+    stageReadoutTimer = 0; refreshStageReadout();
+    stageChipHot = updateStageChip() || stageChipHot;
+    pvSyncBoxes();
+  }
 }
 
 function stagePick(sx, sy, phase){
@@ -227,6 +240,32 @@ function mkPlotFit(px, py, pw, ph, x0, x1, fns, opts){
    so a plot that fits the canvas perfectly can still put its own axis titles
    past the edge. They are pinned back inside here rather than at each of the
    two hundred call sites. `ctBounds` is the shared clamp; see 61a. */
+/* J6: the readout chip floats over the canvas top-left (~180×90 CSS px), and
+   a heading drawn under it is unreadable. The two title owners — plotFrame
+   here and ctFrame in 61a — ask for this zone and shift a title clear of it,
+   so no stage has to know the chip exists. In canvas pixels; NOT cached — a
+   time-keyed cache held the zone measured before the chip filled (and virtual
+   time in the harness makes performance.now() jump), so the shift never
+   applied. Two rect reads per titled plot per frame do not dirty layout.
+   ./auditticks.ps1 fails on any heading whose anchor lands inside the chip. */
+function ctChipZone(ctx){
+  let w = 0, h = 0;
+  const chip = document.getElementById('chip');
+  if(chip && chip.offsetParent && (chip.textContent || '').trim()){
+    const cr = chip.getBoundingClientRect(), vr = ctx.canvas.getBoundingClientRect();
+    const s = vr.width ? ctx.canvas.width / vr.width : 1;
+    w = (cr.right - vr.left) * s; h = (cr.bottom - vr.top) * s;
+  }
+  return { w: w, h: h };
+}
+function ctTitleClearChip(ctx, cx, y, title){
+  const z = ctChipZone(ctx);
+  if(!(z.h > 0) || y > z.h + 4) return cx;
+  const w = ctx.measureText(title).width;
+  if(cx - w / 2 >= z.w + 8) return cx;
+  return Math.min(z.w + 8 + w / 2, ctBounds(ctx).w - w / 2 - 4);
+}
+
 function plotFrame(ctx, P, xlabel, ylabel, title){
   ctx.strokeStyle = rgbCss(TH.line2); ctx.lineWidth = 1;
   ctx.strokeRect(P.px, P.py, P.pw, P.ph);
@@ -239,10 +278,23 @@ function plotFrame(ctx, P, xlabel, ylabel, title){
     ctx.font = '600 12.5px ' + FONT_UI;
     /* the title is often a display string shared with an HTML control, so it
        arrives with caret exponents that only supify() would have handled */
-    ctx.fillText(uniSup(title), P.px + P.pw / 2, Math.max(P.py - 16, 2));
+    const tty = Math.max(P.py - 16, 2);
+    ctx.fillText(uniSup(title), ctTitleClearChip(ctx, P.px + P.pw / 2, tty, uniSup(title)), tty);
   }
   if(ylabel){
-    ctx.save(); ctx.translate(Math.max(P.px - 34, 12), P.py + P.ph / 2); ctx.rotate(-Math.PI / 2);
+    /* J4: the rotated title must sit clear of the gutter the tick labels
+       actually use — at the old fixed P.px − 34, sixty plots on forty-one
+       stages (measured 2026-08-15) drew their title through their own tick
+       numbers. The expected labels are computed exactly the way ctGrid
+       computes them, measured, and the title placed to their left. */
+    const syT = ctNiceStep(Math.abs(P.y1 - P.y0));
+    let wmax = 0;
+    ctx.save(); ctx.font = '10px ' + FONT_MONO;
+    for(let yt = Math.ceil(Math.min(P.y0, P.y1) / syT) * syT; yt <= Math.max(P.y0, P.y1); yt += syT)
+      if(Math.abs(yt) > 1e-9) wmax = Math.max(wmax, ctx.measureText(fmtTick(yt, syT)).width);
+    ctx.restore();
+    const tx = Math.max(Math.min(P.px - 34, P.px - 12 - wmax - 6), 12);
+    ctx.save(); ctx.translate(tx, P.py + P.ph / 2); ctx.rotate(-Math.PI / 2);
     ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
     ctx.fillStyle = rgbCss(TH.faint); ctx.font = '11px ' + FONT_UI;
     ctx.fillText(ylabel, 0, 0); ctx.restore();
@@ -326,7 +378,8 @@ function plotCurve(ctx, P, fn, n, col, w, fill){
   const xs = new Array(N + 1), ys = new Array(N + 1);
   const draw = () => {
     ctx.beginPath();
-    let started = false;
+    let started = false, prevC = NaN;
+    const band = (P.y1 - P.y0) * 4, cLo = P.y0 - band, cHi = P.y1 + band;
     for(let i = 0; i <= N; i++){
       const x = P.x0 + (P.x1 - P.x0) * i / N;
       const y = fn(x);
@@ -335,9 +388,16 @@ function plotCurve(ctx, P, fn, n, col, w, fill){
       /* still bounded before it reaches the canvas: a coordinate of 1e300 makes
          the rasteriser drop the whole path, so a pole would erase the curve it
          belongs to rather than run off the top of it */
-      const yc = Math.max(P.y0 - (P.y1 - P.y0) * 4, Math.min(P.y1 + (P.y1 - P.y0) * 4, y));
+      const yc = Math.max(cLo, Math.min(cHi, y));
+      /* J10: adjacent samples pinned to OPPOSITE clamp bands are the two sides
+         of a sign-flipping pole — two branches, never a chord. Joining them
+         drew the Veneziano amplitude as a polyline running from +∞ to −∞
+         along the clamp. A steep but finite curve never trips this: its
+         samples live inside the window and are not clamped at all. */
+      if(started && ((prevC === cHi && yc === cLo) || (prevC === cLo && yc === cHi))) started = false;
       if(!started){ ctx.moveTo(P.X(x), P.Y(yc)); started = true; }
       else ctx.lineTo(P.X(x), P.Y(yc));
+      prevC = yc;
     }
     if(fill){
       ctx.lineTo(P.X(P.x1), P.Y(Math.max(P.y0, 0)));

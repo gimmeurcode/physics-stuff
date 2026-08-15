@@ -165,7 +165,7 @@ STAGES.ltConv = {
         drvSay('which is why transforms are worth the trouble',
           'A convolution integral, which is awkward to compute and hard to reason about, becomes an ordinary product. Cascade two systems and their transfer functions simply multiply. This is the reason engineers work in the s-domain and only return to time at the very end.')
       ],
-      note:'The impulse used here is a Gaussian mollifier rather than an idealised spike, because a true delta is not a function and cannot be integrated numerically. Its width is chosen so the sifting property holds to 1e-4, which the unit tests pin.'
+      note:'The impulse used here is a Gaussian mollifier rather than an idealised spike, because a true delta is not a function and cannot be integrated numerically. Its width is chosen so the sifting property holds to 10⁻⁴, which the unit tests pin.'
     };
   },
   drag:true,
@@ -193,7 +193,11 @@ STAGES.ltConv = {
     ctWireSeg('cvI', v => { ST.input = v; });
     wireSlider('cvB', () => ST.b, v => { ST.b = v; }, v => fmtNum(+v, 3));
     wireSlider('cvC', () => ST.c, v => { ST.c = v; }, v => fmtNum(+v, 3));
-    wireSlider('cvT', () => ST.t, v => { ST.t = v; }, v => fmtNum(+v, 3) + ' s');
+    /* J12: a typed t may exceed the slider, but never the picture — all three
+       panels plot 0..10 s, and t = 29.8 put the probe line off every one of
+       them while the middle panel showed a fully decayed h as blank. */
+    wireSlider('cvT', () => ST.t, v => { ST.t = v; }, v => fmtNum(+v, 3) + ' s',
+      { lo: 0.1, hi: 10, why: 'Held at the edge of the plotted window — the three panels run 0 to 10 s, and an output at a time the picture cannot show would be a number with no plot under it.' });
   },
   pick(st, sx, sy, phase){
     if(st.input === 'draw' && st.Px) skPick(st.sk, st.Px, sx, sy, phase);

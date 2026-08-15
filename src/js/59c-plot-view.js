@@ -396,9 +396,9 @@ function pvDrawAxes(ctx, P){
   ctx.restore();
   const f = '10px ' + FONT_MONO, col = rgbCss(TH.faint);
   for(let x = Math.ceil(lo(P.x0, P.x1) / sx) * sx; x <= hi(P.x0, P.x1); x += sx)
-    ctText(ctx, P.X(x), P.py + P.ph + 3, fmtNum(x, 4), col, f, 'center', 'top');
+    ctText(ctx, P.X(x), P.py + P.ph + 3, fmtTick(x, sx), col, f, 'center', 'top');
   for(let y = Math.ceil(lo(P.y0, P.y1) / sy) * sy; y <= hi(P.y0, P.y1); y += sy)
-    ctText(ctx, P.px - 5, P.Y(y), fmtNum(y, 4), col, f, 'right', 'middle');
+    ctText(ctx, P.px - 5, P.Y(y), fmtTick(y, sy), col, f, 'right', 'middle');
 }
 /* Zeros, turning points and breaks, marked on the curve they belong to.
 

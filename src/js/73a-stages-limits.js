@@ -310,7 +310,7 @@ STAGES.clTheorems = {
             'Cut the interval in half. The target still lies between the values at the ends of one of the two halves — it must, because the function has not skipped anything at the midpoint either. Keep that half and repeat. The nested intervals shrink to a point, and continuity forces the value there to be exactly N.'),
           drvStep('each bisection halves the uncertainty',
             `${dv('b')}ₙ ${dop('−')} ${dv('a')}ₙ ${dop('=')} ${dfrac(dv('b') + ' − ' + dv('a'), '2ⁿ')}`,
-            `starting width ${n(b - a)}; after 40 halvings, ${(( b - a) / Math.pow(2, 40)).toExponential(3)}`),
+            `starting width ${n(b - a)}; after 40 halvings, ${fmtSig((b - a) / Math.pow(2, 40), 4)}`),
           drvStep('and the nested intervals close on a witness',
             `${dv('f')}(${dv('c')}) ${dop('=')} ${dv('N')}`,
             iv.applies ? `c = ${n(iv.c)}, and f(c) = ${n(F.f(iv.c))}` : 'no witness — the hypothesis failed'),

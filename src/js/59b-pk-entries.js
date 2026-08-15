@@ -1153,7 +1153,7 @@ function pbDistCur(st){
       ? 'That shape integrates to ' + fmtNum(Z, 3) + ' over the interval, so it cannot be normalised into a density. A density has to enclose a positive, finite area — try a function that is positive somewhere and decays at both ends.'
       : 'Your density. Nothing here is quoted: the shape you typed was integrated to give a normalising constant of ' +
         fmtNum(Z, 6) + ', and the mean and variance below are ∫x·f and ∫(x−μ)²·f evaluated by adaptive ' +
-        'quadrature at a tolerance of 1e-11 — not formulas for a family your function may not belong to. ' +
+        'quadrature at a tolerance of 10⁻¹¹ — not formulas for a family your function maynot belong to. ' +
         'Samples are drawn by inverting the cumulative distribution, so the histogram is a genuine test of ' +
         'the density rather than a redrawing of it.' +
         (neg < 0 ? ' <b>Note:</b> what you typed goes as low as ' + fmtNum(neg, 4) + ' somewhere in the window. A density cannot be negative, so those parts have been treated as zero — which means the picture is no longer the function you wrote.' : '') +
@@ -1577,7 +1577,7 @@ function igRegCartesian(st, own, kind){
       fubini:F, converge:CV,
       desc:'You have given the same region twice. Its area comes out ' + fmtNum(F.I, 8) +
         ' sweeping vertical strips and ' + fmtNum(F.II, 8) + ' sweeping horizontal ones, a difference of ' +
-        F.gap.toExponential(3) + '. ' + (CV.falling
+        fmtSig(F.gap, 4) + '. ' + (CV.falling
           ? 'Refining the quadrature drives that difference down by a factor of ' + fmtNum(CV.ratio, 1) +
             ', so it is arithmetic rather than a mismatch — Fubini holding, measured.'
           : 'Refining the quadrature does <b>not</b> reduce it, which means the two descriptions are not of the same region. One of the four limits is wrong.') };

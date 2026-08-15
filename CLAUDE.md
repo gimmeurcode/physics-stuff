@@ -86,7 +86,7 @@ falls by 2^p, round-off does not move.
    scope means a single stray character takes the whole app down, and the unit
    suite only sees the engine section (10-49) and would not notice. Then
    `./runtests.ps1` must print `0 failed`
-   (4261 unit tests). For anything touching demos or the UI, `./runall.ps1` must end
+   (4272 unit tests). For anything touching demos or the UI, `./runall.ps1` must end
    `caught=0 OK` — it takes ~18 minutes, so run it in the background — and
    `./auditcustom.ps1` must end `bad=0 OK`, because `runall` never selects the
    "type your own" option and so never exercises that path at all.
@@ -141,6 +141,17 @@ falls by 2^p, round-off does not move.
    damping while plotting three, and the lightest damping has the tallest peak,
    so the one curve worth seeing was the one clipped. Fit over the same list you
    draw from, and make it literally the same list.
+
+   **For anything touching a tick label, an axis, or a heading drawn on the
+   canvas, also `./auditticks.ps1` (`auditticks OK`).** It wraps `fillText` and
+   reads the strings the canvas actually paints — the one surface no other gate
+   can see. Two checks: **duplicate tick labels** in one row or column
+   (`fmtNum`'s decimals clamp collapsed any axis with span ≲ 0.01 into
+   `0.002, 0.002, 0.002 …`; **`fmtTick(v, step)` is the only tick formatter** —
+   its precision comes from the step, and both axis owners use it), and
+   **headings under the readout chip** (`plotFrame`/`ctFrame` titles slide
+   clear via `ctTitleClearChip`; a raw `fillText` caption must start below or
+   right of the chip zone). It carries corrupt controls in every run.
 
    **For anything inside a `frame()`, also `./auditperf.ps1`.** It counts the
    work a frame does, because nothing else measures cost at all. **A per-cell or

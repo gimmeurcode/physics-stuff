@@ -204,12 +204,14 @@ function rtRolling(M, R, I, ang){
 }
 /* the race down a ramp: the winner is decided by shape alone, not by mass or
    radius, because both cancel out of a = g sinθ/(1+I/MR²) */
+/* J17: `short` is the canvas race label. Deriving it as name.split(' ')[0]
+   made two entrants both read "Solid" — the label must identify the SHAPE. */
 const RT_RACE = [
-  { name:'Solid sphere', c:2 / 5 },
-  { name:'Solid disc / cylinder', c:1 / 2 },
-  { name:'Spherical shell', c:2 / 3 },
-  { name:'Hoop / thin ring', c:1 },
-  { name:'Sliding block (frictionless)', c:0 }
+  { name:'Solid sphere', short:'sphere', c:2 / 5 },
+  { name:'Solid disc / cylinder', short:'disc', c:1 / 2 },
+  { name:'Spherical shell', short:'shell', c:2 / 3 },
+  { name:'Hoop / thin ring', short:'hoop', c:1 },
+  { name:'Sliding block (frictionless)', short:'block', c:0 }
 ];
 
 /* -------------------------------------------------------- angular momentum ---- */

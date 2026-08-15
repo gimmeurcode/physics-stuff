@@ -4534,3 +4534,67 @@ bare em dash where no guess exists.
 Gates: `build` 231 modules · `smoke` OK · `runtests` **4261 passed, 0 failed** ·
 `auditsides` falsescale=0 presetgap=13 **OK** · `auditresid` **findings=0** ·
 `auditcustom` **bad=0 OK**.
+
+
+---
+
+## 2026-08-15 - the full-site audit, and Programme J closed
+
+A complete pass: every harness gate run (all green at commit 825dee8), then an
+independent sweep over constants, formulas, rendered values and screenshots.
+The gates were honest - every defect found was in territory no gate measured.
+
+**FIXED - five stale constants in `44a-nuclear.js`.** The block's header said
+CODATA 2022; the values were CODATA 2018: NC_MP 938.27208816 -> 938.27208943,
+NC_MN 939.56542052 -> 939.56542194, NC_ME 0.51099895000 -> 0.51099895069,
+NC_MHE4 3727.3794066 -> 3727.3794118 (2022 value confirmed against NIST CUU),
+NC_MH 938.78307348 -> 938.7830747823 (= m_p + m_e - 13.598 eV with the 2022
+masses; the old value reproduced the 2018 ones to 0.03 eV). NC_QN now lands on
+the measured free-neutron Q of 0.782347 MeV, which the old value missed by
+1.4 eV. NC_ALPHA was the 2018 alpha while the atom and string wings carried
+2022 - the site had two values of one constant, against SITE-RULES 2.4. All are
+now pinned as RELATIONS to the atom wing's constants (m_H to m_p + m_e - E_B,
+alpha to ALPHA_EM, and k to 1/(4 pi eps0) from the CODATA 2022 eps0 in
+`37-estat.js`, replacing the pre-2019 c^2 x 10^-7), so a stale refresh can no
+longer hide beside its own source. R_PROTON 0.8409 -> 0.84075 fm - the comment
+claimed "CODATA 2022: 0.8409(4)"; the recommended value is 0.84075(64).
+
+**FIXED - ASCII e-notation on rendered surfaces (F1).** 79 raw `toExponential`
+call sites outside the formatter core put 308 tokens like `-1.318e-177 MeV` on
+124 panel surfaces across 9 wings, against rule 1.7. All converted to
+`fmtSig`/`fmtNum`, which typeset the x10^n form; eight literal "1e-13"-style
+strings in display prose rewritten as superscript notation; the `ncBarExp`
+helper repointed. Gated twice: `smoke.ps1` greps the cause (toExponential
+outside `10-math.js`) and `auditscan.ps1` reads the effect off the harvest -
+both were corrupted once and watched to fail.
+
+**FIXED - duplicate axis tick labels (F2/J3's sibling).** `fmtNum(v, 3)` below
+1 counts decimals, so any axis spanning less than ~0.01 printed the statmech
+density axis as 0.002, 0.002, 0.002, 0.002, 0.001... New `fmtTick(v, step)` in
+`10-math.js` derives precision from the step (7 unit tests, including a
+70-axis sweep that caught the first draft delegating small steps back to the
+broken formatter); both axis owners (`ctGrid`, `pvDrawAxes`) use it. New gate
+`./auditticks.ps1` reads the strings the canvas actually paints, with a
+corrupt control in every run. Screenshot-verified.
+
+**FIXED - Programme J items J4, J6, J7, J8, J10-J12, J15-J20** (J13/J14 were
+found already fixed by earlier class work). Populations measured first: J4's
+title-through-ticks was 60 plots on 41 stages. Details in MASTER-PLAN 3.10's
+progress table.
+
+**NOTE - the qmUncertainty stage asserted Delta-x times Delta-p = hbar/2 by
+multiplying sigma by 1/(2 sigma).** Both spreads are now measured as second
+moments of the drawn |psi|^2 and |phi|^2 and the product printed against 0.5
+with its gap - the stage note had promised exactly that and the canvas had not
+delivered it.
+
+**OK - everything else swept:** the SM particle chart (PDG 2024 throughout,
+including KATRIN's < 0.45 eV), SEMF coefficients, hydrogen reduced-mass
+energies, silicon carrier densities, Onsager T_c, IAU nominal values, parsec,
+muon PDG values, BICEP/Keck r < 0.036. The prose-audit phantom
+"KinematicsProjectilesNewton's law" was the harvester welding TOC anchors -
+`audittext.ps1` now inserts separators at block boundaries, and the mechanics
+row correctly reclassified as a cross-reference.
+
+Gates after the fixes: `smoke` OK, `runtests` **4272 passed, 0 failed**,
+`auditticks` OK (controls: old labelling flagged 9, chip control flagged 1).

@@ -16,9 +16,9 @@ const M_W = 80369.2;                   // W boson, PDG 2024 world average (80.36
 const M_P = 938.27208943;              // proton, CODATA 2022
 const M_N = 939.56542194;              // neutron, CODATA 2022
 const M_E = 0.51099895069;             // electron, CODATA 2022
-const R_PROTON = 0.8409;               // rms charge radius in fm — CODATA 2022, which
-                                       // tightened the muonic (small) value 0.8414(19)
-                                       // of CODATA 2018 to 0.8409(4)
+const R_PROTON = 0.84075;              // rms charge radius in fm — CODATA 2022:
+                                       // 0.84075(64), tightened from the 2018
+                                       // recommended value 0.8414(19)
 const RANGE_PION = HBARC / M_PION;     // ≈ 1.414 fm — the Yukawa range of the residual strong force
 const RANGE_W = HBARC / M_W;           // ≈ 0.0025 fm — why the weak force is "weak": range, not coupling
 const G_GRAV_PP = 5.906e-39;           // G m_p² / ħc — gravity's coupling for two protons (G from CODATA 2022)

@@ -31,7 +31,29 @@ $tail = @'
 setTimeout(function(){
   var rows = [], struct = [];
 
-  function txt(id){ var e = document.getElementById(id); return e ? (e.textContent||'').replace(/\s+/g,' ').trim() : null; }
+  // NOT textContent: it concatenates element texts with no separator, so the
+  // mechanics TOC's three anchors harvested as "KinematicsProjectilesNewton's
+  // laws" and auditprose reported a phantom NAKED theorem (audit 2026-08-15).
+  // A space is inserted at block-level and anchor boundaries -- where the
+  // rendered page shows a visual break -- while inline sub/sup/i/b stay welded
+  // so supified notation still reads as one token.
+  var SEP = {A:1,DIV:1,P:1,BR:1,LI:1,UL:1,OL:1,TR:1,TD:1,TH:1,TABLE:1,H1:1,H2:1,H3:1,H4:1,SECTION:1,FIGCAPTION:1,BLOCKQUOTE:1,PRE:1,BUTTON:1,LABEL:1};
+  function textOf(el){
+    if (!el) return null;
+    var parts = [];
+    (function walk(n){
+      for (var c = n.firstChild; c; c = c.nextSibling) {
+        if (c.nodeType === 3) parts.push(c.nodeValue);
+        else if (c.nodeType === 1) {
+          if (SEP[c.tagName]) parts.push(' ');
+          walk(c);
+          if (SEP[c.tagName]) parts.push(' ');
+        }
+      }
+    })(el);
+    return parts.join('').replace(/\s+/g,' ').trim();
+  }
+  function txt(id){ return textOf(document.getElementById(id)); }
   function html(id){ var e = document.getElementById(id); return e ? (e.innerHTML||'') : null; }
 
   // ---- structural completeness: every stage must carry the full set ----
@@ -55,7 +77,7 @@ setTimeout(function(){
       openTheory();
       var pr = document.getElementById('theoryProse');
       rows.push({ kind:'theory', wing:w, key:'', name:WINGS[w].title||w,
-                  text:(pr ? (pr.textContent||'').replace(/\s+/g,' ').trim() : ''),
+                  text:(textOf(pr) || ''),
                   raw:(pr ? pr.innerHTML.slice(0, 400000) : ''),
                   /* the formal layer, counted from the RENDERED essay so it
                      measures what a reader can actually reach */

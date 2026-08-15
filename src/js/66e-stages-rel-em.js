@@ -300,8 +300,8 @@ STAGES.rlWire = {
       };
       const stepP = draw(sPlus, vPlus, y0, TH.pos, '+');
       const stepM = draw(sMinus, vMinus, y1, TH.neg, '−');
-      rlText(ctx, x0 - 6, y0, '+', rgbCss(TH.pos), '600 12px ' + FONT_MONO, 'right');
-      rlText(ctx, x0 - 6, y1, '−', rgbCss(TH.neg), '600 12px ' + FONT_MONO, 'right');
+      /* no row labels at the left edge — the first pane's sat under the
+         readout chip (J6), and every carrier dot already carries its sign */
       rlText(ctx, x1 + 6, y0, fmtNum(1 / sPlus, 4) + '×', rgbCss(TH.pos), '10px ' + FONT_MONO);
       rlText(ctx, x1 + 6, y1, fmtNum(1 / sMinus, 4) + '×', rgbCss(TH.neg), '10px ' + FONT_MONO);
       /* net charge verdict */

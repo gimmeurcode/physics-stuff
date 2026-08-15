@@ -156,7 +156,12 @@ STAGES.rtInertia = {
        which at alpha 0.9 fattened the body — most visibly on the rod, which is
        only a few cells thick. The bitmap tiles them exactly. */
     const ax = st.d;
-    const N = 90;
+    /* J16: the cell count follows the BLIT TARGET, not a constant — at a fixed
+       N = 90 the disc's edge was visibly stair-stepped on any large canvas,
+       because the bitmap scaled up while its resolution did not. One cell per
+       ~2 screen pixels, bounded (the canvas bounds the box, so this cannot
+       become the unbounded loop §2.5 warns about). */
+    const N = Math.max(90, Math.min(240, Math.round((P.X(R) - P.X(-R)) / 2)));
     /* HB, not B — B is already the body in this scope, and a second `const B`
        here is a syntax error that takes the whole single-scope bundle down */
     const HB = ctHeatBuf(N), hd = HB.img.data;
@@ -401,7 +406,7 @@ STAGES.rtRoll = {
   /* the field: the five standard shapes as unit-mass, unit-radius stand-ins —
      legitimate, because M and R cancel out of everything the race decides */
   entries(st){
-    const base = RT_RACE.map(b => ({ name:b.name, short:b.name.split(' ')[0], M:1, R:1, I:b.c }));
+    const base = RT_RACE.map(b => ({ name:b.name, short:b.short || b.name, M:1, R:1, I:b.c }));
     if(!st.own) return base;
     const B = STAGES.rtRoll.body(st);
     if(!B.ok || !(st.R > 0)) return base;

@@ -495,9 +495,10 @@ STAGES.ftFast = {
     ftLine(ctx, T, ps, dc, rgbCss(TH.pos), 2.2);
     ftLine(ctx, T, ps, fc, rgbCss(TH.grad), 2.2);
     probeLine(ctx, T, st.p, 'N = ' + (1 << st.p));
-    ctx.font = '11px ' + FONT_MONO; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = rgbCss(TH.pos); ctx.fillText('direct sum — N²', T.px + 8, T.Y(6.6));
-    ctx.fillStyle = rgbCss(TH.grad); ctx.fillText('FFT — ½N log₂N', T.px + 8, T.Y(2.2));
+    /* right-anchored: at the left edge these sat under the readout chip (J6) */
+    ctx.font = '11px ' + FONT_MONO; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = rgbCss(TH.pos); ctx.fillText('direct sum — N²', T.px + T.pw - 8, T.Y(6.6));
+    ctx.fillStyle = rgbCss(TH.grad); ctx.fillText('FFT — ½N log₂N', T.px + T.pw - 8, T.Y(2.2));
 
     /* the divide-and-conquer tree */
     const B = P.bot;

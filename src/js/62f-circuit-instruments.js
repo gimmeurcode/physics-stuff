@@ -43,7 +43,10 @@ function ckPaneScope(st, ctx, r){
   for(const u in fs) fs[u] *= 1.15;
 
   const P = mkPlot(r.x, r.y, r.w, r.h, t0, t1, -1, 1);
-  ckPaneAxes(ctx, P, 'time  t (s)', '', 'Oscilloscope — the circuit in time');
+  /* J4: no '(s)' in the title — every tick below prints its own engineering
+     unit (ms, µs) via ckEng, and a second unit on the same axis contradicts
+     them. The tick labels carry the unit; the title names the quantity. */
+  ckPaneAxes(ctx, P, 'time  t', '', 'Oscilloscope — the circuit in time');
   plotTicksX(ctx, P, [t0, t0 + win / 4, t0 + win / 2, t0 + 3 * win / 4, t1], v => ckEng(v, 's'));
   /* the full scale of each unit, stacked down the axis like a scope's channels */
   ctx.font = '10px ' + FONT_MONO;
@@ -191,7 +194,7 @@ function ckPaneSpectrum(st, ctx, r){
   for(let k = 1; k < spec.mag.length; k++) mmax = Math.max(mmax, spec.mag[k]);
   const fmax = Math.min(spec.f[spec.f.length - 1], thd.f0 ? thd.f0 * 12 : spec.f[spec.f.length - 1]);
   const P = mkPlot(r.x, r.y, r.w, r.h, 0, fmax, 0, mmax * 1.1);
-  ckPaneAxes(ctx, P, 'frequency  f (Hz)', 'amplitude', 'Spectrum of ' + tr[0].label +
+  ckPaneAxes(ctx, P, 'frequency  f', 'amplitude', 'Spectrum of ' + tr[0].label +
     (thd.f0 ? '  —  f₀ = ' + ckEng(thd.f0, 'Hz') + ', THD = ' + fmtNum(thd.thd * 100, 3) + '%' : ''));
   plotTicksX(ctx, P, [0, fmax / 2, fmax], v => ckEng(v, 'Hz'));
   ctx.fillStyle = rgbCss(TH.grad, 0.85);

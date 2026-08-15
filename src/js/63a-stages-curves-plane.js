@@ -28,7 +28,7 @@ function pcCur(st){
            f:C.f, d:C.d, dd:C.dd,
            note:'Your curve. Everything reported about it — the velocity, the speed, dy/dx, the second ' +
                 'derivative and the curvature — comes from differentiating what you typed symbolically, ' +
-                'not from sampling it. The dark red dots still mark every t where r′ = 0, so a cusp of ' +
+                'not from sampling it. The blue dots still mark every t where r′ = 0, so a cusp of ' +
                 'your own making is found the same way the cycloid\'s is.' };
 }
 
@@ -148,7 +148,7 @@ STAGES.pcParam = {
       const q = C.f(ts, st.a, st.b);
       ctDot(ctx, P, q.x, q.y, 4, rgbCss(TH.neg, 0.9), rgbCss(TH.bg));
     }
-    stageNote(ctx, 'dark red dots mark where r′(t) = 0 — the only places a smooth parametrisation can make a corner', W, H);
+    stageNote(ctx, 'blue dots mark where r′(t) = 0 — the only places a smooth parametrisation can make a corner', W, H);
   },
   readout(st){
     const C = pcCur(st);
@@ -607,9 +607,15 @@ STAGES.pcConic = {
     return `<div class="k">${pcConicKind(st.e)}</div>
       <div style="color:var(--c-grad)">e = ${fmtNum(st.e, 4)}</div>`;
   },
+  /* keyed on the scene showing — the cone view once wore the focus–directrix
+     key over a picture with no directrix in it, and called the cutting plane
+     "the conic" (J7) */
   legend(){ if(ST && ST.view === 'general')
       return [['var(--c-grad)', 'the traced curve  Ax²+Bxy+Cy²+Dx+Ey+F = 0'],
               ['var(--c-warn)', 'the rotated major axis'], ['var(--c-curl)', 'the rotated minor axis']];
+    if(ST && ST.view === 'cone')
+      return [['var(--faint)', 'the double cone, in elevation'],
+              ['var(--c-grad)', 'the cutting plane — its trace is the conic']];
     return [['var(--c-grad)', 'the conic'], ['var(--c-warn)', 'the directrix'],
                     ['var(--c-curl)', 'distance to the focus'], ['var(--c-pos)', 'distance to the directrix'],
                     ['var(--c-neg)', 'the foci']]; }

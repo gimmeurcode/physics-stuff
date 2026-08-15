@@ -64,7 +64,12 @@ $high = @(
   @{ n='Infinity';         p='(?<![A-Za-z])Infinity(?![A-Za-z])' },
   @{ n='leaked markup';    p='<(sub|sup|span|i|b|div|br)\b[^>]*>' },
   @{ n='template residue'; p='\$\{' },
-  @{ n='ASCII ket/bra';    p='\|(up|down|dn)>' }
+  @{ n='ASCII ket/bra';    p='\|(up|down|dn)>' },
+  # §1.7: a rendered panel never shows "8.1e-11" — fmtSig/fmtNum typeset
+  # 8.1×10⁻¹¹. This is the EFFECT half of the ban; smoke.ps1 greps the cause
+  # (toExponential outside 10-math.js), but a literal "1e-13" written into
+  # prose or a raw `${tiny}` interpolation only shows up here.
+  @{ n='ASCII e-notation'; p='(?<![\w.])\d(\.\d+)?e[+-]\d+(?!\w)' }
 )
 
 # "undefined" is legitimate mathematical English in prose — "f is undefined at 0"

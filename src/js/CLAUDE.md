@@ -118,6 +118,20 @@ one-liner and it will find yours.
 - **`ctHeat` deliberately does NOT cache its pixels.** Its `f` is almost always
   a closure the caller rebuilds every frame, so there is no honest identity to
   key on, and a stale heat map looks exactly like a correct one.
+- **A tick label's precision comes from the STEP, never a constant.**
+  `fmtNum(v, 3)` on an axis spanning less than ~0.01 printed four adjacent
+  ticks as one string (`0.002` ×4 on the statmech density axis). `fmtTick(v,
+  step)` (`10-math.js`) derives exactly the decimals the step needs and is the
+  only formatter allowed on a tick; `ctGrid` and `pvDrawAxes` both use it and
+  `./auditticks.ps1` fails on a duplicated label in any row or column.
+- **A centred canvas title slides out from under the readout chip by itself** —
+  `plotFrame` and `ctFrame` route through `ctTitleClearChip` (60a). A caption
+  you draw with raw `fillText` gets no such help: start it below or right of
+  the chip's ~190×95 px zone, or `./auditticks.ps1` will flag it.
+- **`ctContour` takes an optional `tear` threshold** — a cell whose corner
+  values span more than it is a JUMP (a branch cut, an atan2 seam), not a
+  level crossing, and the contour stops there instead of stitching a false fan
+  across it (`vcConserv` passes a quarter of the plotted range).
 - **Canvas text is drawn literally — no markup.** `ctFrame`/`ctText`/`stageNote`
   end in `fillText`, so a `<sub>` is painted as six characters. Two stages
   shipped this way. `smoke.ps1` now greps for it.

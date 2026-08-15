@@ -141,6 +141,40 @@ ok('fmtNum still collapses a real 1.4988e-4 to "0" at 3 figures — the J9 defec
 ok('fmtSig(0) is still 0', fmtSig(0) === '0', fmtSig(0));
 ok('fmtSig keeps figures, not decimals', fmtSig(0.0001499, 3) === '1.50×10⁻⁴', fmtSig(0.0001499, 3));
 ok('and rounds to the figures asked for above 1', fmtSig(1234.5, 3) === '1230', fmtSig(1234.5, 3));
+/* fmtTick: a tick label's precision comes from the STEP, never a constant.
+   fmtNum(v, 3) rendered the statmech density axis as 0.002, 0.002, 0.002,
+   0.002, 0.001 … — four adjacent ticks, one string. Both directions: that
+   fmtTick resolves the step, and that fmtNum still cannot, so nobody "tidies"
+   an axis back onto the display formatter. */
+ok('fmtNum at 3 figures cannot tell 0.0016 from 0.0018 — the duplicate-tick defect',
+   fmtNum(0.0016, 3) === fmtNum(0.0018, 3), fmtNum(0.0016, 3) + ' vs ' + fmtNum(0.0018, 3));
+(function(){
+  let dup = 0, worst = '';
+  for(let e = -4; e <= 5; e += 0.13){                 // spans from 1e-4 to 1e5
+    const span = Math.pow(10, e);
+    const s = (n => (n < 1.5 ? 1 : n < 3.5 ? 2 : n < 7.5 ? 5 : 10) *
+               Math.pow(10, Math.floor(Math.log10(span / 8))))(
+               (span / 8) / Math.pow(10, Math.floor(Math.log10(span / 8))));
+    const seen = {};
+    for(let v = s; v <= span; v += s){
+      const lbl = fmtTick(v, s);
+      if(seen[lbl]){ dup++; worst = lbl + ' twice at step ' + s; }
+      seen[lbl] = 1;
+    }
+  }
+  ok('fmtTick never prints one string for two ticks, across 70 nice-step axes', dup === 0, dup + ' e.g. ' + worst);
+})();
+ok('fmtTick(0.0004, 2×10⁻⁴) keeps the four decimals the step needs',
+   fmtTick(0.0004, 2e-4) === '0.0004', fmtTick(0.0004, 2e-4));
+ok('fmtTick(2.5, 2.5) does not round a fractional step away',
+   fmtTick(2.5, 2.5) === '2.5', fmtTick(2.5, 2.5));
+ok('fmtTick drops decimals an integer step does not need',
+   fmtTick(40, 20) === '40', fmtTick(40, 20));
+ok('fmtTick uses U+2212 for a negative tick',
+   fmtTick(-0.5, 0.5) === '−0.5', fmtTick(-0.5, 0.5));
+ok('fmtTick snaps float noise at the origin to 0',
+   fmtTick(5.55e-17, 0.5) === '0', fmtTick(5.55e-17, 0.5));
+
 /* fmtGap: the relative gap is what makes an absolute one readable */
 ok('fmtGap prints the relative gap beside the absolute one',
    /7\.79.*%/.test(fmtGap(1.4988e-4, 1.925e-3, 'J')), fmtGap(1.4988e-4, 1.925e-3, 'J'));
@@ -1443,8 +1477,15 @@ ok('scalar mode div is the Laplacian', sf('x^2+y^2+z^2').laplacian !== null);
   close('m(p) = 938.27208943 MeV',      M_P, 938.27208943, 1e-6);
   close('m(n) = 939.56542194 MeV',      M_N, 939.56542194, 1e-6);
   close('m(e) = 0.51099895069 MeV',     M_E, 0.51099895069, 1e-9);
-  close('proton charge radius 0.8409 fm (CODATA 2022)', R_PROTON, 0.8409, 1e-4);
+  close('proton charge radius 0.84075 fm (CODATA 2022)', R_PROTON, 0.84075, 1e-6);
   close('G m_p²/ħc = 5.906e-39',        G_GRAV_PP, 5.906e-39, 5e-42);
+  /* The two constants below were once stale-2018 or pre-2019 values sitting
+     beside 2022 neighbours (audit 2026-08-15). They are pinned as RELATIONS to
+     the constants they are derived from, so they cannot desynchronise again. */
+  close('m(¹H)c² = m_p + m_e − 13.598 eV', NC_MH, M_P + M_E - 13.598434599702e-6, 1e-9);
+  close('the nuclear wing shares the 2022 α', NC_ALPHA, ALPHA_EM, 1e-15);
+  close('k = 1/(4πε₀) exactly, from the CODATA 2022 ε₀',
+        ES_K, 1 / (4 * Math.PI * ES_EPS0), 1e-15);
   /* The levels are for REAL hydrogen, not the infinite-nuclear-mass idealisation.
      The Rydberg energy assumes a fixed proton; using the reduced mass instead is
      the largest correction to the Bohr formula, and it moves the answer towards
@@ -3987,8 +4028,14 @@ ok('scalar mode div is the Laplacian', sf('x^2+y^2+z^2').laplacian !== null);
   /* change of variables */
   (function(){
     /* the unit disc mapped to an ellipse: area 6 pi, by pulling back */
-    const A = nqDoublePolar((u, v) => Math.abs(MV_MAPS.ellip.jac(u, v)), 0, 2 * Math.PI, () => 0, () => 1);
+    /* J15 moved the ellip preset from (3u, 2v) over a square to stretched
+       polar over the (u, v) RECTANGLE, so the drawn region is the actual
+       ellipse. The area now comes by the same route the stage uses. */
+    const A = nqDoubleRect((u, v) => Math.abs(MV_MAPS.ellip.jac(u, v)), 0, 1, 0, 2 * Math.PI);
     close('the ellipse x^2/9 + y^2/4 = 1 has area 6pi', A, 6 * Math.PI, 1e-9);
+    const eq = MV_MAPS.ellip.T(1, 1.234);
+    close('and the u = 1 edge lands exactly on x^2/9 + y^2/4 = 1',
+          eq.x * eq.x / 9 + eq.y * eq.y / 4, 1, 1e-12);
     /* the polar change of variables, derived rather than assumed */
     const B = nqDoubleRect((r, th) => Math.abs(MV_MAPS.polar.jac(r, th)), 0, 2, 0, 2 * Math.PI);
     close('and the polar map turns a rectangle into a disc of area 4pi', B, 4 * Math.PI, 1e-9);
@@ -7857,7 +7904,7 @@ ok('scalar mode div is the Laplacian', sf('x^2+y^2+z^2').laplacian !== null);
     }
     /* the constant IS the free neutron */
     close('m_n − m_H is the free neutron\'s Q, exactly', ncBetaQ(0, 1).beta.Q, NC_QN, 0);
-    close('...and that is the 0.782 MeV the preset stage is given', NC_QN, 0.78234704, 1e-8);
+    close('...and that is the 0.782 MeV the preset stage is given', NC_QN, 0.78234716, 1e-8);
     /* the one β pair with a measured binding energy at each end: tritium.
        AME2020 puts the endpoint at 18.592 keV; the table here is rounded to six
        figures, which is worth about 20 eV. */
@@ -8553,7 +8600,7 @@ ok('scalar mode div is the Laplacian', sf('x^2+y^2+z^2').laplacian !== null);
   /* ---------- Geiger-Nuttall, fitted rather than quoted ---------- */
   (function(){
     close('the leading-order slope is 2*pi*alpha*sqrt(2 m_alpha)/ln10',
-          ncGNLead(), 2 * Math.PI * 7.2973525693e-3 * Math.sqrt(2 * 3727.3794066) / Math.LN10, 1e-12);
+          ncGNLead(), 2 * Math.PI * 7.2973525643e-3 * Math.sqrt(2 * 3727.3794118) / Math.LN10, 1e-9);
     ok('and it is the ~1.7 the Geiger-Nuttall plot actually has (' + ncGNLead().toFixed(4) + ')',
        ncGNLead() > 1.6 && ncGNLead() < 1.8);
     /* the fitter itself, on a line it cannot get wrong */

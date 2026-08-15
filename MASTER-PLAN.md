@@ -26,7 +26,7 @@ carried forward.
 
 **Verified 2026-08-15 — every gate in §1.6 was run, and this is the first day
 that has been true.** `build` 231 modules · `smoke` OK (wings=40, stages=178,
-seelinks=80) · `runtests` **4261 passed, 0 failed** · `runall` demos=593
+seelinks=80) · `runtests` **4272 passed, 0 failed** · `runall` demos=593
 controls=6462 **caught=0 OK** · `auditsides` falsescale=0 presetgap=14 **OK** ·
 `auditresid` **findings=0** noscale=7 · `auditcustom` **bad=0 OK** over the 98
 stages carrying typed input · `auditclaims` 249 claims **bad=0 OK** ·
@@ -99,7 +99,7 @@ given so the next session can re-measure rather than trust.
 | harness scripts | **27** | `Get-ChildItem *.ps1`. Every one must appear in §1.6 and §4.2 — `./auditdocs.ps1` checks |
 | deployable size | **5 409 933 bytes** (5.41 MB / 5.16 MiB) | `./measure.ps1`. **`build.ps1` prints a smaller figure, which is a CHARACTER count** — the Unicode maths symbols cost ~57 KB more as UTF-8 bytes. Both are far inside any upload limit. **A fresh `git clone` builds ~15.6 KB smaller**: `.gitattributes` normalises line endings to LF and 54 of the source files carried CRLF when this was measured, which is 15 627 carriage returns. The app is identical — but this is why the row says *measure*, not *quote* |
 | source lines | ~77 044 (all of `src/`) | `./measure.ps1`; `./map.ps1` reports `src/js` alone |
-| unit tests | **4261 passed, 0 failed** | `./runtests.ps1` |
+| unit tests | **4272 passed, 0 failed** | `./runtests.ps1` |
 | `mkPlot` call sites | **250** | `./measure.ps1` |
 | permalink round trips | **593 of 593 exact**, 11 demos measured stochastic | `./auditlink.ps1` |
 | declared table claims | **249, bad=0** | `./auditclaims.ps1` |
@@ -272,7 +272,7 @@ no author's function to replace; the "r(θ) region" slot went instead to
 
 ## 1.6 The verification harness
 
-**27 scripts** (`Get-ChildItem *.ps1` — **that command is the authority, not this
+**28 scripts** (`Get-ChildItem *.ps1` — **that command is the authority, not this
 number**; the table below listed 23 until 2026-08-14, when `auditmarks` and
 `auditresid` turned out to have been missing from it since they were written, and
 the "nine" the line claimed before that was wrong for far longer). What matters
@@ -306,6 +306,7 @@ script exists that this table does not describe.
 | `auditscan.ps1` | ~20 s | 0 HIGH | ASCII stand-ins, leaked markup, empty panels, `NaN` in the harvest |
 | `auditprose.ps1` | ~1 s | *(an inventory)* | essays that decline to justify a result; named theorems with no statement card |
 | `auditcontrast.ps1` | ~1 s | — | WCAG contrast and the 12 px type floor |
+| `auditticks.ps1` | ~1 min | `auditticks OK` | what the axis furniture and headings **actually paint** — it wraps `fillText` on the canvas prototype over every stage's live frame. Two checks nothing else can make: **duplicate tick labels** (fmtNum's decimals clamp collapsed any axis with span ≲ 0.01 into `0.002, 0.002, 0.002 …` — the statmech density axis, found only by a screenshot on 2026-08-15; `fmtTick` derives precision from the step and both owners use it), and **headings under the readout chip** (the chip floats over the canvas top-left; `ctTitleClearChip` slides plotFrame/ctFrame titles clear, and 5 stages' fixed captions were moved). Carries **three controls in every run**: the real `ctGrid` on a small-span window must be clean, the old `fmtNum(v,3)` labelling replayed on it must be flagged, and a heading drawn at the chip's centre must be flagged — a gate never seen to fail is not known to work |
 | `runapp.ps1` | ~20 s | — | one demo, screenshotted, for a human to look at. Uses `cprof-app`; **it used to share `cprof` with `runall` and that collision is now fixed** — every script has its own profile |
 | `map.ps1` | ~2 s | *(a count)* | regenerates `MAP.md`, the index of every module, stage and wing. Run it after adding or renaming a file, **or after adding a top-level function** — the index lists what each module defines |
 | `clean.ps1` | ~2 s | — | deletes everything the above regenerate |
@@ -1631,7 +1632,11 @@ the gate that would have caught it, then the single-stage items.
 4. **J3** — one owner for the ticks.
 5. **J9** — **DONE**, and it was not the bug it looked like. See the entry in the
    progress table.
-6. Then J4, J6, J7, J8, J10 … J20, each with a check.
+6. ~~Then J4, J6, J7, J8, J10 … J20, each with a check~~ — **all DONE
+   2026-08-15** (see the progress table). **Programme J is closed.** Two of the
+   fifteen (J13, J14) turned out to have been fixed already by earlier class
+   work, which the caution below predicted: measure, because the screenshot
+   count is never the instance count — in either direction.
 
 ### Progress
 
@@ -1645,7 +1650,21 @@ the gate that would have caught it, then the single-stage items.
 | **J3** doubled ticks | **DONE.** `ctGrid` labelled at `+4px` with 3 figures and `pvDrawAxes` at `+3px` with 4, **both at once** on a moved view — two minus signs a pixel apart, which is the `=40`. `ctGrid` now yields the whole grid to `pvDrawAxes` once the view has moved, because pv's ticks follow the window and a stage's are a fixed list chosen for the author's window |
 | **compute** | **DONE** (asked for separately). `refreshAll` was evaluating the field, its divergence, curl and Jacobian at the probe and rebuilding five panels of HTML **into elements with `display:none`** on every one of the 178 stages, because `applyWingSections` hides the field panels but nothing stopped them being recomputed. It now returns early while a stage is active. Safe because the hiding is all-or-nothing, and the route back always runs `applyField` after `stageExit` |
 | **J9** round-off as measurement | **DONE, and the hypothesis recorded here was wrong in both halves.** It said `gapWork` reached the formatter as an exact zero because `fmtNum(1.499e-4, 3)` returns `0.00015`. Measured on the bundle: `gapWork` is **1.4988e-4, not zero**, and `fmtNum(1.499e-4, 3)` returns **`"0"`**. `fmtNum`'s exponent term is clamped at zero, so below 1 its `sig` counts DECIMALS, not FIGURES — swept, the dead zone is exactly **[1e-4, 5×10⁻ˢⁱᵍ)**, bounded below only because the scientific branch takes over at 1e-4. **But the formatter was the outermost of three layers.** The real defect: `dyForceRun` (31a) integrated ∫F·dx by **trapezoid in dx, second order, under an RK4 trajectory that is fourth**. Halving h showed it converging at exactly h² (ratio 3.999, 4.000, 4.000), so the panel was measuring its own truncation error, not the work–energy theorem. It shows up as 7.8% because the answer is exponentially small — the default law is a damped oscillator run eight damping times, whose net work is the 1.9e-3 J residue of a **13.47 J** sum, a **cancellation factor of 7 × 10³**. Across the laws the help text itself suggests, `-4x - 1.2v` disagreed by **100%** while the chip said "they differ by 0" in `--c-pos`, the affirmative colour. **The fix is ∫F·dx = ∫F·v dt by composite Simpson** — the same line integral (v is signed, so doubling back still subtracts; it is not ∫F dt, the impulse), at the order the stepper has. Not invented here: **`rtSpinRun` (32a) is this routine's rotational twin and has always done it**, and `dyForceRun` already forced `n` even with no Simpson to use it. Pinned against the closed form of m x″ + c x′ + k x = 0: measured order **2.00 → 4.00**, relative gap **7.8e-2 → 2.5e-6**, same cost. New `nqCumSimpson` (21) gives the running integral the ledger plot draws from, and its last entry **is** the composite Simpson total, so panel and picture cannot drift (measured: `Us[n] + wCons = 0` exactly). Also found: `gapEnergy` was never a third check — W_non = W_tot − W_cons by linearity, so it is \|gapPath ∓ gapWork\|, and it equalled `gapWork` to ten figures. New `fmtSig`/`fmtGap` (10) print residuals as figures with the relative gap and a figures-agreed verdict; `ckEngF`/`ckGap` (48a) floor circuit quantities against scales `ckMeasure` now returns, because ε·κ(A)·‖x‖ for a 1 Ω–1 MΩ circuit is ~1e-13 A on a milliamp solution — that *is* the 29.7 fA — and Johnson noise in a 1 kΩ resistor at 300 K is 4 pA/√Hz, a hundred times larger. **20 tests added; the J9 test was corrupted back to the trapezoid once and watched to fail, reporting order 1.9995.** The old tests passed the broken code because their tolerances were absolute against a fixed 4.32 J scale — the new one is relative to the answer, which is what makes it bite |
-| J4, J6–J8, J10–J20 | **OPEN**, in the order below |
+| **J4** axis-title collision | **DONE 2026-08-15.** Measured first: **60 plots on 41 stages** drew the rotated y-title through their own tick numbers at the fixed `P.px − 34`. `plotFrame` now computes the labels ctGrid will draw — same step, same `fmtTick` — measures them, and places the title clear of that gutter. The ckLab sub-defect (axis titled `(s)` over ticks that print their own `ms` via `ckEng`) fixed by removing the second unit from the title, scope and spectrum both; the wsRegge double x-label row was already gone (removed in an earlier session — verified by `auditticks`, which finds no duplicate row there) |
+| **J6** headings under the chip | **DONE 2026-08-15.** The class fix is `ctTitleClearChip` (60a): both title owners — `plotFrame` and `ctFrame` — read the live chip rect and slide a title sideways out from under it, so no stage has to know the chip exists. Population measured by the new gate: **5 stages** had fixed captions in the chip zone (agIdent, ftFast, ftConv, rlWire, slSemi) — the three photographed ones were already clean. `./auditticks.ps1` now fails on any ≥11px text anchored inside the visible chip, with a drawn-at-chip-centre control |
+| **J7** legends for a different picture | **DONE 2026-08-15.** Three instances, three honest fixes: the cycloid caption said "dark red dots" over dots drawn in `TH.neg`, which is **blue** in both themes — reworded (canvas note and pk note both); `pcConic`'s cone view wore the focus–directrix legend over a picture with no directrix and called the cutting plane "the conic" — the legend now keys on `st.view === 'cone'`; slBand wrote "green = allowed bands" in `TH.pos`, which is orange — reworded |
+| **J8** two instants of one clock | **DONE 2026-08-15.** The chip refreshed on a 0.4 s timer while canvas titles print the live `st.t` every frame. Adaptive cadence now: `updateStageChip` returns whether the write changed anything; the 0.4 s tick arms per-frame refresh and the first unchanged build disarms it — so an animating chip tracks the frame exactly and a heavy-but-static chip is never rebuilt at frame rate |
+| **J10** a curve joined across a pole | **DONE 2026-08-15.** In `plotCurve`: adjacent samples pinned to **opposite** clamp bands are the two sides of a sign-flipping pole and the path breaks between them. A steep but finite curve never trips it — its samples are inside the window and never clamped |
+| **J11** placement at z = 0 only | **DONE 2026-08-15**, both halves as decided: `em3dPickPlane` takes the plane height, a `placement plane z` slider appears in the 3D sandbox (id `emPZ`, permalink-restorable like any control), the plane is **drawn** where the next object lands, the caption prints the real z, and the selected-object panel's z slider was already there. The probe keeps its own plane |
+| **J12** typed t off the picture | **DONE 2026-08-15.** `cvT` now carries a `lim` with its reason — the three panels plot 0..10 s, and a typed 29.8 put the probe line off all of them while the fully-decayed middle panel read as blank. The slider's typed path already had the limits-with-why mechanism; this stage just never used it |
+| **J13** ball off its track | **was already fixed** — the J9 session rebuilt this stage's machinery, and ball, track and fill all draw from one `hOf` in one box. Verified by reading and by screenshot |
+| **J14** plane bigger than its window | **was already fixed** — the stage works in local coordinates that zoom with `h` ("work in local coordinates so the picture zooms with h"), surface and plane share the ±1.5h extent, the rings sit at h. Verified by reading |
+| **J15** the ellipse that was a rectangle | **DONE 2026-08-15.** The `ellip` preset mapped the **square** by `(3u, 2v)`, so the picture showed a square becoming a rectangle while the note narrated the disc and the ellipse. It is now polar composed with the stretch — `(3u cos v, 2u sin v)` over the (u, v) rectangle, \|J\| = 6u — so the domain is still the rectangle the machinery integrates over and the image is the actual ellipse. The area test moved to the same route and pins 6π; a new test pins the u = 1 edge to x²/9 + y²/4 = 1 exactly |
+| **J16** stair-stepped bitmap | **DONE 2026-08-15.** The cell count follows the blit target — one cell per ~2 screen pixels, bounded 90–240 — instead of a fixed 90, so the disc's edge resolves on any canvas while §2.5's loop-bound rule holds |
+| **J17** two entrants named "Solid" | **DONE 2026-08-15.** `short` was derived as `name.split(' ')[0]`, so *Solid sphere* and *Solid disc* both raced as "Solid". The shorts now live in `RT_RACE` itself (sphere, disc, shell, hoop, block) — one source, §2.4. The label stagger was already in |
+| **J18** the diode's turn-on | **DONE 2026-08-15, measured before fixed.** Not a sign error: the old plot drew I/Iₛ on a 0–20 scale with Iₛ = 10⁻⁹, so the visible knee sat at V_T·ln 20 ≈ **0.08 V** and no axis range could ever show a 0.6–0.7 V turn-on, because the "turn-on voltage" is a property of the current scale you judge "on" at. The plot is now milliamps with a real small-signal Iₛ = 10⁻¹² A — 1 mA at V_T·ln 10⁹ ≈ 0.54 V at 300 K, inside the window, temperature dependence intact. The unit tests already used 10⁻¹²; the stage was the outlier |
+| **J19** the contour fan at the cut | **DONE 2026-08-15.** The vortex potential recovered by line integral is genuinely multivalued and its branch cut is real mathematics; the defect was the tracer stitching contours **across** the 2π jump — bilinear interpolation invents a crossing in nearly every cut cell, which is the fan. `ctContour` takes an optional `tear`: a cell whose corner spread exceeds it is a jump, not a crossing, and the contour honestly stops at the cut. `vcConserv` passes a quarter of the plotted range |
+| **J20** the dock clips its content | **DONE 2026-08-15.** The dock's wrap layout needs `overflow-x:hidden`, so anything wider than a panel was silently gone. Panel bodies (`.dock > .sec > .body`) now scroll horizontally inside themselves — the same rule the site applies to every other wide container |
 
 **The lesson for Part 4.** Every one of these was invisible to twenty-three
 gates. The harness measures *behaviour* and *text*; it barely measures *pixels*.
@@ -1714,6 +1733,7 @@ Then, matched to what you touched:
 | any visible text | `./audittext.ps1` then `./auditscan.ps1` |
 | an essay | `./auditprose.ps1` (after `audittext`) |
 | a colour, a type size, a contrast pair | `./auditcontrast.ps1` |
+| **a tick label, an axis, `fmtTick`, `ctGrid`, `pvDrawAxes` — or any heading/caption drawn on the canvas** | `./auditticks.ps1` — the only gate that reads the strings the canvas actually paints; fails on duplicate tick labels in one row or column and on a heading under the readout chip |
 | added or renamed a file | `./map.ps1`, then `./auditdocs.ps1` |
 | needing a headline count for any of the above | `./measure.ps1` — never a grep, never a figure quoted from prose |
 | finished, and the scratch files are in the way | `./clean.ps1` (`-WhatIf` lists what it would delete first) |

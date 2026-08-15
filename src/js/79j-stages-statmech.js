@@ -334,7 +334,7 @@ STAGES.smCount = {
       ${kv('the two temperatures differ by', Number.isFinite(R.tempRel) ? fmtNum(100 * R.tempRel, 6) + '%' : '—')}
       <p class="help">One route maximises a function and the other solves an equation between two
       derivatives; nothing in the code makes them agree. That they land within
-      ${Number.isFinite(R.rel) ? R.rel.toExponential(1) : '—'} of q of each other is the statement
+      ${Number.isFinite(R.rel) ? fmtSig(R.rel, 2) : '—'} of q of each other is the statement
       that equilibrium <b>is</b> equal temperature, tested on entropies nobody chose in advance.</p>
     </div>
     <div class="card tight"><div class="ttl">The width, by two more</div>
@@ -361,8 +361,8 @@ STAGES.smCount = {
       because entropy is extensive; the panel below reports whether yours is.</p>
     </div>
     <div class="card tight"><div class="ttl">Extensivity — the Gibbs paradox in one number</div>
-      ${kv('S_A(4q, 4N) ÷ 4·S_A(q, N) − 1', Number.isFinite(D.extA.rel) ? D.extA.rel.toExponential(3) : '—')}
-      ${kv('the same for B', Number.isFinite(D.extB.rel) ? D.extB.rel.toExponential(3) : '—')}
+      ${kv('S_A(4q, 4N) ÷ 4·S_A(q, N) − 1', Number.isFinite(D.extA.rel) ? fmtSig(D.extA.rel, 4) : '—')}
+      ${kv('the same for B', Number.isFinite(D.extB.rel) ? fmtSig(D.extB.rel, 4) : '—')}
       <p class="help">${Math.max(D.extA.rel || 0, D.extB.rel || 0) < 1e-9
         ? 'Both entropies are extensive: scaling the block and its energy together scales the entropy by the same factor, which is why the fitted exponent above comes out at −½. Change one of them from N·ln(q/N) to N·ln(q) and watch this number leave zero.'
         : 'One of your entropies is <b>not extensive</b> — doubling the block and its energy does not double it. That is precisely the Gibbs paradox: writing N·ln(q) rather than N·ln(q/N) leaves an N·lnN behind, so mixing two identical gases appears to create entropy. The fix was the 1/N! that Gibbs put in by hand and that indistinguishability later justified.'}</p>
@@ -398,7 +398,7 @@ STAGES.smCount = {
       ${kv('ln Ω_A', n(smLogOmega(st.NA, C.bestQ)))}
       ${kv('ln Ω_B', n(smLogOmega(st.NB, st.q - C.bestQ)))}
       ${kv('ln Ω_total', n(smLogOmega(st.NA, C.bestQ) + smLogOmega(st.NB, st.q - C.bestQ)))}
-      ${kv('S = k lnΩ', (smEntropy(st.NA, C.bestQ) + smEntropy(st.NB, st.q - C.bestQ)).toExponential(4) + ' J/K')}
+      ${kv('S = k lnΩ', fmtSig((smEntropy(st.NA, C.bestQ) + smEntropy(st.NB, st.q - C.bestQ)), 5) + ' J/K')}
       <p class="help">Entropy has units of J/K only because temperature was given its own unit before
       anyone knew what it was. In natural units entropy is a pure number — the logarithm of a count
       of arrangements, and nothing more.</p>
@@ -740,7 +740,7 @@ STAGES.smBoltz = {
               'The 0.417·ΔE/k every textbook quotes is the root of a transcendental equation that exists only for a two-level system. With ' + D.G.length + ' distinct energies there is no such equation — and the peak is still there, still at a definite temperature, and still found. That is the difference between a formula and a measurement.'),
         drvStep('and it is exactly proportional to the spacing, swept over a hundredfold',
           `${dv('T')}*(λ${dv('E')}) ${dop('=')} λ ${dv('T')}*(${dv('E')})`,
-          K.ok ? `kT*/ΔE across λ from 0.1 to 10 spreads by ${K.sweep.spread.toExponential(2)}`
+          K.ok ? `kT*/ΔE across λ from 0.1 to 10 spreads by ${fmtSig(K.sweep.spread, 3)}`
                : 'not computed'),
         drvSay('because a level scheme has no scale except its own gaps',
           'Nothing in Σ g e^(−E/kT) can tell an energy from a temperature separately — only their ratio appears. So multiplying every level by a hundred must move every feature of C(T) to a hundred times the temperature, exactly. Sampling that twice proves nothing; sweeping it and finding a spread of parts in a million is the measurement, and it is what says the peak temperature is a property of the gaps rather than of the arithmetic.')
@@ -855,11 +855,11 @@ STAGES.smBoltz = {
     <div class="card tight"><div class="ttl">The spacing sweep — an invariance, not a value</div>
       ${K.ok ? K.sweep.rows.map(r =>
         kv('every level × ' + fmtNum(r.lam, 3), 'peak at ' + fmtNum(r.T, 6) + ' K, ratio ' + fmtNum(r.ratio, 8))).join('') +
-        kv('spread across the hundredfold', K.sweep.spread.toExponential(3))
+        kv('spread across the hundredfold', fmtSig(K.sweep.spread, 4))
        : kv('', 'not computed')}
       <p class="help">Only the ratio E/kT appears anywhere in Z, so multiplying every level by λ must
       move the peak to exactly λT*. Two samples would prove nothing; a hundredfold sweep with a spread
-      of ${K.ok ? K.sweep.spread.toExponential(1) : '—'} is a measurement, and it says the peak
+      of ${K.ok ? fmtSig(K.sweep.spread, 2) : '—'} is a measurement, and it says the peak
       temperature belongs to the gaps rather than to the arithmetic.</p>
     </div>
     <div class="card tight"><div class="ttl">The third law, at both ends</div>

@@ -155,7 +155,7 @@ STAGES.wsADD = {
       ${kv('four-dimensional M_Pl', fmtNum(WS_MPL_GEV, 6) + ' GeV')}
       ${kv('compactification radius R', fmtNum(R, 5) + ' m')}
       ${kv('  in micrometres', fmtNum(R * 1e6, 5))}
-      ${kv('  compared with a proton (0.84 fm)', fmtNum(R / 0.8409e-15, 4) + '×')}
+      ${kv('  compared with a proton (0.84 fm)', fmtNum(R / (R_PROTON * 1e-15), 4) + '×')}
       ${kv('verdict', R > WS_XD_LIMITS.eotwash.lam
             ? 'EXCLUDED — larger than the range gravity has been tested to'
             : 'not excluded by short-range gravity, though colliders may still reach it')}

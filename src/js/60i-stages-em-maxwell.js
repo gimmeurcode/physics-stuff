@@ -42,7 +42,7 @@ STAGES.emGauss = {
           'The integral form is about a region and everything in it; the differential form is about a point. Counting charges can never test the second, because a point charge has infinite density at one place and none anywhere else. With ρ written as a function, the field is differentiated numerically and compared with the density at that very point — and the divergence theorem is what says the two forms had to agree.'),
         drvStep('the invariance, swept rather than sampled',
           `∯ ${dv('E')} ${dop('·')} d${dv('A')} independent of ${dv('R')} once the charge is inside`,
-          S ? `four radii: flux spread ${S.spread.toExponential(2)} while |E| on the surface changes by ${fmtNum(S.eRange, 3)}×` : ''),
+          S ? `four radii: flux spread ${fmtSig(S.spread, 3)} while |E| on the surface changes by ${fmtNum(S.eRange, 3)}×` : ''),
         drvSay('which is the whole content of the law',
           'The field on the surface falls off steeply as it grows, and the area grows just as fast, and the product does not move at all. That exact cancellation is the inverse square and nothing else: with any other exponent the flux would depend on the radius, and Gauss\'s law would be false. Experiments looking for exactly that dependence bound the deviation from 2 to about 10⁻¹⁶, which is really a bound on the photon\'s mass.')
       ],
@@ -309,7 +309,7 @@ STAGES.emGauss = {
     <div class="card tight"><div class="ttl">The sweep, about the origin</div>
       ${S ? S.rows.map(r => kv('R = ' + fmtNum(r.R, 2),
         'Φ = ' + fmtNum(r.flux, 5) + ',  Q = ' + fmtNum(r.Q, 5) + ',  |E| ≈ ' + fmtNum(r.meanE, 4))).join('') +
-        kv('spread in the flux once enclosed', Number.isFinite(S.spread) ? S.spread.toExponential(3) : '—') +
+        kv('spread in the flux once enclosed', Number.isFinite(S.spread) ? fmtSig(S.spread, 4) : '—') +
         kv('range of |E| over the same radii', Number.isFinite(S.eRange) ? fmtNum(S.eRange, 4) + '×' : '—')
        : ''}
       <p class="help">The field on the surface falls steeply as it grows and the area grows just as

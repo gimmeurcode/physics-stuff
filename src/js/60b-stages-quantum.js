@@ -191,7 +191,26 @@ STAGES.qmUncertainty = {
     plotCurve(ctx, bot, k => qmPacketPhi(k, P) ** 2, 260, rgbCss(TH.pos), 2.2);
     probeLine(ctx, top, st.probe, 'x');
     probeLine(ctx, bot, st.probe, 'p');
-    stageNote(ctx, 'Δx·Δp = ' + (st.s0 * (1 / (2 * st.s0))).toFixed(3) + ' = ħ/2 — the Gaussian saturates the bound; every other shape does worse', W, H);
+    /* §1.3: the claim Δx·Δp = ħ/2 is MEASURED, not multiplied out of itself —
+       σ·(1/2σ) is 0.5 by algebra and checks nothing. Both spreads here are
+       second moments of the same functions the two curves are drawn from,
+       integrated over ±8 widths, and the product is printed against ħ/2 with
+       the difference the quadrature actually leaves. */
+    const mom2 = (f, lo, hi) => {
+      let s0 = 0, s1 = 0, s2 = 0;
+      for(let i = 0; i <= 400; i++){
+        const x = lo + (hi - lo) * i / 400, w = f(x);
+        s0 += w; s1 += w * x; s2 += w * x * x;
+      }
+      const mu = s1 / s0;
+      return Math.sqrt(Math.max(0, s2 / s0 - mu * mu));
+    };
+    const dxM = mom2(x => cAbs2(qmPacketPsi(x, 0, P)), -8 * st.s0, 8 * st.s0);
+    const wp = 1 / (2 * st.s0);
+    const dpM = mom2(k => qmPacketPhi(k, P) ** 2, st.k0 - 8 * wp, st.k0 + 8 * wp);
+    stageNote(ctx, 'Δx·Δp measured from the two drawn curves = ' + fmtSig(dxM * dpM, 4) +
+      ' · ħ/2 = 0.5 · gap ' + fmtGapTight(dxM * dpM - 0.5, 0.5, '', 1e-6) +
+      ' — the Gaussian saturates the bound; every other shape does worse', W, H);
   },
   pick(st, sx, sy){
     const pl = (st.pl2 && sy > st.pl2.py - 30) ? st.pl2 : st.pl;

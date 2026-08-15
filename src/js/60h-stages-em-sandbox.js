@@ -40,6 +40,7 @@ STAGES.emSandbox = {
     st.tool = 'probe';
     st.sel = -1;
     st.run = false;
+    st.placeZ = 0;      // J11: the height of the 3D placement plane
     st.probeP = { x: 0, y: 1.4, z: 0 };
     st.show = Object.assign({ E:true, B:true, lines:true, force:true, energy:false, poynt:false },
                             o.show || {});
@@ -67,6 +68,7 @@ STAGES.emSandbox = {
         ${tool('loop', '◯ pickup loop', 'A loop that reports Φ and the induced EMF')}
       </div>
       <p class="help">Pick a tool, then <b>click the canvas to place</b>. Drag anything to move it. Click an object with the probe tool to select and edit it below. Press <b>Run</b> and the objects obey the real laws: charges accelerate under F = q(E + v×B), magnets feel torque τ = m×B and swing to align.</p>
+      ${ST.dim === '3d' ? ctlRow('placement plane z', ctlSlider('emPlz', -4, 4, 0.05, ST.placeZ || 0)) : ''}
       <div class="row wrap">
         <button class="btn pri" id="emRun">Run</button>
         <button class="btn sm" id="emStop">Reset motion</button>
@@ -108,6 +110,9 @@ STAGES.emSandbox = {
     const chk = (id, key) => $(id).addEventListener('change', e => { ST.show[key] = e.target.checked; ST.lineKey = ''; updateStageLegend(); });
     chk('emShowE','E'); chk('emShowB','B'); chk('emShowL','lines');
     chk('emShowF','force'); chk('emShowU','energy'); chk('emShowS','poynt');
+    /* emPlz, NOT emPZ — that id is the probe-z slider in controls3dExtra, and
+       auditlink caught the collision the day this control was added */
+    if($('emPlz')) wireSlider('emPlz', () => ST.placeZ || 0, v => { ST.placeZ = v; }, v => (+v).toFixed(2));
     this.buildSelPanel();
   },
   buildSelPanel(){
@@ -155,6 +160,7 @@ STAGES.emSandbox = {
       loop:         { kind:'loop',   R: 0.9, p:{x,y,z:0} }
     }[T];
     if(!mk) return false;
+    mk.p.z = st.placeZ || 0;     // J11: objects land on the placement plane
     st.objs.push(mk);
     st.sel = st.objs.length - 1;
     st.lineKey = '';

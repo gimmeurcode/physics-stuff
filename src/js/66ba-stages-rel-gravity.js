@@ -167,7 +167,7 @@ STAGES.rlBarn = {
       ${kv('  near door at x = 0, far door at x = D', '')}
       ${kv("ladder frame: far door shuts at", "t′ = γ(0 − βD) = " + fmtNum(-f.dtLadder, 5))}
       ${kv('ladder frame: near door shuts at', "t′ = γ(0 − 0) = 0")}
-      ${kv('gap between them, Δt′ = γβD/c', fmtNum(f.dtLadder, 5))}
+      ${kv('gap between them, Δt′ = γβD/c (units where c = 1)', fmtNum(f.dtLadder, 5))}
       ${kv('time for the ladder to clear the barn', fmtNum((st.L0 + f.Dseen) / st.beta, 5))}
       ${kv('interval² between the door events', fmtNear(relInterval(0, st.D)))}
       ${kv('so they are', relIntervalKind(relInterval(0, st.D)))}

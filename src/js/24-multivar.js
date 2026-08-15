@@ -207,10 +207,15 @@ const MV_MAPS = {
     ul:'u', vl:'v',
     T:(u, v) => ({ x:(u + v) / 2, y:(v - u) / 2 }), jac:() => 0.5,
     note:'The substitution u = x − y, v = x + y run backwards. It rotates by 45° and shrinks by √2 in each direction, so areas halve — and it turns the awkward region between the lines x ± y = const into a plain rectangle.' },
-  ellip: { name:'Ellipse  (u, v) → (3u, 2v)', u0:-1, u1:1, v0:-1, v1:1,
+  /* J15: this was (u,v) → (3u, 2v) over the SQUARE, so the picture showed a
+     square becoming a rectangle while the note talked about the disc and the
+     ellipse. Polar composed with the stretch keeps the domain a rectangle —
+     which the whole stage machinery integrates over — and makes the image the
+     actual ellipse the prose promises. */
+  ellip: { name:'Ellipse  (u, v) → (3u cos v, 2u sin v)', u0:0.001, u1:1, v0:0, v1:2 * Math.PI,
     ul:'u', vl:'v',
-    T:(u, v) => ({ x:3 * u, y:2 * v }), jac:() => 6,
-    note:'The unit disc maps to the ellipse x²/9 + y²/4 = 1, and its area is 6 times π — which is the fastest honest derivation of πab there is.' },
+    T:(u, v) => ({ x:3 * u * Math.cos(v), y:2 * u * Math.sin(v) }), jac:u => 6 * u,
+    note:'Polar coordinates stretched by 3 in x and 2 in y: the (u, v) rectangle maps to the full ellipse x²/9 + y²/4 = 1. The determinant is 6u — the polar r carrying both stretches — and integrating it gives ∬ 6u du dv = 6π, which is the fastest honest derivation of area = πab there is.' },
   parab: { name:'Parabolic  (u, v) → (u² − v², 2uv)', u0:0.05, u1:1.5, v0:0.05, v1:1.5,
     ul:'u', vl:'v',
     T:(u, v) => ({ x:u * u - v * v, y:2 * u * v }), jac:(u, v) => 4 * (u * u + v * v),

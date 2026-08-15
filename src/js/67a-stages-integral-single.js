@@ -29,7 +29,7 @@ function igCur(st){
   return { name:'f(x) = ' + own.f, f:pkFn(st, 'ig1', 'f'), Fi:null,
            a:+own.a, b:+own.b, tex:esc(own.f),
            note:'Your integrand, on your interval. Nothing here knows an antiderivative for it, so the ' +
-                'exact value it is compared against is adaptive quadrature at a tolerance of 1e-13 — the ' +
+                'exact value it is compared against is adaptive quadrature at a tolerance of 10⁻¹³ — the ' +
                 'same standard used for e^(−x²) above, which has no elementary antiderivative either.' };
 }
 /* the picker and its boxes, shared by the two stages that integrate one variable */
@@ -98,7 +98,7 @@ STAGES.igRiemann = {
           `${dv('E')}(${dv('h')}/2) ${dop('/')} ${dv('E')}(${dv('h')}) ${dop('=')} 2^(−${dv('k')})`,
           'the panel prints the predicted bound beside the error actually committed, at this n')
       ],
-      note:'Everything in this panel is measured. The bound is computed from a scan for the true maximum of |f″| and |f⁗|, and the error is the difference from a value obtained by adaptive quadrature at 1e-13. Where the actual error sits well inside the bound, that gap is real — the bound is a worst case, not a prediction.'
+      note:'Everything in this panel is measured. The bound is computed from a scan for the true maximum of |f″| and |f⁗|, and the error is the difference from a value obtained by adaptive quadrature at 10⁻¹³. Where the actual error sits well inside the bound, that gap is real — the bound is a worst case, not a prediction.'
     };
   },
   enter(st, o){
@@ -239,7 +239,7 @@ STAGES.igRiemann = {
     return `<div class="card tight"><div class="ttl">All five rules at n = ${st.n}</div>
       ${rows}
       ${kv('the exact value', fmtNum(exact, 10))}
-      ${kv('source', K.Fi ? 'an elementary antiderivative' : 'adaptive quadrature at 1e-13')}
+      ${kv('source', K.Fi ? 'an elementary antiderivative' : 'adaptive quadrature at 10⁻¹³')}
     </div>
     <div class="card tight"><div class="ttl">Measured order of convergence</div>
       ${ordRows}
@@ -341,7 +341,7 @@ STAGES.igFTC = {
         drvSay('which is why the theorem quietly stops applying in several later stages',
           'It needs f continuous on the closed interval. Integrate 1/x² across the origin by blindly evaluating −1/x at both ends and you get −2, a negative answer for a positive integrand — the antiderivative is not defined throughout, so the theorem never applied. The same failure is why improper integrals must be defined as limits of proper ones, and why the series wing insists on pushing a cut-off outwards rather than substituting infinity.')
       ],
-      note:'The panel computes both sides independently: the accumulated integral by adaptive quadrature at 1e-12, and the antiderivative in closed form where one exists. It prints the difference. Where they agree to twelve figures, the theorem has been checked rather than recited.'
+      note:'The panel computes both sides independently: the accumulated integral by adaptive quadrature at 10⁻¹², and the antiderivative in closed form where one exists. It prints the difference. Where they agree to twelve figures, the theorem has been checked rather than recited.'
     };
   },
   enter(st, o){

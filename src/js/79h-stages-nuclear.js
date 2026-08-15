@@ -646,7 +646,7 @@ STAGES.ncDecay = {
           'An explicit method needs a step short enough for the fastest member and has to take it for as long as the slowest member lives. A chain running from ten hours down to a third of a microsecond would want something like 10¹¹ of them. Solving each member\'s own linear equation exactly across the step removes that constraint entirely: the fast member reaches its steady state within one step and stays there, because that is what its exact solution does.'),
         drvStep('the two routes, differenced',
           `max ₖ |${dv('N')}ₖ^closed ${dop('−')} ${dv('N')}ₖ^stepped|`,
-          `${D.cmp.gap.toExponential(3)}, against populations of order one`),
+          `${fmtSig(D.cmp.gap, 4)}, against populations of order one`),
         m0 ? drvStep('a daughter\'s maximum, located two ways',
           `${dv('N')}ₖ maximal &nbsp;&nbsp;versus&nbsp;&nbsp; λₖ₋₁${dv('N')}ₖ₋₁ ${dop('=')} λₖ${dv('N')}ₖ`,
           `${ncTime(m0.tMax)} against ${m0.tBal === null ? 'no bracket found' : ncTime(m0.tBal)}`)
@@ -656,7 +656,7 @@ STAGES.ncDecay = {
           'At a maximum the function is flat, so a change of ε in the position costs only ε² in the value, and no search can pin the position better than about the square root of machine precision — a hundred-millionth. The activity balance is a root, where the function crosses steeply, and it is pinned to the last digit. That the two agree to the accuracy the weaker one allows is the theorem holding; expecting better would be expecting arithmetic that does not exist.'),
         drvStep('and the equilibrium ratio the chain settles into',
           `${dfrac(dv('A') + 'ₖ', dv('A') + '₁')} ${dop('→')} ∏ᵢ ${dfrac('λᵢ', 'λᵢ − λ₁')}`,
-          D.eq.ok ? `predicted ${n(D.eq.rows[D.eq.rows.length - 1].pred)}, measured to within ${D.eq.off.toExponential(2)}`
+          D.eq.ok ? `predicted ${n(D.eq.rows[D.eq.rows.length - 1].pred)}, measured to within ${fmtSig(D.eq.off, 3)}`
                   : 'not reached — ' + D.eq.why)
       ],
       note:'Secular equilibrium is not a separate rule. It is what that product becomes when the head is much the longest-lived, and the panel shows the product\'s own distance from one so the approximation can be seen rather than invoked.'
@@ -712,9 +712,9 @@ STAGES.ncDecay = {
     const M = D.P.members, C = D.cmp;
     const gapOk = C.rel < 1e-6;
     return `<div class="card tight"><div class="ttl">Your chain, ${M.length} members</div>
-      ${M.map((m, i) => kv(m.name, m.stable ? 'stable' : ncTime(m.half) + '  (λ = ' + m.lam.toExponential(3) + ' s⁻¹)')).join('')}
-      ${kv('rates span', (Math.max.apply(null, D.L.filter(l => l > 0)) /
-                          Math.min.apply(null, D.L.filter(l => l > 0))).toExponential(2) + '×')}
+      ${M.map((m, i) => kv(m.name, m.stable ? 'stable' : ncTime(m.half) + '  (λ = ' + fmtSig(m.lam, 4) + ' s⁻¹)')).join('')}
+      ${kv('rates span', fmtSig(Math.max.apply(null, D.L.filter(l => l > 0)) /
+                                Math.min.apply(null, D.L.filter(l => l > 0)), 3) + '×')}
       <p class="help">That span is the whole difficulty. A method with a fixed step has to resolve the
       fastest member and then keep going until the slowest one is finished, and the ratio above is how
       many steps that would take.</p>
@@ -722,7 +722,7 @@ STAGES.ncDecay = {
     <div class="card tight"><div class="ttl">Two solutions, differenced</div>
       ${kv('sampled at', ncTime(D.tm))}
       ${M.map((m, i) => kv(m.name, n(C.closed[i], 8) + '  vs  ' + n(C.numeric[i], 8))).join('')}
-      ${kv('worst disagreement', C.gap.toExponential(3) + '  (' + C.rel.toExponential(3) + ' relative)')}
+      ${kv('worst disagreement', fmtSig(C.gap, 4) + '  (' + fmtSig(C.rel, 4) + ' relative)')}
       ${kv('stepped with', C.steps + ' steps')}
       ${kv('order, by halving h', Number.isFinite(C.order) ? n(C.order, 4) + '  (error fell ' + n(C.ratio, 3) + '× for half the step)' : 'below what this chain can resolve')}
       ${kv('Σ N closed form', n(C.sumClosed, 12))}
@@ -743,11 +743,11 @@ STAGES.ncDecay = {
     </div>
     <div class="card tight"><div class="ttl">Where each daughter peaks</div>
       ${D.maxima.length ? D.maxima.map(m => kv(M[m.k].name,
-          ncTime(m.t) + '  at N = ' + m.N.toExponential(4))).join('') +
+          ncTime(m.t) + '  at N = ' + fmtSig(m.N, 5))).join('') +
         D.maxima.map(m => kv(M[m.k].name + ': two routes agree to',
-          Number.isFinite(m.rel) ? m.rel.toExponential(2) + ' of the time itself' : 'no bracket — the peak is outside the window')).join('') +
+          Number.isFinite(m.rel) ? fmtSig(m.rel, 3) + ' of the time itself' : 'no bracket — the peak is outside the window')).join('') +
         D.maxima.map(m => kv(M[m.k].name + ': activities there',
-          m.actIn.toExponential(6) + '  vs  ' + m.actOut.toExponential(6))).join('')
+          fmtSig(m.actIn, 7) + '  vs  ' + fmtSig(m.actOut, 7))).join('')
         : kv('', 'no member of this chain has an interior maximum')}
       <p class="help">${D.maxima.length
         ? 'Each time above is found <b>twice</b>: once by maximising that member\'s population, which knows nothing about activities, and once by solving λ<sub>k−1</sub>N<sub>k−1</sub> = λ<sub>k</sub>N<sub>k</sub>, which knows nothing about maxima. They agree only because a daughter really is at its fullest when production and decay balance. The agreement stops at about 10⁻⁸ for a reason worth knowing: a maximum is flat, so its <i>position</i> can never be pinned better than the square root of machine precision, however good the arithmetic.'
@@ -758,9 +758,9 @@ STAGES.ncDecay = {
         ? kv('measured at', ncTime(D.eq.t)) +
           D.eq.rows.map(r => kv(M[r.k].name + ' ÷ ' + M[0].name,
             n(r.ratio, 8) + '   predicted ' + n(r.pred, 8))).join('') +
-          kv('worst departure', D.eq.off.toExponential(2)) +
+          kv('worst departure', fmtSig(D.eq.off, 3)) +
           kv('distance from secular', n(D.eq.secular, 6)) +
-          kv('λ₁ ÷ slowest daughter', D.eq.mu.toExponential(3))
+          kv('λ₁ ÷ slowest daughter', fmtSig(D.eq.mu, 4))
         : kv('no equilibrium', D.eq.why)}
       <p class="help">${D.eq.ok
         ? 'Late in a chain\'s life every activity ratio stops changing, and settles at ∏λ<sub>i</sub>/(λ<sub>i</sub> − λ<sub>1</sub>). ' + (D.eq.holds
@@ -774,7 +774,7 @@ STAGES.ncDecay = {
       const D = STAGES.ncDecay.chainOf(st);
       if(!D.ok) return `<div class="k">your chain</div><div style="color:var(--c-neg)">cannot be read</div>`;
       return `<div class="k">your chain, ${D.P.members.length} members</div>
-        <div>two routes agree to ${D.cmp.rel.toExponential(1)}</div>
+        <div>two routes agree to ${fmtSig(D.cmp.rel, 2)}</div>
         <div>${D.eq.ok && D.eq.holds ? 'secular equilibrium' : (D.eq.ok ? 'transient equilibrium' : 'no equilibrium')}</div>`;
     }
     return `<div class="k">${esc(NC_DECAYS[st.i].s)}</div><div>${fmtNum(100 * Math.pow(0.5, st.t), 1)}% remaining</div>`;
@@ -787,7 +787,7 @@ STAGES.ncDecay = {
    a wall that never comes back down has no outer turning point and no
    half-life, and `Infinity` must never reach a readout. */
 const ncBarNum = (v, d) => Number.isFinite(v) ? fmtNum(v, d === undefined ? 5 : d) : 'not defined here';
-const ncBarExp = (v, d) => Number.isFinite(v) ? v.toExponential(d === undefined ? 3 : d) : 'not defined here';
+const ncBarExp = (v, d) => Number.isFinite(v) ? fmtSig(v, (d === undefined ? 3 : d) + 1) : 'not defined here';
 /* a half-life given as its base-ten logarithm, because a typed barrier can put
    it past 10³⁰⁰ where the number itself no longer exists in double precision */
 function ncBarHalf(L){
@@ -1168,12 +1168,12 @@ STAGES.ncBarrier = {
           `G = ${n(G.G)}`),
         drvStep('and the transmission probability is its exponential',
           `${dv('T')} ${dop('=')} ${dop('e')}^(−2${dv('G')})`,
-          `T = ${G.T < 1e-4 ? G.T.toExponential(3).replace('e', ' × 10^').replace('+', '') : n(G.T)}`),
+          `T = ${G.T < 1e-4 ? fmtSig(G.T, 4) : n(G.T)}`),
         drvSay('where the twenty-four orders of magnitude come from',
           'G sits in an exponent and depends on energy roughly as 1/√E. Change E from 4 to 9 MeV — a factor of about two — and G falls by a factor of a few; but because it is exponentiated, T rises by twenty-odd powers of ten. That is the Geiger–Nuttall law: plot log T½ against 1/√E for any α emitter and the points fall on a straight line, across a range of lifetimes running from microseconds to longer than the age of the universe.'),
         drvStep('the half-life follows from how often it tries',
           `${dv('T')}½ ${dop('≈')} ${dfrac('ln 2', dv('f'))}${dop('·')}${dfrac('1', dv('T'))}`,
-          `f = v/2R = ${H0.F.f.toExponential(3)} per second — computed from the well, not assumed; times T gives ${ncTime(H0.half)}`),         drvSay('and the estimate has to answer to measurement',           'The readout scores this against nine real α emitters whose measured half-lives span twenty-four orders of magnitude. The model tracks them to within a couple of orders throughout: it gets the slope essentially right and the absolute normalisation only roughly, because it assumes a spherical parent, no angular momentum carried off, and a WKB barrier. That is what should be claimed for it, and no more.')
+          `f = v/2R = ${fmtSig(H0.F.f, 4)} per second — computed from the well, not assumed; times T gives ${ncTime(H0.half)}`),         drvSay('and the estimate has to answer to measurement',           'The readout scores this against nine real α emitters whose measured half-lives span twenty-four orders of magnitude. The model tracks them to within a couple of orders throughout: it gets the slope essentially right and the absolute normalisation only roughly, because it assumes a spherical parent, no angular momentum carried off, and a WKB barrier. That is what should be claimed for it, and no more.')
       ],
       note:'This was Gamow\'s 1928 calculation, and it was the first application of quantum mechanics to the nucleus. It explained a correlation that had been a complete mystery for twenty years — and it did it with a barrier, an exponential, and no adjustable parameters.'
     };
@@ -1290,9 +1290,9 @@ STAGES.ncBarrier = {
     </div>
     <div class="card tight"><div class="ttl">Tunnelling</div>
       ${kv('Gamow factor G', n(G.G))}
-      ${kv('transmission per attempt', G.T < 1e-4 ? G.T.toExponential(4) : n(G.T))}
+      ${kv('transmission per attempt', G.T < 1e-4 ? fmtSig(G.T, 5) : n(G.T))}
       ${kv('speed inside the well', n(H.F.v / 1e7) + ' × 10⁷ m/s')}
-      ${kv('attempts per second', H.F.f.toExponential(4))}
+      ${kv('attempts per second', fmtSig(H.F.f, 5))}
       ${kv('estimated half-life', half > 1e30 ? 'far longer than the universe' : ncTime(half))}
       <p class="help">The assault frequency is <b>computed, not quoted</b>: inside the well the α has
       kinetic energy Q + ${NC_WELL} MeV, which gives it a speed, and it crosses the nucleus and
