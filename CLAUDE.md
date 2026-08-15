@@ -86,7 +86,11 @@ falls by 2^p, round-off does not move.
    scope means a single stray character takes the whole app down, and the unit
    suite only sees the engine section (10-49) and would not notice. Then
    `./runtests.ps1` must print `0 failed`
-   (4290 unit tests). For anything touching demos or the UI, `./runall.ps1` must end
+   (4290 unit tests), and `./runstagetests.ps1` must print `0 failed` — it calls
+   stage helpers **directly** inside the booted bundle, which is the only way the
+   stages' own arithmetic (modules ≥ 50, invisible to `runtests`) is tested; a
+   stage defect class fixed adds its two-route test to `tests-stages.js` the
+   same day. For anything touching demos or the UI, `./runall.ps1` must end
    `caught=0 OK` — it takes ~18 minutes, so run it in the background — and
    `./auditcustom.ps1` must end `bad=0 OK`, because `runall` never selects the
    "type your own" option and so never exercises that path at all.

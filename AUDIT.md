@@ -4723,3 +4723,51 @@ Gates on the final build: `build` 231 modules · `smoke` OK · `runtests`
 presetgap 0/0 OK** · `auditresid` **findings=0** noscale=7 · `auditcustom`
 **bad=0 OK** · `auditclaims` 249 **bad=0 OK** · `auditpanel` **bad=0** ·
 `auditframe` cut=3 all allowed **OK** · `runall` demos=593 **caught=0 OK**.
+
+
+## 2026-08-15 — D3 built: the stage-level two-route suite, red on its first run
+
+Programme D item 3, the last open verification item. `runtests.ps1` extracts
+modules 21–49 only, so none of the 178 stages' own arithmetic was unit-tested —
+the blind spot `igTriple`'s 471% tetrahedron shipped through. New
+**`./runstagetests.ps1`** wraps the real built bundle in headless Chrome and
+runs **`tests-stages.js`** inside it: direct calls to stage helpers with
+synthetic states, no DOM driving, no rendered-text regex. The membership rule
+is MASTER-PLAN §3.4's own: helpers with **two routes to the same answer**,
+tolerances set from each route's measured error, never guessed.
+
+**The seed corpus, 41 assertions:** `igTriple.volume` — every preset through
+every route it offers plus the typed paraboloid by Cartesian, cylindrical and
+Monte-Carlo-within-4σ routes; `odNonhom.yp` substituted back into its own
+equation for all four guessable forcings, and pinned to `null` for custom and
+homogeneous (the fallthrough class); `laLSQ.fit` — residual ⊥ every design
+column **and** unimprovability (nudging any coefficient must raise the rss —
+a second route that knows nothing about normal equations); `rlOrbit.setup` —
+every preset bound, second perihelion reached, mercury landing on the
+first-order formula; the three `dfHarmonic` mean-value cases; `agCur`'s
+bisection branch pinned to −1.559 so the auditsides whitelist entry stays
+true. Plus an **in-run corrupt control**: the pre-fix box clip is recomputed
+every run and the suite must see its 0.24% disagreement, so a run that cannot
+fail is itself a failure.
+
+**Its first run was red for a real reason, which is the whole argument for the
+gate.** `rlOrbit` at the ISCO preset: the readout integrated φ ≤ 4π, but this
+close to the separatrix the apsidal angle grows without bound and the second
+perihelion lay outside the span — so a **bound zoom–whirl orbit** fell into
+the branch written for a plunge and the panel said "the star spirals in",
+which is false. The readout now integrates to 16π and names three cases
+honestly: a rosette (number printed), a whirl ("more than 8 revolutions
+between perihelia — the zoom–whirl regime"), and a genuine plunge (no L makes
+both apsides turning points). The suite asserts all three presets reach a
+second perihelion inside 16π.
+
+With this, **Programme D is closed** — items 1 (auditclaims), 2 (auditsides,
+both ratchets 0) and 3 (this) — and what survives is the standing rule: a
+stage defect class fixed adds its two-route test to `tests-stages.js` the same
+day, and a new wing's two-route helpers get tests as they are written.
+
+Gates: `build` 231 modules · `smoke` OK · `runstagetests` **41 passed, 0
+failed OK** (first run 40/1, the real ISCO finding above) · `runtests` **4290
+passed, 0 failed** · `auditsides` falsescale 0/0 presetgap 0/0 **OK** ·
+`auditresid` **findings=0** · `runall` demos=593 **caught=0 OK** · `auditdocs`
+**bad=0 OK** (29 scripts, all described).

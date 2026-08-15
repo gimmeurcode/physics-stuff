@@ -440,10 +440,16 @@ STAGES.rlOrbit = {
     const S = this.setup(st);
     const L = S.L;
     const rs = grRs(S.GM);
+    /* the span must be generous: near the ISCO the apsidal angle grows without
+       bound as the orbit approaches the separatrix, and a span of 4π missed
+       the second perihelion at the ISCO preset — which then read as a plunge.
+       16π finds it for everything the presets reach; past that the honest
+       message is "whirl", not "unbound". */
     const res = Number.isFinite(L)
-      ? grOrbitIntegrate(S.GM, L, 1 / (S.a * (1 + S.e)), 0, 2 * Math.PI / 4000, 8000, true)
+      ? grOrbitIntegrate(S.GM, L, 1 / (S.a * (1 + S.e)), 0, 2 * Math.PI / 4000, 32000, true)
       : null;
     const measured = res ? grPeriapsisAngle(res) - 2 * Math.PI : NaN;
+    const whirl = res && !Number.isFinite(measured);
     const formula = grPrecessionPerOrbit(S.GM, S.a, S.e);
     const rp = S.a * (1 - S.e);
     /* Two different claims share this card and must not share a verdict row.
@@ -454,7 +460,8 @@ STAGES.rlOrbit = {
        in its own label rather than posing as a failed agreement. */
     const strongField = !S.P;
     const diffRow = !Number.isFinite(measured)
-      ? kv('difference', 'no perihelion to measure — see below')
+      ? kv('difference', whirl ? 'no single number — the orbit whirls (see below)'
+                               : 'no perihelion to measure — see below')
       : strongField
       ? kv('difference — beyond first order', fmtAgree(measured, formula, 'rad/orbit'))
       : kv('difference', fmtAgree(measured, formula, 'rad/orbit'));
@@ -471,7 +478,8 @@ STAGES.rlOrbit = {
     <div class="card tight"><div class="ttl">How much it turns</div>
       ${kv('integrated from the geodesic', Number.isFinite(measured)
         ? fmtNum(measured, 6) + ' rad/orbit'
-        : 'no bound orbit — the star spirals in')}
+        : whirl ? 'more than 8 revolutions between perihelia'
+                : 'no bound orbit — the star spirals in')}
       ${kv('6πGM/(c²a(1−e²))', fmtNum(formula, 6) + ' rad/orbit')}
       ${diffRow}
       ${Number.isFinite(measured) ? kv('in arcseconds per orbit', fmtNum(measured * ARCSEC, 6) + '″') : ''}
@@ -481,7 +489,9 @@ STAGES.rlOrbit = {
       <p class="help">${S.P
         ? 'The closed-form prediction and the integrated orbit agree to a fraction of a percent, which is the correct behaviour: the formula is the first term of an expansion in GM/c²r, and here that ratio is ' + fmtNum(S.GM / (C2 * rp), 3) + '. Le Verrier found the 43″ discrepancy in 1859 and proposed a planet, Vulcan, to account for it; people reported seeing it. Einstein computed this number in November 1915 and wrote that it gave him palpitations. It is the only classical test that was a <i>retrodiction</i> — the measurement was already on the table, with no free parameters left to adjust.'
         : !Number.isFinite(measured)
-        ? 'There is no bound orbit with these apsides: this close to the horizon, no angular momentum makes both a(1−e) and a(1+e) turning points — the centrifugal barrier the pericentre needed does not exist, and the star spirals in. That is not a failure of the integrator; it is the physics that gives the ISCO its name. Lower the eccentricity, or move the star further out, and the orbit closes into a rosette again.'
+        ? (whirl
+          ? 'The orbit is bound, but between one perihelion and the next it circles the hole more than eight times: this close to the separatrix the apsidal angle grows without bound, which is the zoom–whirl regime gravitational-wave modellers have to resum. A "precession per orbit" stops being a useful number before it stops being finite. Move the star out or lower the eccentricity and the rosette becomes countable again.'
+          : 'There is no bound orbit with these apsides: this close to the horizon, no angular momentum makes both a(1−e) and a(1+e) turning points — the centrifugal barrier the pericentre needed does not exist, and the star spirals in. That is not a failure of the integrator; it is the physics that gives the ISCO its name. Lower the eccentricity, or move the star further out, and the orbit closes into a rosette again.')
         : 'This close in, the "correction" is not a correction: the orbit is a rosette, the closed-form first-order formula is well outside its range of validity, and the difference between the integrated answer and the formula is large and honest — it is the next orders of the expansion in GM/c²r, which at this pericentre is ' + fmtNum(S.GM / (C2 * rp), 3) + '. Below the ISCO at 3 rs there are no bound circular orbits at all — the effective potential loses its minimum, and anything that drifts inside falls in.'}</p>
     </div>
     <div class="card tight"><div class="ttl">Why it precesses at all</div>

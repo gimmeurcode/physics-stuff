@@ -54,13 +54,15 @@ artifact is published and gated (§3.9); the website half is one hosting setting
 away, which needs a human. Permalink: `#w=…&d=…&c.<id>=…`, 593 of 593 round
 trips exact, gated by `./auditlink.ps1` (§3.6).
 
-**The next work in order is verification item D3 (stage-level two-route
-tests), then the EM and atom scenario editors, then syllabus gaps B1–B4.**
-D2 closed 2026-08-15: all nine PRESET-GAP rows attributed, six fixed and three
-whitelisted with their mathematics, both `auditsides` ratchets at **0**
-(§3.4; `AUDIT.md` same date has the fixes). D3 leads because it multiplies
-everything after it and must land before Programme C's 22 wings reproduce the
-same class of defect at scale. Note what the permalink cost and returned: it
+**The next work in order is Programme A's EM and atom scenario editors (6
+stages, machinery exists), then syllabus gaps B1–B4, then Programme A
+relativity.** Programme D closed 2026-08-15: D2's nine PRESET-GAP rows all
+attributed (six fixed, three whitelisted with their mathematics, both
+`auditsides` ratchets at **0**), and D3's stage-level suite is built and
+gated — `./runstagetests.ps1`, 41 assertions calling stage helpers directly,
+first run red for a real reason. §3.4 has both records; `AUDIT.md` same date
+has the fixes. The standing rule that keeps D3 alive: every stage defect class
+fixed adds its two-route test to `tests-stages.js` the same day. Note what the permalink cost and returned: it
 touched no stage and fixed **six defects in code it did not own**, every one
 invisible to the 22 gates that existed. §4.3a rule 8 is the generalisation.
 
@@ -100,7 +102,7 @@ given so the next session can re-measure rather than trust.
 | experiments driving a canvas stage | **508** | same (the other 85 drive the field pipeline) |
 | canvas stages | **178** | `./smoke.ps1` → `stages=178`; `./measure.ps1` confirms `unreachablestages=none` |
 | source modules | **231** | `./build.ps1` |
-| harness scripts | **27** | `Get-ChildItem *.ps1`. Every one must appear in §1.6 and §4.2 — `./auditdocs.ps1` checks |
+| harness scripts | **29** | `Get-ChildItem *.ps1` (re-measured 2026-08-15). Every one must appear in §1.6 and §4.2 — `./auditdocs.ps1` checks |
 | deployable size | **5 409 933 bytes** (5.41 MB / 5.16 MiB) | `./measure.ps1`. **`build.ps1` prints a smaller figure, which is a CHARACTER count** — the Unicode maths symbols cost ~57 KB more as UTF-8 bytes. Both are far inside any upload limit. **A fresh `git clone` builds ~15.6 KB smaller**: `.gitattributes` normalises line endings to LF and 54 of the source files carried CRLF when this was measured, which is 15 627 carriage returns. The app is identical — but this is why the row says *measure*, not *quote* |
 | source lines | ~77 044 (all of `src/`) | `./measure.ps1`; `./map.ps1` reports `src/js` alone |
 | unit tests | **4290 passed, 0 failed** | `./runtests.ps1` (re-measured 2026-08-15) |
@@ -276,10 +278,11 @@ no author's function to replace; the "r(θ) region" slot went instead to
 
 ## 1.6 The verification harness
 
-**28 scripts** (`Get-ChildItem *.ps1` — **that command is the authority, not this
+**29 scripts** (`Get-ChildItem *.ps1` — **that command is the authority, not this
 number**; the table below listed 23 until 2026-08-14, when `auditmarks` and
 `auditresid` turned out to have been missing from it since they were written, and
-the "nine" the line claimed before that was wrong for far longer). What matters
+the "nine" the line claimed before that was wrong for far longer;
+`runstagetests` joined 2026-08-15). What matters
 is **what each one can see that the others cannot** — every one of them exists
 because something shipped through a blind spot. `./auditdocs.ps1` now fails if a
 script exists that this table does not describe.
@@ -291,6 +294,7 @@ script exists that this table does not describe.
 | `measure.ps1` | ~15 s | *(the Part 0 table)* | the headline counts, **from the booted app** — wings, groups, experiments, stage-driven vs field, and any stage no demo reaches. Static greps over `src/` for the group count return 89 or 105 depending on the pattern; the app says 118. Also the artifact's real **byte** size, which `build.ps1` does not print |
 | `smoke.ps1` | ~10 s | `smoke OK` | whether the bundle **parses and boots at all**; nav/home/`NAV_GROUP_OF` agreement; every stage carries all nine methods; all 80 see-links resolve; `ctText` argument shifts; **markup inside canvas text**, which the canvas draws as its own tags and nothing else can see |
 | `runtests.ps1` | ~30 s | `0 failed` | engine arithmetic (modules 21–49 only) |
+| `runstagetests.ps1` | ~30 s | `===STAGETESTS=== N passed, 0 failed` / `runstagetests OK` | **the stages' own arithmetic, called directly** — the corpus in `tests-stages.js` runs inside the booted bundle and asserts two-route agreements on stage helpers with synthetic states (`igTriple.volume` by three routes, `odNonhom.yp` substituted back into its equation, `laLSQ.fit`'s orthogonality *and* unimprovability, `rlOrbit.setup`'s bound orbits, the dfHarmonic mean-value cases, `agCur`'s branch). Built 2026-08-15 as Programme D item 3; tolerances come from each route's measured error, it carries the pre-fix box clip as an in-run corrupt control, and **its first run failed for a real reason** — the ISCO preset's second perihelion lay outside a 4π integration span and the readout called a bound zoom–whirl orbit a plunge. The corpus grows by standing rule: every stage defect class fixed adds its test here the same day |
 | `runall.ps1` | ~18 min | `caught=0 OK` | every demo × every control actually runs; greps prose for `undefined`/`NaN`/`Infinity` |
 | `auditcustom.ps1` | ~1 min | `bad=0 OK` | the **"type your own" path**, which `runall` never selects. Drives textareas from their `data-audit` attribute |
 | `auditartifact.ps1` | ~1 min | `bad=0` | whether the app survives being **published as a Claude artifact** — nested inside the host's own document, in all three viewer-theme states including the *system* one that stamps no `data-theme` at all. Reads the theme back two ways, the CSS token **and** the array the canvas paints with, because a toggle that moved one and not the other would repaint every picture for the wrong theme |
@@ -315,11 +319,14 @@ script exists that this table does not describe.
 | `map.ps1` | ~2 s | *(a count)* | regenerates `MAP.md`, the index of every module, stage and wing. Run it after adding or renaming a file, **or after adding a top-level function** — the index lists what each module defines |
 | `clean.ps1` | ~2 s | — | deletes everything the above regenerate |
 
-**Two blind spots are known and unfixed**, and are the reason Programme D exists:
+**One blind spot is known and unfixed:**
 
-1. `runtests.ps1` extracts only modules 21–49, so **none of the 178 stages' own
-   arithmetic is unit-tested**. `runall` proves they run without proving they are
-   right.
+1. ~~`runtests.ps1` extracts only modules 21–49, so none of the 178 stages' own
+   arithmetic is unit-tested.~~ **Covered 2026-08-15 by `./runstagetests.ps1`**
+   (Programme D item 3): the suite in `tests-stages.js` calls stage helpers
+   directly inside the booted bundle. The *corpus* is seeded, not exhaustive —
+   it grows by the standing rule that every stage defect class fixed adds its
+   test the same day — so `runall` still proves the rest merely runs.
 2. `auditderive.ps1` sees only the ladder a stage builds in its **default**
    state, so a `derive()` with more than one return needs reading by hand.
 
@@ -1275,8 +1282,14 @@ Three pieces of infrastructure would have caught most of the fourteen:
    bounds, a switch with no default. The gate found them by *rendering* what the
    reader sees on a preset combination nothing else visits; none would have been
    caught by making the arithmetic more accurate.
-3. **Stage-level unit tests.** `runtests.ps1` extracts only 21–49, so none of the
-   178 stages' arithmetic is tested. The numeric Fourier path had zero tests,
+3. ~~**Stage-level unit tests.**~~ **HARNESS BUILT 2026-08-15 —
+   `./runstagetests.ps1` + `tests-stages.js`, 41 assertions, `0 failed`, and
+   its first run failed for a real reason** (the ISCO preset's zoom–whirl
+   orbit was being called a plunge — a third case the readout now names). The
+   corpus is seeded on the two-route helpers this programme's own defects came
+   from and grows by standing rule: every stage defect class fixed adds its
+   test the same day. `runtests.ps1` extracts only 21–49, so none of the
+   178 stages' arithmetic was tested. The numeric Fourier path had zero tests,
    which is exactly why a factor of two lived in it.
 
    **The case for this is now concrete rather than theoretical.** On 2026-08-15
@@ -1745,6 +1758,7 @@ Then, matched to what you touched:
 | you changed | also run |
 |---|---|
 | an engine (21–49) | `./runtests.ps1` |
+| **a stage's own arithmetic** — a helper on a `STAGES.*` object, or any stage code with two routes to one answer | `./runstagetests.ps1` — the only gate that calls stage helpers **directly** with synthetic states; `runtests` cannot see modules ≥ 50 and `auditsides` only reads what the panels render |
 | **anything that changes a count** — a wing, a demo, a stage, a module, a test, a script | `./auditdocs.ps1`, and fix the documents it names. **This is not optional and not a tidy-up afterwards** — see §4.4 |
 | **anything printing a difference, a residual or a gap** — in a readout, a chip, a **derive rung**, a legend, or a **`*Own` reader-supplied panel**, all five of which it reads | `./auditresid.ps1` |
 | **a preset table, a theorem stage, or either route into a two-route comparison** | `./auditsides.ps1` — `auditresid` checks a difference is printed with its scale; this one checks the two routes actually **agree**, over the whole preset product |
@@ -1808,13 +1822,12 @@ is sequenced by *what makes the next piece of work cheaper*, not by subject.
    works, which is how every later piece of work gets demonstrated and reported.
    It also found six defects in code that had nothing to do with it — see
    `AUDIT.md`; the lesson is in §4.3a rule 8.
-5. **Programme D item 3** — stage-level two-route tests. Items 1 and 2 are
-   done (item 2 closed 2026-08-15 with both `auditsides` ratchets at 0). This
-   still multiplies everything after it, and it must land **before Programme
-   C**, or 22 new wings reproduce the same class of defect at scale. Build it
-   the way §3.4 item 3 says: target the stage helpers with **two routes to the
-   same answer**, where a test can assert agreement without knowing which is
-   right.
+5. ~~**Programme D items 2 and 3**~~ — **DONE 2026-08-15.** D2: all rows
+   attributed, both ratchets at 0. D3: `./runstagetests.ps1` +
+   `tests-stages.js` built and gated (§3.4 item 3). What survives of D is a
+   standing rule, not a queue item: **a stage defect class fixed adds its
+   two-route test to `tests-stages.js` the same day**, and a new wing's stage
+   helpers with two routes get tests as they are written.
 6. **Programme A, EM and atom** (6 stages) — the machinery already exists, so
    these are the cheapest scenario editors left.
 7. **Programme B items 1–4** — small, inside wings that already exist, and found
