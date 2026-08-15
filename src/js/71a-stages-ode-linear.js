@@ -326,6 +326,19 @@ STAGES.odNonhom = {
       const A = 3 / den;
       return t => A * Math.exp(r * t);
     }
+    /* UNDETERMINED COEFFICIENTS APPLIES TO A FINITE FAMILY, AND NOTHING ELSE.
+       This fell through to the cosine branch for any forcing not named above —
+       so a reader's own g(t) was answered with the particular solution of
+       2cos(ωt), a different equation entirely. The panel then plotted it,
+       called it y_p, and printed a residual of 2.37 under prose promising the
+       substitution vanishes to machine precision. Returning null is what the
+       derivation ladder on this very stage already says: "undetermined
+       coefficients works only for forcings whose derivatives stay in a finite
+       family... variation of parameters works for any g", and that route is
+       computed in the card below and is valid here.
+       Written as an explicit test for `cosine` rather than a fallthrough, so a
+       forcing added to OD_FORCINGS later gets no y_p instead of the wrong one. */
+    if(st.forcing !== 'cosine') return null;
     const D = odDrivenResponse(a, b, c, 2, st.w);
     return t => D.amp * Math.cos(st.w * t - D.delta);
   },
@@ -401,10 +414,21 @@ STAGES.odNonhom = {
     return `<div class="card tight"><div class="ttl">Undetermined coefficients</div>
       ${kv('forcing g(t)', odForcingCur(st).name.replace('g(t) = ', ''))}
       ${kv('the guess', st.forcing === 'const_' ? 'y_p = A' : st.forcing === 'poly' ? 'y_p = At + B'
-        : st.forcing === 'expo' ? 'y_p = Ae^(−0.5t)' : st.forcing === 'cosine' ? 'y_p = A cos ωt + B sin ωt' : '—')}
-      ${yp ? kv('y_p(0)', fmtNum(yp(0), 6)) : kv('y_p', 'none needed — the equation is homogeneous')}
+        : st.forcing === 'expo' ? 'y_p = Ae^(−0.5t)' : st.forcing === 'cosine' ? 'y_p = A cos ωt + B sin ωt'
+        : st.forcing === 'none' ? 'none — nothing to match' : 'there is no finite family to guess from')}
+      ${yp ? kv('y_p(0)', fmtNum(yp(0), 6))
+           : kv('y_p', st.forcing === 'none'
+                 ? 'none needed — the equation is homogeneous'
+                 : 'no guess fits this forcing')}
       ${yp ? kv('y_p(5)', fmtNum(yp(5), 6)) : ''}
       ${yp ? kv('residual  |a y_p″ + b y_p′ + c y_p − g|', fmtGap(worst, worstScale)) : ''}
+      ${yp || st.forcing === 'none' ? '' : `<p class="help"><b>Undetermined coefficients does not apply
+      here.</b> The method needs a forcing whose derivatives stay inside a finite family — a polynomial,
+      an exponential, a sine — so that a guess carrying a few unknown constants can close on itself. An
+      arbitrary g(t) has no such family, so there is no guess to make. <b>That is not a gap in the
+      laboratory; it is the reason the next method exists.</b> Variation of parameters, in the card below,
+      needs no guess at all and handles any continuous g — at the cost of two integrals that may not be
+      elementary. Its answer is computed there and checked against the numerical solution.</p>`}
       <p class="help">The residual is computed by substituting the proposed y_p back into the equation
       numerically, and it is quoted against the largest term in that sum — a bare residual says nothing,
       because whether 10⁻⁶ is zero depends entirely on what it sits beside. It vanishes to the resolution

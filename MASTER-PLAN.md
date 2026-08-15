@@ -1229,11 +1229,21 @@ Three pieces of infrastructure would have caught most of the fourteen:
    integrator's truncation error, now named in the prose beside it.
 
    **Attributed and fixed the same day:** `igTriple` (see item 3 below — 471%
-   wrong on the tetrahedron, NaN on the box, both reachable by a reader).
-   **Still open:** `odNonhom` at `odNF=custom`, residual 2.37 against the claim
-   that substituting y_p back into the equation gives zero to machine precision.
-   The custom forcing has no source string set at entry, so what `y_p` even is
-   there needs establishing first. Not guessed at.
+   wrong on the tetrahedron, NaN on the box, both reachable by a reader), and
+   **`odNonhom`**, whose `yp()` tested four forcings and then **fell through to
+   the cosine branch for everything else** — so a reader's own g(t) was answered
+   with the particular solution of 2cos(ωt), a different equation, plotted and
+   labelled y_p. The residual of 2.37 was the honest measurement of a wrong
+   function. It returns null now, and the panel says undetermined coefficients
+   does not apply and points at variation of parameters in the next card, which
+   needs no guess and is already computed there. **A wrong number became the
+   reason the next method exists.** `presetgap` 14 → 13, baseline tightened.
+
+   **Three of the four chased so far were fallthrough or scope bugs, not
+   numerics** — a clip that tested one coordinate, a branch that read the wrong
+   bounds, a switch with no default. The gate found them by *rendering* what the
+   reader sees on a preset combination nothing else visits; none would have been
+   caught by making the arithmetic more accurate.
 3. **Stage-level unit tests.** `runtests.ps1` extracts only 21–49, so none of the
    178 stages' arithmetic is tested. The numeric Fourier path had zero tests,
    which is exactly why a factor of two lived in it.

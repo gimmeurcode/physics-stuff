@@ -359,7 +359,7 @@ $rep = $dom.Substring($a, $b - $a).Replace('&lt;','<').Replace('&gt;','>').Repla
 # LOWER THESE as they are cleared -- a baseline that is never tightened is a
 # backlog with a nice name.
 $BASE_FALSE  = 0
-$BASE_PRESET = 14
+$BASE_PRESET = 13
 
 $false_ = -1; $preset = -1
 foreach ($line in ($rep -split "`n")) {

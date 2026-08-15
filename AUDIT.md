@@ -4500,3 +4500,37 @@ what the early residual is and where it settles.
 Gates: `build` 231 modules · `smoke` OK · `runtests` **4261 passed, 0 failed** ·
 `auditsides` falsescale=0 presetgap=14 **OK** · `auditclaims` 249 claims
 **bad=0 OK** · `auditresid` **findings=0** · `auditcustom` **bad=0 OK**.
+
+## 2026-08-15 — a particular solution that solved a different equation
+
+The last of the `PRESET-GAP` rows worth chasing. `odNonhom` printed a residual
+of **2.37** for `|a y_p″ + b y_p′ + c y_p − g|` at `odNF=custom`, beneath prose
+saying the substitution "should be zero to machine precision".
+
+`yp(st)` tested `none`, `const_`, `poly` and `expo`, and then **fell through**
+to the cosine branch for everything else. So a reader's own g(t) was answered
+with `odDrivenResponse(a, b, c, 2, st.w)` — the particular solution of
+**2cos(ωt)**, a different equation. The panel plotted it, called it y_p, and
+printed the residual of substituting it into an equation it does not solve.
+
+**The fix is to return null, and it is what this stage's own derivation ladder
+already says**: "undetermined coefficients works only for forcings whose
+derivatives stay in a finite family — polynomials, exponentials, sines.
+Variation of parameters works for any g, at the cost of two integrals." That
+second method is computed in the very next card, is valid for an arbitrary g,
+and is checked against the RK4 solution there. So the honest panel says there is
+no guess to make and points at the method that needs none — which turns a wrong
+number into the reason the next section of the syllabus exists.
+
+Written as an explicit `if(st.forcing !== 'cosine') return null` rather than a
+fallthrough, so a forcing added to `OD_FORCINGS` later inherits **no** y_p
+instead of the wrong one. The null branch already existed for the homogeneous
+case and said "none needed — the equation is homogeneous", which is true only
+there; it now distinguishes the two, and the "guess" row no longer offers a
+bare em dash where no guess exists.
+
+`auditsides` presetgap **14 → 13**, and the baseline is tightened to match.
+
+Gates: `build` 231 modules · `smoke` OK · `runtests` **4261 passed, 0 failed** ·
+`auditsides` falsescale=0 presetgap=13 **OK** · `auditresid` **findings=0** ·
+`auditcustom` **bad=0 OK**.
