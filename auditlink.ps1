@@ -422,9 +422,14 @@ setTimeout(function(){
   $coldOut = Join-Path $dir 'apptest-linkcold.html'
   Set-Content -Path $coldOut -Value ($head + $body + $coldProbe) -Encoding utf8
   $coldUrl = 'file:///' + ($coldOut -replace '\\','/') + $link
+  # the SECOND Chrome call in this file, and it needs the same guard as the
+  # first -- the sweep that guarded eighteen scripts stopped at one invocation
+  # per file, so this one and runapp's screenshot pass were left unprotected
+  $ErrorActionPreference = 'Continue'
   & $chrome --headless --disable-gpu --no-sandbox --window-size=1680,1000 --virtual-time-budget=600000 `
             --user-data-dir="$(Join-Path $dir 'cprof-linkcold')" --dump-dom $coldUrl |
     Out-File (Join-Path $dir 'dom-linkcold.txt') -Encoding utf8
+  $ErrorActionPreference = 'Stop'
 
   $crep = Get-Report (Join-Path $dir 'dom-linkcold.txt')
   Write-Output ''

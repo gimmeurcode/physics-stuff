@@ -116,9 +116,14 @@ if ($a -ge 0) {
 # just painted has been composited, which is the other half of the blank-canvas
 # problem the repaint loop above addresses.
 $shot = Join-Path $dir "shot-$Tag.png"
+# the SECOND Chrome call in this file: the screenshot pass. Same guard as the
+# first -- the sweep that guarded eighteen scripts stopped at one invocation per
+# file, and a stderr line here would have thrown away the picture just taken.
+$ErrorActionPreference = 'Continue'
 & $chrome --headless --disable-gpu --no-sandbox --window-size=1680,1000 --virtual-time-budget=9000 `
           --run-all-compositor-stages-before-draw --hide-scrollbars `
           --user-data-dir="$prof" --screenshot="$shot" $url | Out-Null
+$ErrorActionPreference = 'Stop'
 if (Test-Path $shot) { Write-Output "screenshot: $shot" }
 
 
