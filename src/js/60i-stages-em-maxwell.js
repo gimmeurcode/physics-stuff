@@ -516,32 +516,127 @@ STAGES.emFaraday = {
           `∮ ${dv('E')} ${dop('·')} d${dv('r')} ${dop('≠')} 0`,
           'so there is no potential function here — voltage between two points is not well defined'),
         drvSay('which is why "voltage" gets slippery around transformers',
-          'A conservative field has a potential and its loop integral is zero. An induced field does not. Two voltmeters on the same two points of a loop threaded by changing flux can read different values, depending on which way their leads run. That is not a fault in the meters.')
+          'A conservative field has a potential and its loop integral is zero. An induced field does not. Two voltmeters on the same two points of a loop threaded by changing flux can read different values, depending on which way their leads run. That is not a fault in the meters.'),
+        drvSay('and for a fixed loop the law is a theorem of calculus wearing physics',
+          'Hold the loop still and Faraday\'s law says d/dt ∬B·dA = ∬(∂B/∂t)·dA — the Leibniz rule for differentiating under the integral sign. The "type your own B" scene verifies exactly that, on whatever field you write: one route differentiates the flux integral, the other integrates the time derivative, by quadratures sharing no samples, no step and no rule. When the loop moves, the extra motional term ∮(v×B)·dl appears — and that is the magnet scene.')
       ],
       note:'The EMF is computed as the numerical time derivative of the flux integral through the moving loop, and the trace on screen is that computed value. The force on the loop is then obtained from the induced current, so Lenz\'s law appears as a direction rather than as a rule.'
     };
   },
   enter(st, o){
+    st.scene = o.scene || 'magnet';
     st.speed = o.speed !== undefined ? o.speed : 0.9;
     st.R = 1.0; st.mm = 2.2; st.hist = []; st.tt = 0;
+    st.bsrc = o.bsrc || '2.2*sin(1.3*t)*exp(-(x^2+y^2))';
+    st.bfn = this.bBuild(st.bsrc).f;
+  },
+  /* The typed field lives on the loop's own plane: B·n̂ as a function of the
+     plane coordinates x, y and the time t. The parser knows three slots
+     (x, y, z), so t is rewritten onto z before parsing — the pkIndexAst trick —
+     and a literal z in the source is rejected with its own message rather than
+     silently meaning time. */
+  bBuild(s){
+    if(/(?<![A-Za-z])z(?![A-Za-z])/.test(String(s)))
+      throw new Error('the loop plane is x and y, and time is t — there is no z here');
+    const g = compile(parse(String(s).replace(/(?<![A-Za-z])t(?![A-Za-z])/g, 'z')));
+    return { f:(x, y, t) => g(x, y, t) };
   },
   objsAt(st, t){
     const x = -3.4 + (((t * st.speed) % 6.8) + 6.8) % 6.8;
     return [{ kind:'magnet', m:{x:st.mm, y:0, z:0}, p:{x, y:0, z:0}, v:{x:st.speed, y:0, z:0} }];
   },
+  /* ---- the two routes for a typed field, exposed for runstagetests ----
+     Faraday's law for a static loop is the Leibniz rule made physical: the
+     derivative of the integral must equal the integral of the derivative.
+     Route A differentiates OUTSIDE (two flux quadratures at t ± h, midpoint
+     rings); route B differentiates INSIDE (∂B/∂t at every sample point, then
+     a Gauss–Legendre radial quadrature at a different h and node set). The
+     routes share no samples, no step and no rule. */
+  typedFlux(st, t, nr, ns){
+    const R = st.R, NR = nr || 24, NS = ns || 48;
+    let s = 0;
+    for(let i = 0; i < NR; i++){
+      const r = R * (i + 0.5) / NR;
+      let ring = 0;
+      for(let j = 0; j < NS; j++){
+        const th = 2 * Math.PI * (j + 0.5) / NS;
+        const v = st.bfn(r * Math.cos(th), r * Math.sin(th), t);
+        if(Number.isFinite(v)) ring += v;
+      }
+      s += ring / NS * r;
+    }
+    return s * (R / NR) * 2 * Math.PI;
+  },
+  typedEMF(st, t, nr, ns){
+    /* the frame's history plot reads this at display resolution; the readout
+       and the stage tests pass 192 rings, because a COMPARISON deserves a
+       finer grid than a picture — at 24 rings the midpoint rule's own O(h²)
+       truncation (3.1×10⁻⁴ relative, measured) would be the thing compared */
+    const h = 1e-3;
+    return -(this.typedFlux(st, t + h, nr, ns) - this.typedFlux(st, t - h, nr, ns)) / (2 * h);
+  },
+  typedEMFInside(st, t){
+    const h = 2e-3, NS = 64;
+    const ringDeriv = r => {
+      let s = 0;
+      for(let j = 0; j < NS; j++){
+        const th = 2 * Math.PI * (j + 0.5) / NS;
+        const x = r * Math.cos(th), y = r * Math.sin(th);
+        const d = (st.bfn(x, y, t + h) - st.bfn(x, y, t - h)) / (2 * h);
+        if(Number.isFinite(d)) s += d;
+      }
+      return s / NS * 2 * Math.PI * r;
+    };
+    return -nqGauss(ringDeriv, 0, st.R, 5, 6);
+  },
   controls(){
-    return ctlRow('magnet speed', ctlSlider('efV', -1.6, 1.6, 0.05, ST.speed)) +
-      ctlRow('loop radius', ctlSlider('efR', 0.4, 2, 0.05, ST.R)) +
-      ctlRow('moment |m|', ctlSlider('efM', 0.5, 4, 0.1, ST.mm)) +
-      `<p class="help">The magnet sweeps through a fixed loop; the plot tracks Φ_B(t) and the EMF it induces. <b>EMF = −dΦ/dt</b> — the induced voltage is the <i>slope</i> of the flux curve, so it peaks where the flux changes fastest and vanishes at the instant the magnet is centred (maximum flux, zero slope). Set the speed to 0 and everything dies: it is not the field that drives current, it is the <b>change</b>.</p>`;
+    const st = ST;
+    return ctSeg('efS', st.scene, [['magnet', 'a magnet through the loop'], ['own', 'type your own B(x, y, t)']]) +
+      (st.scene === 'own'
+        ? fnHtml('efB', 'B·n̂(x, y, t) =', st.bsrc, 'x and y on the loop plane, t the time') +
+          ctlRow('loop radius', ctlSlider('efR', 0.4, 2, 0.05, st.R)) +
+          `<p class="help">Type any B·n̂ over the loop's plane and Faraday's law is <b>verified as the
+          Leibniz rule</b>: the EMF is computed once as the derivative of the flux integral
+          (differentiate outside) and once as the integral of ∂B/∂t (differentiate inside), by
+          quadratures sharing no samples, no step and no rule. The two agree to the routes' own
+          resolution — or the build is wrong. Make B static (delete the t) and both vanish together:
+          it is not the field that drives current, it is the <b>change</b>.</p>`
+        : ctlRow('magnet speed', ctlSlider('efV', -1.6, 1.6, 0.05, st.speed)) +
+          ctlRow('loop radius', ctlSlider('efR', 0.4, 2, 0.05, st.R)) +
+          ctlRow('moment |m|', ctlSlider('efM', 0.5, 4, 0.1, st.mm)) +
+          `<p class="help">The magnet sweeps through a fixed loop; the plot tracks Φ_B(t) and the EMF it induces. <b>EMF = −dΦ/dt</b> — the induced voltage is the <i>slope</i> of the flux curve, so it peaks where the flux changes fastest and vanishes at the instant the magnet is centred (maximum flux, zero slope). Set the speed to 0 and everything dies: it is not the field that drives current, it is the <b>change</b>.</p>`);
   },
   wire(){
+    ctWireSeg('efS', v => { ST.scene = v; ST.hist = []; ST.tt = 0; buildStagePanel(); });
     wireSlider('efV', () => ST.speed, v => { ST.speed = v; ST.hist = []; }, v => (+v).toFixed(2));
     wireSlider('efR', () => ST.R, v => { ST.R = v; ST.hist = []; }, v => (+v).toFixed(2));
     wireSlider('efM', () => ST.mm, v => { ST.mm = v; ST.hist = []; }, v => (+v).toFixed(1));
+    fnWire('efB', (made, src) => { ST.bfn = made.f; ST.bsrc = src; ST.hist = []; },
+           s => this.bBuild(s));
   },
   frame(st, dt, ctx, W, H){
     st.tt += dt;
+    if(st.scene === 'own'){
+      const phi = this.typedFlux(st, st.tt);
+      const emf = this.typedEMF(st, st.tt);
+      st.phi = phi; st.emf = emf;
+      st.hist.push({ t: st.tt, phi, emf });
+      while(st.hist.length && st.hist[0].t < st.tt - 7) st.hist.shift();
+      /* the field on the loop plane, face-on, with the loop drawn over it */
+      const topH = H * 0.48;
+      const half = st.R * 1.35;
+      const P = ctBox(Math.min(W, topH * 1.1), topH + 8, 0, 0, half);
+      const rg = ctRange((x, y) => st.bfn(x, y, st.tt), P, 24);
+      const span = Math.max(Math.abs(rg.lo), Math.abs(rg.hi), 1e-9);
+      ctHeat(ctx, P, (x, y) => st.bfn(x, y, st.tt), -span, span, 56, 0.8, true);
+      ctParam(ctx, P, u => ({ x:st.R * Math.cos(u), y:st.R * Math.sin(u) }), 0, 2 * Math.PI, 120,
+              rgbCss(TH.grad), 3);
+      ctFrame(ctx, P, 'B·n̂ on the loop plane, face-on — the loop in green');
+      /* the history plot, shared with the magnet scene */
+      this.histPlot(st, ctx, W, H, topH);
+      stageNote(ctx, 'two computations of the same EMF — derivative of the integral, and integral of the derivative', W, H);
+      return;
+    }
     const objs = this.objsAt(st, st.tt);
     const c = v3(0, 0, 0), nh = v3(1, 0, 0);
     const phi = emFluxBDisc(objs, c, st.R, nh, 0, 14);
@@ -587,6 +682,10 @@ STAGES.emFaraday = {
       emDrawArrow(ctx, mx, my - 28, mx + Math.sign(st.speed) * 44, my - 28, rgbCss(TH.text), 2, 9);
     ctx.restore();
 
+    this.histPlot(st, ctx, W, H, topH);
+    stageNote(ctx, 'the EMF crosses zero exactly where Φ peaks — that is what "the derivative of" looks like', W, H);
+  },
+  histPlot(st, ctx, W, H, topH){
     const pl = st.pl = mkPlot(64, topH + 38, W - 100, H - topH - 96, st.tt - 7, st.tt, -1, 1);
     let pmax = 1e-6, emax = 1e-6;
     for(const h of st.hist){ pmax = Math.max(pmax, Math.abs(h.phi)); emax = Math.max(emax, Math.abs(h.emf)); }
@@ -605,9 +704,40 @@ STAGES.emFaraday = {
     ctx.font = '600 11px ' + FONT_UI; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
     ctx.fillStyle = rgbCss(TH.neg); ctx.fillText('Φ_B  (peak ' + fmtNum(pmax, 3) + ')', pl.px + pl.pw - 8, pl.py + 14);
     ctx.fillStyle = rgbCss(TH.warn); ctx.fillText('EMF  (peak ' + fmtNum(emax, 3) + ')', pl.px + pl.pw - 8, pl.py + 30);
-    stageNote(ctx, 'the EMF crosses zero exactly where Φ peaks — that is what "the derivative of" looks like', W, H);
   },
   readout(st){
+    if(st.scene === 'own'){
+      const t = st.tt;
+      const phi = this.typedFlux(st, t, 192, 64);
+      const emfA = this.typedEMF(st, t, 192, 64);
+      const emfB = this.typedEMFInside(st, t);
+      /* both routes vanish together for a static B — fmtAgree's floor says
+         "every digit" there, which is the honest verdict */
+      return `<div class="card tight"><div class="ttl">Faraday's law as the Leibniz rule, on your field</div>
+        ${kv('B·n̂', pkPretty(st.bsrc))}
+        ${kv('Φ_B = ∬B·n̂ dA', fmtNum(phi, 6))}
+        ${kv('EMF, differentiating the integral', '<b>' + fmtNum(emfA, 6) + '</b>')}
+        ${kv('EMF, integrating ∂B/∂t', fmtNum(emfB, 6))}
+        ${kv('difference', fmtAgree(emfA, emfB))}
+        ${kv("Lenz's sign", Math.abs(emfA) < 1e-9 ? 'nothing to oppose — the flux is not changing'
+          : emfA * phi < 0 ? 'the EMF opposes a growing flux' : 'the EMF opposes a collapsing flux')}
+        <p class="help">The first route computes Φ(t±h) by a midpoint-ring quadrature and takes the
+        slope; the second differentiates B in time at every sample point and integrates with a
+        Gauss–Legendre rule — different samples, different step, different rule. Their agreement is
+        the Leibniz rule <b>d/dt ∬B dA = ∬ ∂B/∂t dA</b> measured rather than assumed, and for a
+        static loop that identity <i>is</i> Faraday's law. Delete the <b>t</b> from your formula and
+        both routes vanish together — no change, no EMF, however strong the field.</p>
+      </div>
+      <div class="card tight"><div class="ttl">The physics</div>
+        ${kv('differential form', '∇×E = −∂B/∂t')}
+        ${kv('integral form', '∮E·dl = −dΦ_B/dt')}
+        ${kv("Lenz's law", 'the minus sign')}
+        <p class="help">For a loop that moves or deforms, a motional term ∮(v×B)·dl joins the
+        partial-time term — the magnet scene next door is exactly that case, with the E field of the
+        moving magnet doing the work. Here the loop is fixed, so the whole EMF is the ∂B/∂t piece,
+        and the law reduces to the calculus identity the panel verifies.</p>
+      </div>`;
+    }
     const objs = st.objsNow || this.objsAt(st, st.tt);
     const circ = emCircE(objs, v3(0,0,0), st.R, v3(1,0,0), 0, 240);
     const emf = st.emf || 0;
@@ -629,5 +759,10 @@ STAGES.emFaraday = {
     return `<div class="k">Faraday's law</div><div style="color:var(--c-neg)">Φ_B = ${fmtNum(st.phi || 0, 4)}</div>
       <div style="color:var(--c-warn)">EMF = ${fmtNum(st.emf || 0, 4)}</div>`;
   },
-  legend(){ return [['var(--c-neg)','B lines of the magnet · Φ_B(t)'],['var(--c-warn)','induced EMF = −dΦ/dt'],['var(--c-grad)','the pickup coil']]; }
+  legend(st){
+    return st.scene === 'own'
+      ? [['var(--c-neg)', 'B·n̂ on the loop plane · Φ_B(t)'], ['var(--c-warn)', 'EMF, two routes'],
+         ['var(--c-grad)', 'the loop']]
+      : [['var(--c-neg)','B lines of the magnet · Φ_B(t)'],['var(--c-warn)','induced EMF = −dΦ/dt'],['var(--c-grad)','the pickup coil']];
+  }
 };

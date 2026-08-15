@@ -1,4 +1,4 @@
-﻿# MASTER PLAN
+# MASTER PLAN
 
 **The state of the laboratory, the rules it is built to, and everything left to do.**
 
@@ -310,7 +310,7 @@ script exists that this table does not describe.
 | `auditframe.ps1` | ~1 min | `auditframe OK` | how much of each curve falls outside its window, classified `LINE`/`POLE`/`MINOR`/`CUT`. **A gate since 2026-08-15** — §3.10 asked for it, and the work was never the exit code but attributing the four stages that were cut. Two were real and are fixed; three are allowed **by name, with the mathematics that makes each one honest**, and it warns when an allowlist entry stops cutting so a stale name cannot wave a new defect through |
 | `auditsize.ps1` | ~2 min | `findings=0` | eight canvas shapes — layouts that only break at another aspect ratio |
 | `auditviewport.ps1` | ~3 min | `bad=0` | sixteen real window sizes, and the page *around* the canvas |
-| `audittext.ps1` | ~4 min | harvest written | what every panel **says** — drives all 593 experiments, harvests `textContent` |
+| `audittext.ps1` | ~4 min | harvest written | what every panel **says** — drives all 594 experiments, harvests `textContent` |
 | `auditscan.ps1` | ~20 s | 0 HIGH | ASCII stand-ins, leaked markup, empty panels, `NaN` in the harvest |
 | `auditprose.ps1` | ~1 s | *(an inventory)* | essays that decline to justify a result; named theorems with no statement card |
 | `auditcontrast.ps1` | ~1 s | — | WCAG contrast and the 12 px type floor |
@@ -823,16 +823,16 @@ stage by stage:
 
 Plus `opWave` outside the twelve, so **34 scenario editors exist and 42 remain**.
 
-## 3.1 Programme A — the 42 remaining scenario editors
+## 3.1 Programme A — the 41 remaining scenario editors (42 until emFaraday, 2026-08-15)
 
 Each row: what the reader supplies, what gets **measured rather than asserted**,
 and the acceptance test. `[reuse]` names machinery that already exists.
 
-### Electromagnetism — 3 left (do these first: the machinery exists)
+### Electromagnetism — 2 left (do these first: the machinery exists; emFaraday done 2026-08-15)
 
 | stage | file | reader supplies | measured | acceptance test |
 |---|---|---|---|---|
-| `emFaraday` | `60i` | a typed B(t) and loop | EMF by ∮E·dl **and** by −dΦ/dt | agree to 1e-6; sign follows Lenz |
+| ~~`emFaraday`~~ **DONE 2026-08-15** | `60i` | a typed B·n̂(x, y, t) on the loop plane | EMF by d/dt ∬B·dA **and** by ∬∂B/∂t·dA — the Leibniz rule measured; for a fixed loop that identity *is* the law, and the ∮E·dl form is the moving-magnet scene beside it | measured: 5.7×10⁻⁶ relative on the default field, constant in t (pure quadrature truncation); Lenz's sign printed; static B → both routes vanish together; gated by `runstagetests` (4 assertions) and `auditcustom` |
 | `emWave` | `60ia` | a source current | c recovered from the propagation | matches 1/√(μ₀ε₀) to 1e-4 |
 | `emSandbox` | `60h` | a charge/current arrangement | the Laplace residual, and the Poynting energy balance | residual < 1e-6; ∮S·dA matches dU/dt |
 
@@ -1828,7 +1828,7 @@ is sequenced by *what makes the next piece of work cheaper*, not by subject.
    standing rule, not a queue item: **a stage defect class fixed adds its
    two-route test to `tests-stages.js` the same day**, and a new wing's stage
    helpers with two routes get tests as they are written.
-6. **Programme A, EM and atom** (6 stages) — the machinery already exists, so
+6. **Programme A, EM and atom** (5 stages left; emFaraday done 2026-08-15) — the machinery already exists, so
    these are the cheapest scenario editors left.
 7. **Programme B items 1–4** — small, inside wings that already exist, and found
    only by diffing real syllabi.

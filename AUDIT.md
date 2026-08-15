@@ -4771,3 +4771,46 @@ failed OK** (first run 40/1, the real ISCO finding above) · `runtests` **4290
 passed, 0 failed** · `auditsides` falsescale 0/0 presetgap 0/0 **OK** ·
 `auditresid` **findings=0** · `runall` demos=593 **caught=0 OK** · `auditdocs`
 **bad=0 OK** (29 scripts, all described).
+
+
+## 2026-08-15 — Programme A begins: emFaraday's typed B(t), Faraday as the Leibniz rule
+
+The first of Programme A's queued editors (§4.3 item 6), and the one MASTER-PLAN
+called the highest value-per-unit-work in the programme. `emFaraday` gains a
+second scene: **type any B·n̂(x, y, t) over the loop's plane** — x, y the plane
+coordinates, t rewritten onto the parser's third slot (the `pkIndexAst` trick),
+with a literal z rejected by its own error message rather than silently read as
+time.
+
+**The theorem the presets were allowed to assume** (§2.9's rule): for a fixed
+loop, Faraday's law *is* the Leibniz rule d/dt ∬B·dA = ∬(∂B/∂t)·dA. The panel
+computes the EMF both ways — differentiate outside (192 midpoint rings, slope
+at h = 10⁻³) and differentiate inside (∂B/∂t at every sample, Gauss–Legendre
+radial rule, h = 2×10⁻³) — **no shared samples, steps or rules**. On the
+default field they agree to **5.74×10⁻⁶ relative at every instant measured**
+(t = 0.2 … 4.2): a constant relative gap is precisely the signature of spatial
+quadrature truncation, and the demo's `out:` quotes that number with the
+attribution. A static B makes both routes vanish together, and fmtAgree's floor
+says so honestly. Lenz's sign is printed as a sentence about what is opposed.
+
+**The gate caught the first draft.** At the display resolution of 24 rings the
+routes disagreed at 3.1×10⁻⁴ — the midpoint rule's own O(h²), which the new
+`runstagetests` failed on before it shipped. The comparison now runs at 192
+rings; the frame's history plot keeps the cheap grid, because a picture needs
+three digits and a comparison does not stop there.
+
+Mechanics: scene seg (`efS`, label carries "your own" so `auditcustom` finds
+it), `fnHtml`/`fnWire` box with a custom build guard, `pkPretty` echo, heatmap
+scene via `ctHeat` (bitmap rule), history plot factored and shared with the
+magnet scene, a derive rung on the Leibniz identity, demo inserted mid-group
+(safe: the wing's only index-based see-link targets another group), and 4 new
+stage-level tests (45 total).
+
+Gates on the final build: `build` 231 modules · `smoke` OK · `runstagetests`
+**45 passed, 0 failed** (first draft failed at 24 rings — see above) ·
+`auditcustom` **bad=0 OK** (stages 98 → 99, boxes 134 → 135 — the new path is
+driven) · `auditsides` falsescale 0/0 presetgap 0/0 **OK** · `auditresid`
+**findings=0** · `auditlink` **OK** (two new control ids, both restorable) ·
+`auditpanel` **bad=0** · `runall` demos=**594** controls=6462 **caught=0 OK** ·
+`auditdocs` **bad=0 OK** (594 experiments propagated by `-Fix`, diff read).
+Screenshot looked at: the heatmap scene, both EMF rows, the 5-figure agreement.

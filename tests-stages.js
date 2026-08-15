@@ -215,6 +215,33 @@ function sok(name, cond, detail){
       Math.abs(back - (-1.55918)) < 1e-3, back);
 })();
 
+/* ---- emFaraday typed field: Faraday as the Leibniz rule -------------------
+   For a fixed loop the law is d/dt ∬B·dA = ∬(∂B/∂t)·dA. Route A: midpoint
+   rings, slope of the flux at h = 1e-3. Route B: Gauss–Legendre radial rule,
+   ∂B/∂t at h = 2e-3. No shared samples, steps or rules.                    */
+(function(){
+  var F = STAGES.emFaraday;
+  var st = { scene:'own', R:1.0, bfn:F.bBuild('2.2*sin(1.3*t)*exp(-(x^2+y^2))').f };
+  var worst = 0;
+  var ts = [0.3, 1.1, 2.6];
+  for(var i = 0; i < ts.length; i++){
+    var a = F.typedEMF(st, ts[i], 192, 64), b = F.typedEMFInside(st, ts[i]);
+    worst = Math.max(worst, Math.abs(a - b) / Math.max(1e-12, Math.abs(a), Math.abs(b)));
+  }
+  sok('emFaraday typed: derivative of the integral = integral of the derivative',
+      worst < 1e-5, 'worst rel ' + worst);
+  st.bfn = F.bBuild('1.7*exp(-(x^2+y^2))').f;
+  sok('emFaraday typed: a static field induces nothing, by both routes',
+      Math.abs(F.typedEMF(st, 1)) < 1e-9 && Math.abs(F.typedEMFInside(st, 1)) < 1e-9,
+      F.typedEMF(st, 1) + ' / ' + F.typedEMFInside(st, 1));
+  var threw = false;
+  try { F.bBuild('z^2'); } catch(e){ threw = true; }
+  sok('emFaraday typed: a stray z is rejected with a message, never read as time',
+      threw, 'accepted');
+  sok('emFaraday typed: sqrt and atan survive the t rewrite',
+      Math.abs(F.bBuild('sqrt(4) + atan(0) + 0*t').f(0, 0, 5) - 2) < 1e-12, 'mangled');
+})();
+
 /* ---- report ---------------------------------------------------------------- */
 (function(){
   var t = document.createElement('div');

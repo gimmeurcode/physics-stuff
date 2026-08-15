@@ -1,6 +1,6 @@
 ﻿# Working in this repository
 
-An interactive mathematics and physics laboratory: 40 wings, 593 guided experiments,
+An interactive mathematics and physics laboratory: 40 wings, 594 guided experiments,
 built from `src/` into one self-contained `vector-calculus.html`.
 
 **Read `SITE-RULES.md` first.** It is the constitutional layer — the nine laws
