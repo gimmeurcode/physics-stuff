@@ -73,7 +73,14 @@ STAGES.ltTransform = {
     if(!st.Pf) return;
     if(skPick(st.sk, st.Pf, sx, sy, phase)) st.custom = true;
   },
-  fn(st){ return skFn(st.sk); },
+  /* The quadrature transforms the PRESET ITSELF, not the 128-point sketch of
+     it. The sketch exists so a reader can draw; sampling a preset through it
+     first meant the "two completely different routes" shared a piecewise
+     interpolation whose O(h²) error (≈6×10⁻⁴ on the step's smeared jump) was
+     what the difference row actually measured. Custom stays the sketch — that
+     IS the reader's function. */
+  fn(st){ const e = LT_TABLE[st.key]; return st.custom ? skFn(st.sk) : t => e.f(t); },
+  brk(st){ return st.custom ? null : LT_TABLE[st.key].brk; },
   frame(st, dt, ctx, W, H){
     const f = this.fn(st);
     const half = (H - 150) / 2;
@@ -88,7 +95,7 @@ STAGES.ltTransform = {
     skPaint(ctx, Pf, st.sk, rgbCss(TH.grad), 2.6);
     /* bottom: F(s) */
     const Ps = mkPlot(80, 95 + half, W - 150, half, 0.25, 6, -0.5, 3);
-    const Fv = s => ltTransform(f, s, 30, 1500);
+    const Fv = s => ltTransform(f, s, 30, 1500, this.brk(st));
     plotFrame(ctx, Ps, 's', 'F(s)', 'its transform, computed by quadrature at every s');
     plotZeroY(ctx, Ps);
     plotTicksX(ctx, Ps, [1, 2, 3, 4, 5, 6], v => String(v));
@@ -99,7 +106,7 @@ STAGES.ltTransform = {
   },
   readout(st){
     const f = this.fn(st);
-    const num = ltTransform(f, st.s, 40, 4000);
+    const num = ltTransform(f, st.s, 40, 4000, this.brk(st));
     const e = LT_TABLE[st.key];
     const exact = st.custom ? null : e.F(st.s);
     return `<div class="card tight"><div class="ttl">At s = ${fmtNum(st.s, 4)}</div>
@@ -124,7 +131,7 @@ STAGES.ltTransform = {
     </div>`;
   },
   chip(st){
-    const num = ltTransform(this.fn(st), st.s, 40, 2000);
+    const num = ltTransform(this.fn(st), st.s, 40, 2000, this.brk(st));
     return `<div class="k">Laplace</div><div>s = ${fmtNum(st.s, 3)}</div>
       <div style="color:var(--c-curl)">F = ${fmtNum(num, 5)}</div>`;
   },

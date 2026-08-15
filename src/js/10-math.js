@@ -490,6 +490,14 @@ const fmtAgree = (a, b, unit, floorRel) =>
 
 function fmtGap(gap, scale, unit, floorRel){
   const u = unit ? ' ' + unit : '';
+  /* A NaN is NOT agreement. `!(rel > floor)` is true when rel is NaN, so a
+     route that returned no number at all fell into the affirmative branch and
+     printed "they agree to every digit" — which is how a plunging orbit with
+     no perihelion to measure reported perfect agreement with the perihelion
+     formula (rlOrbit at the ISCO preset, found by auditsides 2026-08-15).
+     Say what actually happened instead. */
+  if(!Number.isFinite(gap) || !Number.isFinite(scale))
+    return 'not computable — a route returned no number';
   const rel = Math.abs(gap) / Math.max(1e-300, Math.abs(scale));
   if(!(rel > (floorRel || 1e-9)))
     return '0' + u + ' — they agree to every digit either route has';
@@ -525,7 +533,11 @@ function fmtGap(gap, scale, unit, floorRel){
    degrades to exactly fmtAgree. */
 function fmtAgreeGross(a, b, gross, unit, floorRel){
   const gap = Math.abs(a - b);
-  if(gap <= (floorRel || 1e-9) * Math.abs(gross || 0))
+  /* a NaN gross must not defeat the floor test silently (NaN||0 is NaN, and
+     every comparison against NaN is false) — treat it as no floor at all, and
+     let fmtGap's own finiteness guard handle a NaN gap */
+  const g = Number.isFinite(gross) ? Math.abs(gross) : 0;
+  if(gap <= (floorRel || 1e-9) * g)
     return '0' + (unit ? ' ' + unit : '') + ' — they agree to every digit either route has';
   return fmtGap(gap, Math.max(Math.abs(a), Math.abs(b)), unit, floorRel);
 }
@@ -543,6 +555,7 @@ const fmtAgreeTight = (a, b, unit) =>
 
 function fmtGapTight(gap, scale, unit, floorRel){
   const u = unit ? ' ' + unit : '';
+  if(!Number.isFinite(gap) || !Number.isFinite(scale)) return 'not computable';
   const rel = Math.abs(gap) / Math.max(1e-300, Math.abs(scale));
   if(!(rel > (floorRel || 1e-9))) return '0' + u + ' (every digit)';
   return fmtSig(Math.abs(gap), 3) + u + ' (' + fmtSig(100 * rel, 2) + '%)';

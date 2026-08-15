@@ -1670,7 +1670,12 @@ function igSolidMC(box, inside, N){
     const z = box.z0 + (box.z1 - box.z0) * rnd();
     if(inside(x, y, z)) hits++;
   }
-  return hits / n * (box.x1 - box.x0) * (box.y1 - box.y0) * (box.z1 - box.z0);
+  /* the estimate AND its own standard error, box·√(p(1−p)/N) — §2.1 says a
+     difference is meaningless without its scale, and for a Monte Carlo route
+     the scale is the 1/√N error bar, so it ships with the number */
+  const boxV = (box.x1 - box.x0) * (box.y1 - box.y0) * (box.z1 - box.z0);
+  const p = hits / n;
+  return { v: p * boxV, se: boxV * Math.sqrt(Math.max(0, p * (1 - p)) / n) };
 }
 
 const IG_SOL_CACHE = new Map();
@@ -1717,10 +1722,14 @@ function igSolidCur(st){
     if(z < Math.min(c, d) || z > Math.max(c, d)) continue;
     inside++;
   }
-  const mc = inside / N * Math.abs(x1 - x0) * (yhi - ylo) * (zhi - zlo);
+  const boxV = Math.abs(x1 - x0) * (yhi - ylo) * (zhi - zlo);
+  const p = inside / N;
+  const mc = p * boxV;
+  const mcSe = boxV * Math.sqrt(Math.max(0, p * (1 - p)) / N);
   const made = { name:'your solid  ' + own.zLo + ' ≤ z ≤ ' + own.zHi,
     region:null, x0, x1, yLo, yHi, zLo, zHi,
-    exactVol:mc, exactLabel:'by Monte Carlo, 120 000 darts',
+    exactVol:mc, mcSe,
+    exactLabel:'by Monte Carlo, 120 000 darts (± ' + fmtSig(mcSe, 2) + ')',
     note:'Your solid, described the way every Cartesian solid on this stage is: x between two numbers, ' +
       'y between two functions of x, z between two functions of x and y. There is no closed-form volume ' +
       'to compare against, so the second number is a Monte Carlo estimate — 120 000 points thrown into ' +
@@ -1763,9 +1772,11 @@ function igSolidCurv(st, own, kind){
       if(r < S.cyl.r0(th) - 1e-12 || r > S.cyl.r1(th) + 1e-12) return false;
       return z >= S.cyl.zLo(r, th) - 1e-12 && z <= S.cyl.zHi(r, th) + 1e-12;
     };
+    const mcC = igSolidMC(S, inside);
     made = { name:'your cylindrical solid  ' + own.crLo + ' ≤ r ≤ ' + own.crHi,
       region:null, cyl:S.cyl, x0:S.x0, x1:S.x1, y0:S.y0, y1:S.y1, z0:S.z0, z1:S.z1,
-      exactVol:igSolidMC(S, inside), exactLabel:'by Monte Carlo, 120 000 darts',
+      exactVol:mcC.v, mcSe:mcC.se,
+      exactLabel:'by Monte Carlo, 120 000 darts (± ' + fmtSig(mcC.se, 2) + ')',
       inside,
       note:'Your solid in cylindrical coordinates: θ between the two numbers, r between two functions of θ, ' +
         'and z between two functions of r and θ. The volume element is <b>r dz dr dθ</b> — the polar element ' +
@@ -1787,9 +1798,11 @@ function igSolidCurv(st, own, kind){
       if(ph < S.sph.p0(th) - 1e-12 || ph > S.sph.p1(th) + 1e-12) return false;
       return rho >= S.sph.r0(ph, th) - 1e-12 && rho <= S.sph.r1(ph, th) + 1e-12;
     };
+    const mcS = igSolidMC(S, inside);
     made = { name:'your spherical solid  ' + own.srLo + ' ≤ ρ ≤ ' + own.srHi,
       region:null, sph:S.sph, x0:S.x0, x1:S.x1, y0:S.y0, y1:S.y1, z0:S.z0, z1:S.z1,
-      exactVol:igSolidMC(S, inside), exactLabel:'by Monte Carlo, 120 000 darts',
+      exactVol:mcS.v, mcSe:mcS.se,
+      exactLabel:'by Monte Carlo, 120 000 darts (± ' + fmtSig(mcS.se, 2) + ')',
       inside,
       note:'Your solid in spherical coordinates: θ between the two numbers, φ between two functions of θ, ' +
         'and ρ between two functions of φ and θ. The volume element is <b>ρ² sin φ dρ dφ dθ</b>, and both ' +

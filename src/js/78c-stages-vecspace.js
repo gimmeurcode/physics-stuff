@@ -394,7 +394,14 @@ STAGES.laLSQ = {
     </div>
     <div class="card tight"><div class="ttl">Why this is the answer</div>
       ${L.orth.map((v, k) => kv('residual · column ' + (k + 1),
-        fmtGap(v, Math.sqrt(Math.max(1e-300, L.rss)) * Math.max(1e-300, ...st.pts.map(p => Math.abs(k ? p.x : 1)))))).join('')}
+        /* the points are ARRAYS — p[0], p[1] — everywhere in this stage, and
+           this line alone read p.x: undefined, so the scale was NaN and fmtGap
+           printed columns 2 and 3 as perfect agreement without ever seeing a
+           number. Caught the day fmtGap learned to refuse a NaN (2026-08-15).
+           The scale is ‖r‖·max|xᵏ| — the size of the dot product the
+           orthogonality theorem is cancelling. */
+        fmtGap(v, Math.sqrt(Math.max(1e-300, L.rss)) *
+                  Math.max(1e-300, ...st.pts.map(p => Math.pow(Math.abs(p[0]), k)))))).join('')}
       <p class="help">Every one of those is zero: the residual is perpendicular to the space of
       achievable fits. If it were not, some of the error would still lie in a direction the model
       could have absorbed, and the fit would not yet be best. <b>That orthogonality is the theorem</b>

@@ -4598,3 +4598,128 @@ row correctly reclassified as a cross-reference.
 
 Gates after the fixes: `smoke` OK, `runtests` **4272 passed, 0 failed**,
 `auditticks` OK (controls: old labelling flagged 9, chip control flagged 1).
+
+
+## 2026-08-15 — D2 closed: all nine PRESET-GAP rows attributed, ratchet 9 → 0
+
+The last unit of Programme D item 2. Each of the nine rows the `auditsides`
+ratchet was holding open was measured (halve the step, read the order — J9's
+discipline), then either fixed or whitelisted with its mathematics. Six were
+fixed, three whitelisted. The ratchet is now **0/0 on both classes**, so any
+new FALSE-SCALE or PRESET-GAP instance fails the build the moment it lands.
+
+**Fixed — each verified by an independent computation:**
+
+- **`rlOrbit` — three defects in one card.** (1) The "just outside the ISCO"
+  preset seeded L from the *Newtonian* vis-viva; at 6.5 rs that L puts the
+  pericentre inside the centrifugal barrier, the star spirals in,
+  `grPeriapsisAngle` finds no second perihelion, and the readout printed the
+  NaN as **"they agree to every digit"** — which is how the audit read
+  `best=exact at isco`. New `grLFromTurning(GM, r1, r2)` demands both apsides
+  be turning points of the full u-equation (GM/L² = (u₁+u₂)/2 −
+  (GM/c²)(u₁²+u₁u₂+u₂²), the vis-viva's c→∞ limit; unit tests pin the weak
+  field to 10⁻⁶ and the integrated pericentre to its declared value). The
+  ISCO preset now shows the strongly precessing rosette it promised, and a
+  plunge — still reachable at large e — says "no bound orbit" in the panel and
+  on the canvas. (2) The gap was printed with unit **'%'** while measured and
+  formula are rad/orbit. (3) The strong-field rows compare an integrated
+  geodesic against a first-order formula deliberately out of its depth
+  (measured gap 0.128 rad/orbit at 20 rs moves by 3×10⁻¹¹ when the step
+  halves — not truncation, the physics); that row is now labelled "difference
+  — beyond first order" so it is its own advisory claim and the weak-field
+  "difference" claim stays gated.
+
+- **The NaN class defect behind (1), fixed in the formatter layer.**
+  `fmtGap`'s affirmative branch is `!(rel > floor)`, which is TRUE when rel is
+  NaN — so any route returning no number printed as perfect agreement in every
+  difference formatter (`fmtGap`, `fmtAgree`, `fmtGapTight`, and
+  `fmtAgreeGross`'s NaN-gross floor). All four now refuse a verdict ("not
+  computable — a route returned no number"); seven unit tests pin it. **The
+  class fix immediately caught a second live instance nothing was looking
+  for:** `laLSQ`'s orthogonality rows read `p.x` off points stored as arrays,
+  so the scale was NaN and **"residual · column 2" and "column 3" had printed
+  as perfect agreement since the stage was written**. `auditresid` surfaced it
+  on the next run as a new noscale row. Fixed (`p[0]`, scale ‖r‖·max|xᵏ|).
+
+- **`ltTransform` at the step preset (gap 5.99×10⁻⁴).** Two stacked causes:
+  the readout transformed the 128-point *sketch* of the preset rather than the
+  preset (piecewise-linear smear of the jump ≈ e⁻⁴·0.03 — the whole measured
+  gap), and Simpson is first-order across a jump anyway (the `ltDelta` comment
+  had said so for months). `fn(st)` now returns the true preset f unless the
+  reader is drawing, and `ltTransform` takes declared breakpoints, integrating
+  each smooth piece with one-sided endpoint sampling. u(t−2) now lands on
+  e⁻²ˢ/s to 9 figures; the one-piece control test asserts the old error is
+  still there when the seam is ignored.
+
+- **`odNonhom` at expo (gap 7.77×10⁻⁵).** The RK4 comparison value was
+  `ys[round(12/22·8000)]` — t = 12.0015, not 12 — against variation of
+  parameters at exactly 12; the gap is y′·0.0015 to the digit. 8800 steps puts
+  a node exactly at 12 and the time is read off the grid; the two routes now
+  agree to 2×10⁻¹² (unit test).
+
+- **`odSpring` at the beats demo (gap 0.0489).** The "long RK4 run" was 400
+  time units at every damping; at γ = 0.02 the transient's e-folding time is
+  100, so the measuring window opened with 2.9% of it left — 1.728·e⁻³·⁵⁵ is
+  the measured gap to 2%. The run length now comes from the decay time
+  (window opens below 10⁻⁵ of the response, capped at T = 2000), the peak is
+  parabolically refined once at the argmax (a first draft refined every
+  ascending sample; a parabola through |y|'s kink at a zero crossing invented
+  an amplitude of 3.2 — the gate caught it before it shipped), and below the
+  damping where no practical run settles the panel says which case it is in
+  (γ = 0: "never — the motion is the beat pattern").
+
+- **`igTriple`, box × cylindrical (0.240%, shipped knowingly two entries
+  above).** The disc sweep zeroed the slab thickness outside the shadow — an
+  integrand with a cliff, and Gauss points that straddle a cliff lose their
+  order entirely. Same theorem as the ltTransform fix: the radial integral now
+  breaks at the shadow's rim (scan + bisection per ray, the traceSlice trick)
+  and the θ integral breaks at the shadow's corner directions (the tetrahedron
+  had been exact **by luck** — its corners sit at 0 and π/2, on panel seams;
+  the box's corner at atan(1/2) sat mid-panel). All five z-simple presets now
+  agree through the cylindrical route to 1.5×10⁻⁹ or better, measured before
+  and after: box 5.9856 → 6.0000000087.
+
+- **`dfHarmonic` at log r (gap 0.47).** The default circle (centre (0.4, 0.3),
+  r = 0.8) **encloses the origin** — the singularity of the fundamental
+  solution — and the mean value property's hypothesis fails at that point
+  while the prose promised agreement "for every radius and every centre". The
+  gap is exactly log(r/d) = log(0.8/0.5) = 0.4700036, confirmed to 8 figures
+  against the circle quadrature. The card now has three honest cases, each a
+  two-route comparison: harmonic on the disc (mean = centre); singularity
+  enclosed (mean = **log R, wherever the centre sits** — Gauss's law in two
+  dimensions, and the reader can drag the circle and watch the average ignore
+  the centre); not harmonic (mean − centre priced by Green's representation,
+  new `dfDiscLapAvg` = (1/2π)∬∇²f·log(R/ρ)dA, which lands the bowl's R² gap
+  to 2×10⁻³ and is unit-tested). A circle through the singularity says "not
+  defined there".
+
+**Whitelisted with their mathematics (the row IS the demonstration):**
+
+- `igApply` — "the sum of N slices" against the adaptive integral, with a
+  slices slider; igDoubleRect one dimension down. The disk preset reads exact
+  only because πf² is linear there and the midpoint rule is exact on linears.
+- `mvTangent` — Δf against the differential at dx = dy = 0.01: the gap is the
+  second-order remainder ½(f_xx+2f_xy+f_yy)·10⁻⁴ that the card above it
+  measures falling as h²; the panel now names it. The saddle read exact only
+  because dx = dy annihilates x²−y²'s quadratic form.
+- `agInverse` — the custom default x³−2x is the canonical non-one-to-one
+  cubic: f(1.2) = −0.672 is also hit at 0.359 and −1.559, bisection returns
+  the leftmost branch, and |−1.559−1.2| = 2.76 is the measured gap; the
+  readout prose teaches exactly this. The preset inverses cannot hide behind
+  the entry: a unit test round-trips every AG_FUNCS inverse at x = 1.2.
+
+**And the Monte-Carlo comparison now carries its own error bar.** A typed
+solid's second route is 120 000 darts; `igSolidMC` returns the estimate with
+σ = box·√(p(1−p)/N), the label prints "± σ", and the difference row states the
+gap in units of σ (the default paraboloid's 0.136 is 1.5σ). Its label names
+the estimate, so the claim separated from the presets' exact one — which is
+what un-masked the box row above the same hour.
+
+**Negative control:** one whitelist key corrupted (`igApplyXX`), gate failed
+presetgap 1/0 exit 1, restored, gate green.
+
+Gates on the final build: `build` 231 modules · `smoke` OK · `runtests`
+**4290 passed, 0 failed** (18 added) · `auditsides` **falsescale 0/0,
+presetgap 0/0 OK** · `auditresid` **findings=0** noscale=7 · `auditcustom`
+**bad=0 OK** · `auditclaims` 249 **bad=0 OK** · `auditpanel` **bad=0** ·
+`auditframe` cut=3 all allowed **OK** · `runall` demos=593 **caught=0 OK**.

@@ -139,6 +139,11 @@ STAGES.mvTangent = {
       <p class="help">The differential is not an infinitesimal quantity; it is the <i>linear map</i> that
       the tangent plane is the graph of. This is how error propagation works in every laboratory: a small
       uncertainty in each input contributes |f<sub>x</sub>|·δx + |f<sub>y</sub>|·δy to the output, to first order.</p>
+      <p class="help">That difference is not an error to chase to zero — it is the <b>second-order
+      remainder</b> ½(f<sub>xx</sub>dx² + 2f<sub>xy</sub>dx dy + f<sub>yy</sub>dy²), the very quantity
+      the card above watches fall as h². A first-order approximation owes a second-order debt, and this
+      row is the debt at dx = dy = 0.01. (On the saddle x² − y² it reads zero — not because the
+      approximation is better there, but because dx = dy makes the two quadratic terms cancel exactly.)</p>
     </div>`;
   },
   chip(st){

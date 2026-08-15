@@ -388,7 +388,7 @@ STAGES.odNonhom = {
   },
   readout(st){
     const g = this.g(st), yp = this.yp(st);
-    const num = odRK4(st.a, st.b, st.c, g, st.y0, st.v0, 0, 22, 8000);
+    const num = odRK4(st.a, st.b, st.c, g, st.y0, st.v0, 0, 22, 8800);
     const R0 = odRoots(st.a, st.b, st.c);
     /* the residual: substitute y_p back into the equation and see if it is zero */
     let worst = 0, worstScale = 0;
@@ -407,9 +407,17 @@ STAGES.odNonhom = {
                               Math.abs(st.c * y), Math.abs(g(t)));
       }
     }
-    /* variation of parameters, as an independent route to the same y_p */
-    const vp = odVariation(st.a, st.b, st.c, g, 12);
-    const numAt12 = num.ys[Math.round(12 / 22 * (num.ys.length - 1))];
+    /* variation of parameters, as an independent route to the same y_p.
+       COMPARE THE TWO ROUTES AT THE SAME t. 8000 steps over [0, 22] puts no
+       grid point at t = 12 — round(12/22·8000) lands on t = 12.0015, and the
+       y′·0.0015 between there and 12 printed as a 7.8×10⁻⁵ "difference"
+       between routes that agree to 10⁻¹² (auditsides, expo preset). 8800
+       steps makes index 4800 exactly t = 12, and the comparison reads the
+       time off the grid rather than assuming it. */
+    const i12 = Math.round(12 / 22 * (num.ys.length - 1));
+    const t12 = num.ts[i12];
+    const vp = odVariation(st.a, st.b, st.c, g, t12);
+    const numAt12 = num.ys[i12];
     const D = st.forcing === 'cosine' ? odDrivenResponse(st.a, st.b, st.c, 2, st.w) : null;
     return `<div class="card tight"><div class="ttl">Undetermined coefficients</div>
       ${kv('forcing g(t)', odForcingCur(st).name.replace('g(t) = ', ''))}

@@ -210,16 +210,68 @@ STAGES.igTriple = {
         const x = sx0 + (sx1 - sx0) * i / 32;
         rmax = Math.max(rmax, Math.hypot(x, syLo(x)), Math.hypot(x, syHi(x)));
       }
-      return nqTripleCyl(() => 1, 0, 2 * Math.PI, () => 0, () => rmax,
-        (r, th) => S.zLo(r * Math.cos(th), r * Math.sin(th)),
-        (r, th) => {
-          const x = r * Math.cos(th), y = r * Math.sin(th);
-          const hi = S.zHi(x, y), lo = S.zLo(x, y);
-          /* clip to the solid's shadow: outside it the slab has zero thickness */
-          const outX = x < sx0 - 1e-9 || x > sx1 + 1e-9;
-          const outY = syLo && (y < syLo(x) - 1e-9 || y > syHi(x) + 1e-9);
-          return (outX || outY) ? lo : Math.max(lo, hi);
-        }, 5, 8);
+      /* THE QUADRATURE MUST BREAK AT THE SHADOW'S RIM, NOT STEP OVER IT.
+         The first version swept the whole disc and zeroed the slab thickness
+         outside the shadow — an integrand with a cliff in it, and Gauss
+         points that straddle a cliff lose their order entirely: the box came
+         out 0.240% light (5.9856 for an exact 6) at any preset a reader could
+         select, which auditsides flagged the moment the claim stood alone.
+         Same theorem as ltTransform's breakpoints: the rule keeps its full
+         order on each smooth piece, so find the pieces. Along each ray the
+         shadow's entry and exit radii are located by scan + bisection — the
+         same trick traceSlice uses to draw the cross-sections — and each
+         inside-interval is integrated separately, where the slab is smooth. */
+      const inShadow = (x, y) => !(x < sx0 - 1e-9 || x > sx1 + 1e-9) &&
+        !(syLo && (y < syLo(x) - 1e-9 || y > syHi(x) + 1e-9));
+      const slab = (r, th) => {
+        const x = r * Math.cos(th), y = r * Math.sin(th);
+        const t = S.zHi(x, y) - S.zLo(x, y);
+        return Number.isFinite(t) ? Math.max(0, t) * r : 0;
+      };
+      /* ...and the OUTER integral must break where the rim itself has corners.
+         After the radial split the θ-integrand is smooth except where the ray's
+         exit switches walls — at the shadow's corner directions. The tetrahedron
+         came out exact by luck (its corners sit at 0 and π/2, on panel seams);
+         the box's corner at atan(1/2) sat mid-panel and cost 7.8×10⁻⁴. The four
+         corners of a Type-I shadow are its bound endpoints; cutting the θ range
+         there puts every kink on a seam. */
+      const inner = th => {
+        const ct = Math.cos(th), sn = Math.sin(th);
+        const SC = 96;
+        let sum = 0, prev = inShadow(0, 0), start = prev ? 0 : NaN;
+        for(let s = 1; s <= SC; s++){
+          const r = rmax * s / SC;
+          const now = inShadow(r * ct, r * sn);
+          if(now !== prev){
+            let lo = rmax * (s - 1) / SC, hi = r;
+            for(let it = 0; it < 40; it++){
+              const m = (lo + hi) / 2;
+              if(inShadow(m * ct, m * sn) === prev) lo = m; else hi = m;
+            }
+            const cross = (lo + hi) / 2;
+            if(prev) sum += nqGauss(rr => slab(rr, th), start, cross, 5, 6);
+            else start = cross;
+            prev = now;
+          }
+        }
+        if(prev) sum += nqGauss(rr => slab(rr, th), start, rmax, 5, 6);
+        return sum;
+      };
+      const cuts = [0, 2 * Math.PI];
+      if(syLo) for(const x of [sx0, sx1]) for(const yy of [syLo(x), syHi(x)]){
+        if(!Number.isFinite(yy) || Math.hypot(x, yy) < 1e-12) continue;
+        let th = Math.atan2(yy, x);
+        if(th < 0) th += 2 * Math.PI;
+        if(th > 1e-9 && th < 2 * Math.PI - 1e-9) cuts.push(th);
+      }
+      cuts.sort((a, b) => a - b);
+      let V = 0;
+      for(let c = 0; c + 1 < cuts.length; c++){
+        const a = cuts[c], b = cuts[c + 1];
+        if(b - a < 1e-12) continue;
+        V += nqGauss(inner, a, b, 5, Math.max(4, Math.round(32 * (b - a) / (2 * Math.PI))));
+      }
+      return V;
     }
     return nqTriple(() => 1, sx0, sx1, syLo, syHi, S.zLo, S.zHi, 5, 8);
   },
@@ -246,7 +298,10 @@ STAGES.igTriple = {
       ${kv('coordinate system', S.sph ? 'spherical — ρ² sin φ dρ dφ dθ' : (S.cyl || st.sys === 'cyl') ? 'cylindrical — r dz dr dθ' : 'Cartesian — dz dy dx')}
       ${kv('V = ∭ 1 dV, computed', fmtNum(V, 8))}
       ${kv(S.exactLabel || 'the known volume', fmtNum(S.exactVol, S.exactLabel ? 5 : 8))}
-      ${kv('difference', fmtAgree(V, S.exactVol))}
+      ${S.mcSe
+        ? kv('difference, against the Monte Carlo estimate', fmtAgree(V, S.exactVol) +
+             '  — ' + fmtSig(Math.abs(V - S.exactVol) / S.mcSe, 2) + 'σ of the estimate’s own 1/√N error')
+        : kv('difference', fmtAgree(V, S.exactVol))}
     </div>
     <div class="card tight"><div class="ttl">The highlighted cross-section</div>
       ${kv('at height z =', fmtNum(zs, 5))}

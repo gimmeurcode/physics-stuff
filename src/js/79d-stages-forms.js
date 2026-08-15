@@ -235,15 +235,66 @@ STAGES.dfHarmonic = {
     const centre = F(st.c.x, st.c.y);
     const mean = dfCircleMean(F, st.c.x, st.c.y, st.r, 1440);
     const lap = dfLaplacian(F, st.c.x, st.c.y);
-    return `<div class="card tight"><div class="ttl">The mean value property</div>
-      ${kv('f at the centre', fmtNum(centre, 8))}
-      ${kv('average over the circle', fmtNum(mean, 8))}
-      ${kv('difference', fmtAgree(centre, mean))}
-      ${kv('∇²f there', fmtNum(lap, 4))}
-      ${kv('harmonic?', D.harmonic ? 'yes' : '<b>no</b> — ∇²f ≠ 0')}
-      <p class="help">${D.harmonic
-        ? 'The two values agree for every radius and every centre. That equivalence — harmonic if and only if the mean value property holds — is the reason harmonic functions cannot have interior extrema, and hence the maximum principle.'
-        : 'x² + y² has Laplacian 4, and the circle average exceeds the centre value by exactly ∇²f·r²/4. A function with positive Laplacian sits below its own averages everywhere — it is subharmonic, and it does have an interior minimum.'}</p>
+    /* Three different theorems live behind this one card, and each gets its
+       own two-route comparison rather than one row pretending they are all
+       the mean value property:
+       — harmonic on the whole disc: mean = centre (the MVP itself);
+       — the fundamental solution with its singularity ENCLOSED: the MVP's
+         hypothesis fails at one point and the sharper statement takes over:
+         the average of log r over any circle enclosing the origin is log R,
+         wherever the centre sits (this is Gauss's law in two dimensions);
+       — not harmonic at all: Green's representation prices the failure,
+         mean − centre = (1/2π)∬ ∇²f · log(R/ρ) dA, computed independently. */
+    const d = D.sing ? Math.hypot(st.c.x - D.sing.x, st.c.y - D.sing.y) : Infinity;
+    const onRim = D.sing && Math.abs(d - st.r) < 0.03 * Math.max(st.r, d);
+    const enclosed = D.sing && d < st.r && !onRim;
+    let rows, help;
+    if(onRim){
+      rows = `${kv('f at the centre', fmtNum(centre, 8))}
+        ${kv('average over the circle', 'not defined — the circle passes through the singularity')}
+        ${kv('difference', 'not defined there')}`;
+      help = 'The circle runs through the one point where log r is not harmonic — the integrand is ' +
+        'unbounded on the path itself, and no quadrature of it means anything. Move the centre or ' +
+        'change the radius so the singularity is clearly inside or clearly outside.';
+    } else if(enclosed){
+      rows = `${kv('f at the centre', fmtNum(centre, 8))}
+        ${kv('average over the circle', fmtNum(mean, 8))}
+        ${kv('log R, the circle’s own radius', fmtNum(Math.log(st.r), 8))}
+        ${kv('difference', fmtAgree(mean, Math.log(st.r)))}
+        ${kv('so mean − centre', fmtNum(mean - centre, 6) + '  =  log(R/d), with d = ' + fmtNum(d, 4))}`;
+      help = 'The circle <b>encloses the singularity</b>, and the mean value property’s hypothesis — ' +
+        'harmonic on the whole disc — fails at that one point. What replaces it is sharper: the average ' +
+        'of log r over any circle enclosing the origin is <b>log R exactly, wherever the centre sits</b>. ' +
+        'Drag the circle and watch the average ignore the centre completely. That insensitivity is ' +
+        'Gauss’s law in two dimensions — log r is the potential of a unit line charge, and the ' +
+        'average reads the enclosed charge, not the geometry. The same puncture gives the vector wing ' +
+        'its vortex and the complex wing its residue.';
+    } else if(!D.harmonic){
+      const pred = dfDiscLapAvg(F, st.c.x, st.c.y, st.r);
+      rows = `${kv('f at the centre', fmtNum(centre, 8))}
+        ${kv('average over the circle', fmtNum(mean, 8))}
+        ${kv('mean − centre, measured', fmtNum(mean - centre, 6))}
+        ${kv('(1/2π)∬ ∇²f·log(R/ρ) dA', fmtNum(pred, 6))}
+        ${kv('difference', fmtAgree(mean - centre, pred))}`;
+      help = 'The circle average does <b>not</b> equal the centre value, and Green’s representation ' +
+        'prices the failure exactly: mean − centre = (1/2π)∬ ∇²f·log(R/ρ) dA over the disc, computed ' +
+        'here by a quadrature that never sees the circle average. For constant Laplacian that integral ' +
+        'is ∇²f·R²/4 — the bowl’s gap is R² on the nose. A function with positive Laplacian sits ' +
+        'below its own averages everywhere: it is subharmonic, and it does have an interior minimum.';
+    } else {
+      rows = `${kv('f at the centre', fmtNum(centre, 8))}
+        ${kv('average over the circle', fmtNum(mean, 8))}
+        ${kv('difference', fmtAgree(centre, mean))}`;
+      help = 'The two values agree for every radius and every centre' +
+        (D.sing ? ' — here the circle keeps the singularity <i>outside</i>, so the disc is genuinely harmonic and the property holds' : '') +
+        '. That equivalence — harmonic if and only if the mean value property holds — is the reason ' +
+        'harmonic functions cannot have interior extrema, and hence the maximum principle.';
+    }
+    return `<div class="card tight"><div class="ttl">The mean value property${enclosed ? ' — and its one honest failure' : ''}</div>
+      ${rows}
+      ${kv('∇²f at the centre', fmtNum(lap, 4))}
+      ${kv('harmonic?', D.harmonic ? (enclosed || onRim ? 'everywhere but one point — and the circle knows' : 'yes') : '<b>no</b> — ∇²f ≠ 0')}
+      <p class="help">${help}</p>
     </div>
     <div class="card tight"><div class="ttl">Where they come from</div>
       <p class="help">Harmonic functions are the real and imaginary parts of analytic functions: if

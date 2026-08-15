@@ -206,10 +206,39 @@ STAGES.odSpring = {
     const D = odDrivenResponse(m, gam, k, F0, w);
     const wr = odResonantOmega(m, gam, k);
     const peak = Number.isFinite(wr) ? odDrivenResponse(m, gam, k, F0, wr).amp : Infinity;
-    /* the measured steady-state amplitude, from a long integration */
-    const num = odRK4(m, gam, k, t => F0 * Math.cos(w * t), 0, 0, 0, 400, 120000);
-    let meas = 0;
-    for(let i = Math.floor(num.ys.length * 0.85); i < num.ys.length; i++) meas = Math.max(meas, Math.abs(num.ys[i]));
+    /* The measured steady-state amplitude, from an integration long enough to
+       DESERVE the word "steady". The transient's envelope is e^(−γt/2m), and a
+       fixed T = 400 left the beats preset (γ = 0.02) reading its maximum at
+       97% transient-free — a 2.9% excess printed as a "difference" between
+       routes that had none (auditsides, 2026-08-15). The run length now comes
+       from the decay time itself: the measuring window (the last 15%) must
+       open with the transient below 10⁻⁵ of the response, so
+       0.85·T ≥ ln(2×10⁵)·(2m/γ). Below the damping where that fits in any
+       practical run, no steady state exists to measure and the panel says
+       which case it is in rather than print a number (§2.1). */
+    const tau = gam > 1e-12 ? 2 * m / gam : Infinity;      // transient e-folding time
+    const Tneed = 12.2 * tau / 0.85;
+    const settles = Tneed <= 2000;
+    let meas = NaN;
+    if(settles){
+      const T = Math.max(200, Tneed);
+      const N = Math.min(Math.round(300 * T), 240000);
+      const num = odRK4(m, gam, k, t => F0 * Math.cos(w * t), 0, 0, 0, T, N);
+      let iMax = Math.floor(num.ys.length * 0.85);
+      for(let i = iMax + 1; i < num.ys.length; i++)
+        if(Math.abs(num.ys[i]) > Math.abs(num.ys[iMax])) iMax = i;
+      meas = Math.abs(num.ys[iMax]);
+      /* parabolic refinement ONCE, at the argmax, and only where |y| is
+         genuinely concave — |y| has a kink at every zero crossing, and a
+         parabola fitted through a kink can invent an amplitude (it did:
+         a first draft refined every ascending sample and reported 3.2 for a
+         steady state of 1.73) */
+      if(iMax > 0 && iMax < num.ys.length - 1){
+        const y0 = Math.abs(num.ys[iMax - 1]), y2 = Math.abs(num.ys[iMax + 1]);
+        const den = y0 - 2 * meas + y2;
+        if(den < -1e-30) meas = meas - 0.125 * (y0 - y2) * (y0 - y2) / den;
+      }
+    }
     return `<div class="card tight"><div class="ttl">The system</div>
       ${kv('ω₀ = √(k/m)', fmtNum(M.w0, 6))}
       ${kv('damping ratio ζ', fmtNum(M.zeta, 6))}
@@ -222,8 +251,14 @@ STAGES.odSpring = {
     <div class="card tight"><div class="ttl">The steady state at this drive</div>
       ${kv('|Z| = √((k−mω²)² + (γω)²)', fmtNum(D.Z, 6))}
       ${kv('amplitude F₀/|Z|', fmtNum(D.amp, 6))}
-      ${kv('measured from a long RK4 run', fmtNum(meas, 6))}
-      ${kv('difference', fmtAgree(D.amp, meas))}
+      ${settles
+        ? kv('measured from a long RK4 run', fmtNum(meas, 6))
+        : kv('measured from a long RK4 run', gam > 1e-12
+            ? 'not settled yet — the transient outlives any practical run (its e-folding time is ' + fmtNum(tau, 4) + ')'
+            : 'never — with γ = 0 the transient does not decay, and from rest the motion is the beat pattern, not a steady state')}
+      ${settles
+        ? kv('difference', fmtAgree(D.amp, meas))
+        : kv('difference', 'no steady state to compare against — raise the damping to watch it settle')}
       ${kv('phase lag δ', fmtNum(D.delta * 180 / Math.PI, 5) + '°')}
       ${kv('in phase / quadrature parts', `${fmtNum(D.A, 5)} cos ωt + ${fmtNum(D.B, 5)} sin ωt`)}
       ${kv('amplitude at resonance, F₀/(γω₀)', gam > 1e-9 ? fmtNum(F0 / (gam * M.w0), 6) : '∞')}

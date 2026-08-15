@@ -82,6 +82,31 @@ function dfCircleMean(f, x, y, r, n){
   }
   return s / N;
 }
+/* What the circle average exceeds the centre value BY, when f is not harmonic:
+   Green's representation on the disc gives
+     mean − centre = (1/2π) ∬_disc ∇²f · log(r/ρ) dA,   ρ = distance from centre.
+   For constant Laplacian this is ∇²f·r²/4 (the bowl's exact gap); for anything
+   typed it is a second, independent route to the same number the circle
+   quadrature measures — so the "difference" row can compare two computations
+   instead of printing a gap with nothing to read it against. The log kernel is
+   integrable (ρ·log(r/ρ) → 0 at the centre) and midpoint sampling in both
+   directions handles it. */
+function dfDiscLapAvg(f, x, y, r, nr, nt){
+  const NR = nr || 32, NT = nt || 48;
+  let s = 0;
+  for(let i = 0; i < NR; i++){
+    const rho = r * (i + 0.5) / NR;
+    const w = rho * Math.log(r / rho);
+    let ring = 0;
+    for(let j = 0; j < NT; j++){
+      const t = 2 * Math.PI * (j + 0.5) / NT;
+      const v = dfLaplacian(f, x + rho * Math.cos(t), y + rho * Math.sin(t));
+      if(Number.isFinite(v)) ring += v;
+    }
+    s += w * (ring / NT);
+  }
+  return s * (r / NR);
+}
 
 /* ---- Green's identities, verified numerically ----------------------------
    ∮ (f ∇g)·n̂ ds = ∬ (f ∇²g + ∇f·∇g) dA          (the first identity)
@@ -189,7 +214,11 @@ const DF_FIELDS = {
 const DF_HARMONIC = {
   xy:    { n:'xy',            f:(x, y) => x * y,                          harmonic:true },
   x2y2:  { n:'x² − y²',       f:(x, y) => x * x - y * y,                  harmonic:true },
-  logr:  { n:'log r',         f:(x, y) => 0.5 * Math.log(x * x + y * y + 1e-9), harmonic:true },
+  /* log r is THE fundamental solution: harmonic everywhere except the one
+     point the `sing` marker names. The mean value property needs harmonicity
+     on the WHOLE disc, so a circle that encloses the origin trades it for the
+     sharper statement mean = log r — see the stage, which measures both. */
+  logr:  { n:'log r',         f:(x, y) => 0.5 * Math.log(x * x + y * y + 1e-9), harmonic:true, sing:{ x:0, y:0 } },
   excos: { n:'eˣ cos y',      f:(x, y) => Math.exp(x) * Math.cos(y),      harmonic:true },
   bowl:  { n:'x² + y² — not harmonic', f:(x, y) => x * x + y * y,         harmonic:false }
 };

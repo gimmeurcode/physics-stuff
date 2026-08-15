@@ -137,7 +137,15 @@ setTimeout(function(){
     'igDoubleRect|readout|error at m':
       'a LOWER Riemann sum at m rectangles is exact only for f = 1 (the measured best preset) and deliberately inexact for f = x and f = xy -- the row is labelled "error" because watching it fall as m doubles is the demo',
     'igDoubleRect|readout|error at 2m':
-      'the same error at twice the rectangles -- kept beside the first so the reader sees it roughly halve, which is the first-order convergence the stage teaches'
+      'the same error at twice the rectangles -- kept beside the first so the reader sees it roughly halve, which is the first-order convergence the stage teaches',
+    /* Attributed 2026-08-15, closing the backlog (the other six rows were
+       fixed rather than excused -- see AUDIT.md, same date). */
+    'igApply|readout|difference':
+      'the row is "the sum of N slices" against the adaptive integral, with a slider whose whole purpose is watching the finite sum converge -- igDoubleRect one dimension down. The disk preset reads exact only because pi.f^2 is LINEAR there and the midpoint rule is exact on linear integrands; the default is off by the O(h^2) a 14-slice midpoint sum owes',
+    'mvTangent|readout|difference':
+      'Delta-f against the differential at fixed dx = dy = 0.01: the gap IS the second-order remainder (f_xx + 2f_xy + f_yy)/2 . 1e-4 that the card above it measures falling as h^2 -- a first-order approximation owing its second-order debt is the lesson, and the panel now names it. The saddle preset reads exact only because dx = dy annihilates the quadratic form of x^2 - y^2',
+    'agInverse|readout|difference from x':
+      'the custom default x^3 - 2x is the canonical NON-one-to-one cubic: f(1.2) = -0.672 is also hit at x = 0.359 and x = -1.559, bisection returns the leftmost branch, and |−1.559 − 1.2| = 2.76 is the measured gap. The readout prose teaches exactly this ("the inverse has sent you to the other branch"). The preset inverses cannot hide behind this entry: tests.js pins every AG_FUNCS round trip at x = 1.2'
   };
 
   /* ---- collection --------------------------------------------------------- */
@@ -373,7 +381,7 @@ $rep = $dom.Substring($a, $b - $a).Replace('&lt;','<').Replace('&gt;','>').Repla
 # LOWER THESE as they are cleared -- a baseline that is never tightened is a
 # backlog with a nice name.
 $BASE_FALSE  = 0
-$BASE_PRESET = 9
+$BASE_PRESET = 0
 
 $false_ = -1; $preset = -1
 foreach ($line in ($rep -split "`n")) {

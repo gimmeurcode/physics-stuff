@@ -26,9 +26,10 @@ carried forward.
 
 **Verified 2026-08-15 — every gate in §1.6 was run, and this is the first day
 that has been true.** `build` 231 modules · `smoke` OK (wings=40, stages=178,
-seelinks=80) · `runtests` **4272 passed, 0 failed** · `runall` demos=593
-controls=6462 **caught=0 OK** · `auditsides` falsescale=0 presetgap=14 **OK** ·
-`auditresid` **findings=0** noscale=7 · `auditcustom` **bad=0 OK** over the 98
+seelinks=80) · `runtests` **4290 passed, 0 failed** · `runall` demos=593
+controls=6462 **caught=0 OK** · `auditsides` falsescale=0 presetgap=0 **OK**
+(both ratchets at zero since 2026-08-15) · `auditresid` **findings=0**
+noscale=7 · `auditcustom` **bad=0 OK** over the 98
 stages carrying typed input · `auditclaims` 249 claims **bad=0 OK** ·
 `auditframe` cut=3, all three allowed by name **OK** · `auditsize`
 **findings=0** · `auditviewport` 16 sizes **bad=0** · `auditpanel` **bad=0** ·
@@ -53,9 +54,12 @@ artifact is published and gated (§3.9); the website half is one hosting setting
 away, which needs a human. Permalink: `#w=…&d=…&c.<id>=…`, 593 of 593 round
 trips exact, gated by `./auditlink.ps1` (§3.6).
 
-**The next work in order is verification items D2–D3, then the EM and atom
-scenario editors, then syllabus gaps B1–B4.** D2–D3 lead because they multiply
-everything after them and must land before Programme C's 22 wings reproduce the
+**The next work in order is verification item D3 (stage-level two-route
+tests), then the EM and atom scenario editors, then syllabus gaps B1–B4.**
+D2 closed 2026-08-15: all nine PRESET-GAP rows attributed, six fixed and three
+whitelisted with their mathematics, both `auditsides` ratchets at **0**
+(§3.4; `AUDIT.md` same date has the fixes). D3 leads because it multiplies
+everything after it and must land before Programme C's 22 wings reproduce the
 same class of defect at scale. Note what the permalink cost and returned: it
 touched no stage and fixed **six defects in code it did not own**, every one
 invisible to the 22 gates that existed. §4.3a rule 8 is the generalisation.
@@ -99,7 +103,7 @@ given so the next session can re-measure rather than trust.
 | harness scripts | **27** | `Get-ChildItem *.ps1`. Every one must appear in §1.6 and §4.2 — `./auditdocs.ps1` checks |
 | deployable size | **5 409 933 bytes** (5.41 MB / 5.16 MiB) | `./measure.ps1`. **`build.ps1` prints a smaller figure, which is a CHARACTER count** — the Unicode maths symbols cost ~57 KB more as UTF-8 bytes. Both are far inside any upload limit. **A fresh `git clone` builds ~15.6 KB smaller**: `.gitattributes` normalises line endings to LF and 54 of the source files carried CRLF when this was measured, which is 15 627 carriage returns. The app is identical — but this is why the row says *measure*, not *quote* |
 | source lines | ~77 044 (all of `src/`) | `./measure.ps1`; `./map.ps1` reports `src/js` alone |
-| unit tests | **4272 passed, 0 failed** | `./runtests.ps1` |
+| unit tests | **4290 passed, 0 failed** | `./runtests.ps1` (re-measured 2026-08-15) |
 | `mkPlot` call sites | **250** | `./measure.ps1` |
 | permalink round trips | **593 of 593 exact**, 11 demos measured stochastic | `./auditlink.ps1` |
 | declared table claims | **249, bad=0** | `./auditclaims.ps1` |
@@ -295,7 +299,7 @@ script exists that this table does not describe.
 | `auditderive.ps1` | ~40 s | `flagged=0 OK` | every stage's `derive()`, which **nothing else calls**; and whether rungs carry reasoning or restate algebra |
 | `auditclaims.ps1` | ~30 s | `bad=0 OK` | whether the **preset tables tell the truth** — 249 declared claims across 14 tables recomputed by an independent route. Reaches `EIG_PRESETS` (78b) and `NM_FUNCS` (79g), which are outside the window `runtests` extracts |
 | `auditresid.ps1` | ~1 min | `findings=0` / `auditresid OK` | whether a **residual is printed as though it were a measurement**. A row promising a difference must carry the scale it is read against, and two ways of failing that both shipped: `fmtNum`'s dead zone at [1e-4, 5×10⁻ˢⁱᵍ) printed `dyForce`'s genuine 7.8% gap as "difference 0 J" in the affirmative colour, and a circuit at steady state printed 29.7 fA of pure round-off as a finding. It reads **rendered panel text**, not source, so a new way of getting it wrong is caught too. **Widened 2026-08-14 after its own blind spots were measured**, and each one was hiding real defects: it read only `readout` and `chip`, so the **derive ladder** (~717 000 rendered characters) and the legend were invisible; it tested "is the scale printed?" against the *whole* panel text, and `SCALED` contains `of\s`, so **any panel containing the word "of" exempted itself**; its round-off pattern matched only the typeset `×10⁻ⁿ` form, so every residual printed through **`toExponential`** was invisible; and with `st.own` false at entry it never rendered the **55 stages' reader-supplied surfaces** at all — where 13 of the defects were. Now also reports an **advisory `noscale=`** count that does not fail the build, because no regex separates a two-route residual from a physical difference (`SITE-RULES` Part 4) |
-| `auditsides.ps1` | ~2 min | `auditsides OK` *(a ratchet)* | whether the two routes a theorem stage computes **actually agree, on every preset the reader can select**. `auditresid` asks whether a difference is printed *with its scale*; this one reads the number. It drives the real segmented controls over the whole preset product — **791 combinations across 78 demos, 5676 panel renders, 134 distinct two-route claims**, none of which anything had ever read — and classifies each claim by the verdict `fmtGap` renders. **FALSE-SCALE**: the routes agree to round-off and the panel reports ~100%, because `fmtAgree` derives its scale as `max(|a|,|b|)` and both routes vanished (`dyMoment` at e = 1 printed `1.78×10⁻¹⁵ (100% — agreeing to 0 figures)` under prose promising they "match exactly"; `smBoltz` managed it at **1.81×10⁻¹⁷⁰**). **Found 10, fixed 10 the same day** by `fmtAgreeGross` and a gross per vanishing integral, so **its baseline is 0 and one new instance fails the build**. **PRESET-GAP**: the same claim is exact on one preset and poor on another — the cylinder-normal detector, and it needs no hand-chosen tolerance because the stage's own best preset sets the standard. Still a **ratchet on `$BASE_PRESET`** (at 9 since 2026-08-15, lowered from 14 as rows are attributed), because that signature is equally the mark of a demo deliberately showing where a hypothesis fails; eight honest exceptions are whitelisted **with their reasons** and nothing else is. **weak** rows are advisory: a 14-slice Riemann sum is *supposed* to disagree |
+| `auditsides.ps1` | ~2 min | `auditsides OK` *(a ratchet)* | whether the two routes a theorem stage computes **actually agree, on every preset the reader can select**. `auditresid` asks whether a difference is printed *with its scale*; this one reads the number. It drives the real segmented controls over the whole preset product — **791 combinations across 78 demos, 5676 panel renders, 134 distinct two-route claims**, none of which anything had ever read — and classifies each claim by the verdict `fmtGap` renders. **FALSE-SCALE**: the routes agree to round-off and the panel reports ~100%, because `fmtAgree` derives its scale as `max(|a|,|b|)` and both routes vanished (`dyMoment` at e = 1 printed `1.78×10⁻¹⁵ (100% — agreeing to 0 figures)` under prose promising they "match exactly"; `smBoltz` managed it at **1.81×10⁻¹⁷⁰**). **Found 10, fixed 10 the same day** by `fmtAgreeGross` and a gross per vanishing integral, so **its baseline is 0 and one new instance fails the build**. **PRESET-GAP**: the same claim is exact on one preset and poor on another — the cylinder-normal detector, and it needs no hand-chosen tolerance because the stage's own best preset sets the standard. The **ratchet on `$BASE_PRESET` reached 0 on 2026-08-15** — the whole backlog attributed, so a new row of either class fails the build; eleven honest exceptions are whitelisted **with their reasons** and nothing else is. **weak** rows are advisory: a 14-slice Riemann sum is *supposed* to disagree |
 | `auditmarks.ps1` | ~1 min | *(old → new scores)* | whether the **key points drawn on a plot are real**. `pvFeatures` marked a break wherever a step beat 12× the curve's *median* step — which asks whether this part is steeper than the rest, not whether the curve is broken — so any curve with a long flat tail grew a picket fence of false poles. **2303 → 20 markers** across the stages, with controls proving `tan` and `1/x` keep their real poles: the first attempt scored 2303 → 10 and **silently dropped tan's pole**, which is the whole argument for having a control |
 | `auditdocs.ps1` | ~1 min | `bad=0 OK` | whether **these documents still describe the site**. It re-measures wings, experiments, groups, stages, modules, tests, see-links, scripts and artifact size, then reads every live `.md` and fails on a contradiction; checks that every `*.ps1` on disk is described in §1.6 and §4.2 and listed in `AI-GUIDE.md`; and that every file path a document names exists. **An undated number is a live claim; a number on a line carrying a `YYYY-MM-DD`, or under a dated heading, is a record and is exempt** — that is the only escape hatch, and it is honest because it says when the figure was true. **`-Fix` rewrites the stale counts** (exactly the digits it verified, printing each substitution — then read the diff). **`-SkipTests` makes the run partial and it says so**, because a `bad=0` from a run that did not look is worse than no gate. Nothing else reads a `.md` at all, and eight false counts had survived every other gate indefinitely |
 | `auditzoom.ps1` | ~1 min | `findings=0` | pan/zoom on all 178 stages, **and mkPlot's identity-at-rest** |
@@ -1208,7 +1212,21 @@ Three pieces of infrastructure would have caught most of the fourteen:
    defect of either class is caught the moment it lands while the backlog stays
    visible. **Lower them as rows are cleared.**
 
-   **Four more rows attributed 2026-08-15, ratchet 13 → 9.** All four are the
+   **CLOSED 2026-08-15 — the remaining nine rows attributed, ratchet 9 → 0.**
+   Six were fixed, three whitelisted with their mathematics; the full record,
+   with the before/after numbers for each, is `AUDIT.md`'s "D2 closed" entry of
+   the same date. The headline finds: the ISCO orbit preset was seeding L from
+   the Newtonian vis-viva and *plunging*, and the NaN printed as "they agree to
+   every digit" — a **class defect in every difference formatter** (`!(rel >
+   floor)` is true for NaN), whose fix immediately exposed `laLSQ` printing two
+   orthogonality rows as perfect agreement off a NaN scale since the stage was
+   written; the box solid's cylindrical route was 0.24% off because Gauss
+   points straddled the shadow's rim (fixed by breaking the quadrature at the
+   rim and at the corner directions — box now 1.5×10⁻⁹); and the beats demo's
+   "steady state" was measured with 2.9% of transient left. Both ratchets are
+   0; the gate was corrupted once (whitelist key) and watched to fail.
+
+   **Four rows had been attributed earlier the same day, ratchet 13 → 9.** All four are the
    preset *designed* to fail the claim, whitelisted with their mathematics:
    `cxMap` conj (f = z̄, Wirtinger derivative 1, so the row reads exactly 2 —
    Cauchy–Riemann failing is the preset's purpose), `vcConserv` rot (the path
@@ -1216,11 +1234,9 @@ Three pieces of infrastructure would have caught most of the fourteen:
    rows (a lower Riemann sum is exact only for f = 1, and watching the error
    halve is the demo). The cxMap key put real Unicode into the whitelist, so
    **`auditsides.ps1` now carries a UTF-8 BOM** — §1.6's rule, bitten a third
-   time, caught before it shipped this time. **Nine rows remain**, each needing
-   its convergence measured (halve the step, watch the order) before it can be
-   called truncation and named in the panel, or called a defect and fixed —
-   that is the next D2 unit, and J9's two-error-classes discipline is the
-   method.
+   time, caught before it shipped this time. The nine rows that remained were
+   attributed later the same day by exactly that method — halve the step, watch
+   the order — and the ratchet is 0 (the CLOSED note above).
 
    **Its negative control found a defect in the gate itself, which is the
    argument for having one.** Corrupting `vcGreen`'s planimeter by 5% changed
@@ -1792,10 +1808,13 @@ is sequenced by *what makes the next piece of work cheaper*, not by subject.
    works, which is how every later piece of work gets demonstrated and reported.
    It also found six defects in code that had nothing to do with it — see
    `AUDIT.md`; the lesson is in §4.3a rule 8.
-5. **Programme D items 2 and 3** — the both-sides audit and stage-level tests.
-   Item 1 is done. This still multiplies everything after it, and it must land
-   **before Programme C**, or 22 new wings reproduce the same class of defect at
-   scale.
+5. **Programme D item 3** — stage-level two-route tests. Items 1 and 2 are
+   done (item 2 closed 2026-08-15 with both `auditsides` ratchets at 0). This
+   still multiplies everything after it, and it must land **before Programme
+   C**, or 22 new wings reproduce the same class of defect at scale. Build it
+   the way §3.4 item 3 says: target the stage helpers with **two routes to the
+   same answer**, where a test can assert agreement without knowing which is
+   right.
 6. **Programme A, EM and atom** (6 stages) — the machinery already exists, so
    these are the cheapest scenario editors left.
 7. **Programme B items 1–4** — small, inside wings that already exist, and found

@@ -11,16 +11,36 @@
 /* The transform by quadrature. Computed rather than looked up, so a reader can
    type any function and watch F(s) appear — and so the table below can be
    checked against it instead of being taken on trust. */
-function ltTransform(f, s, tmax, n){
-  const T = tmax || 40, N = n || 4000, h = T / N;
+function ltTransform(f, s, tmax, n, brk){
+  const T = tmax || 40, N = n || 4000;
+  /* Simpson's rule is fourth order on a smooth integrand and FIRST order
+     across a jump — the ltDelta comment below has known this all along, and
+     the step function u(t−2) paid for it: integrated in one piece its
+     transform disagreed with e^(−2s)/s in the third figure. A discontinuous
+     entry declares its breakpoints and each smooth piece is integrated
+     separately, sampling one-sided limits at the seams, so the rule keeps its
+     full order everywhere. No breakpoints — the common case — is the single
+     piece [0, T], identical to what this always did. */
+  const cuts = [0];
+  if(brk) for(const b of brk) if(b > 0 && b < T) cuts.push(b);
+  cuts.push(T);
+  cuts.sort((a, b) => a - b);
   let sum = 0;
-  for(let i = 0; i <= N; i++){
-    const t = i * h;
-    const w = (i === 0 || i === N) ? 1 : (i % 2 ? 4 : 2);
-    const v = f(t) * Math.exp(-s * t);
-    if(Number.isFinite(v)) sum += w * v;
+  for(let p = 0; p + 1 < cuts.length; p++){
+    const a = cuts[p], b = cuts[p + 1];
+    let m = Math.max(8, Math.round(N * (b - a) / T));
+    if(m % 2) m++;
+    const h = (b - a) / m, eps = (b - a) * 1e-9;
+    let piece = 0;
+    for(let i = 0; i <= m; i++){
+      const t = Math.min(Math.max(a + i * h, a + eps), b - eps);
+      const w = (i === 0 || i === m) ? 1 : (i % 2 ? 4 : 2);
+      const v = f(t) * Math.exp(-s * t);
+      if(Number.isFinite(v)) piece += w * v;
+    }
+    sum += piece * h / 3;
   }
-  return sum * h / 3;
+  return sum;
 }
 
 /* The standard table, each entry carrying the function, its transform, and the
@@ -35,7 +55,8 @@ const LT_TABLE = [
   { n:'cos ωt',       f:t => Math.cos(2 * t),           F:s => s / (s * s + 4),             roc:'s > 0',  tex:'cos ωt ⟶ s/(s²+ω²)' },
   { n:'e^(at) sin ωt',f:t => Math.exp(-0.5 * t) * Math.sin(2 * t),
                       F:s => 2 / ((s + 0.5) * (s + 0.5) + 4), roc:'s > a',                  tex:'shifted: s → s−a' },
-  { n:'u(t−c)',       f:t => (t >= 2 ? 1 : 0),          F:s => Math.exp(-2 * s) / s,        roc:'s > 0',  tex:'u(t−c) ⟶ e^(−cs)/s' }
+  { n:'u(t−c)',       f:t => (t >= 2 ? 1 : 0),          F:s => Math.exp(-2 * s) / s,        roc:'s > 0',  tex:'u(t−c) ⟶ e^(−cs)/s',
+                      brk:[2] }
 ];
 
 /* A unit impulse cannot be drawn, so it is approximated by a narrow bump of unit

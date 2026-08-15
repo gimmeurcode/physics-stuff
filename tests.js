@@ -216,6 +216,102 @@ ok('and the underflow case: 1.8e-170 eV against kT is nothing',
    fmtAgreeGross(1.81e-170, 0, 0.0258, 'eV').indexOf('every digit') > 0,
    fmtAgreeGross(1.81e-170, 0, 0.0258, 'eV'));
 
+/* ---- a NaN is NOT agreement ----
+   `!(rel > floor)` is true when rel is NaN, so a route that returned no number
+   fell into the affirmative branch: rlOrbit's ISCO preset had no perihelion to
+   measure (the star plunged) and the readout printed "they agree to every
+   digit" against the perihelion formula. Every difference formatter must
+   refuse a verdict rather than award one to a number that does not exist. */
+ok('fmtGap: a NaN gap is not agreement',
+   fmtGap(NaN, 1, 'J').indexOf('every digit') < 0, fmtGap(NaN, 1, 'J'));
+ok('...and says a route returned no number, without the banned word',
+   /no number/.test(fmtGap(NaN, 1)) && fmtGap(NaN, 1).indexOf('NaN') < 0, fmtGap(NaN, 1));
+ok('fmtGap: a NaN scale refuses a verdict too',
+   /no number/.test(fmtGap(0.1, NaN)), fmtGap(0.1, NaN));
+ok('fmtAgree: NaN in either route refuses a verdict',
+   /no number/.test(fmtAgree(NaN, 1.51)) && /no number/.test(fmtAgree(1.51, NaN)),
+   fmtAgree(NaN, 1.51));
+ok('fmtGapTight: the canvas form refuses as well',
+   fmtGapTight(NaN, 1).indexOf('every digit') < 0 && /not computable/.test(fmtGapTight(NaN, 1)),
+   fmtGapTight(NaN, 1));
+ok('fmtAgreeGross: a NaN gross does not defeat the floor test',
+   /50%/.test(fmtAgreeGross(1.0, 0.5, NaN, 'J')), fmtAgreeGross(1.0, 0.5, NaN, 'J'));
+ok('fmtAgreeGross: a NaN route refuses a verdict',
+   /no number/.test(fmtAgreeGross(NaN, 1, 5, 'J')), fmtAgreeGross(NaN, 1, 5, 'J'));
+
+/* ---- grLFromTurning: the full-metric angular momentum seed ----
+   Demanding a(1-e) and a(1+e) be turning points of the Schwarzschild
+   u-equation. The Newtonian vis-viva is its c -> infinity limit; near the
+   horizon they part company, and the Newtonian seed is what sent the "just
+   outside the ISCO" preset spiralling in. */
+{
+  const a = 5.7909050e10, e = 0.2;
+  const Lgr = grLFromTurning(GM_SUN, a * (1 - e), a * (1 + e));
+  const Lnw = Math.sqrt(GM_SUN * a * (1 - e * e));
+  ok('grLFromTurning: weak field reduces to the Newtonian vis-viva',
+     Math.abs(Lgr - Lnw) < 1e-6 * Lnw, Lgr + ' vs ' + Lnw);
+  const GM = GM_SUN * 10, rs = grRs(GM), a2 = 6.5 * rs;
+  const r1 = a2 * 0.8, r2 = a2 * 1.2;
+  const L2 = grLFromTurning(GM, r1, r2);
+  ok('...the ISCO-preset orbit is bound: L exists and exceeds the ISCO minimum sqrt(12)GM/c',
+     Number.isFinite(L2) && L2 > Math.sqrt(12) * GM / Math.sqrt(C2), String(L2));
+  const res = grOrbitIntegrate(GM, L2, 1 / r2, 0, 2 * Math.PI / 4000, 12000, true);
+  let umax = 0;
+  for(let i = 0; i < res.u.length; i++) if(res.u[i] > umax) umax = res.u[i];
+  ok('...and the integrated orbit turns at the declared pericentre',
+     Math.abs(1 / umax - r1) < 1e-4 * a2, (1 / umax) + ' vs ' + r1);
+  ok('...while a pericentre at the horizon gets NaN, not a number',
+     Number.isNaN(grLFromTurning(C2, 2.0, 80)), String(grLFromTurning(C2, 2.0, 80)));
+}
+
+/* ---- ltTransform: breakpoints keep Simpson at full order across a jump ---- */
+{
+  const E = LT_TABLE[7];                       /* u(t-2), F = e^(-2s)/s */
+  const exact = Math.exp(-4) / 2;
+  const split = ltTransform(E.f, 2, 40, 4000, E.brk);
+  ok('ltTransform: the step transform lands on e^(-2s)/s once the jump is a seam',
+     Math.abs(split - exact) < 1e-9 * exact + 1e-12, split + ' vs ' + exact);
+  const whole = ltTransform(E.f, 2, 40, 4000);
+  ok('...and the one-piece rule really was first-order there (the control)',
+     Math.abs(whole - exact) > 1e-5, String(whole));
+  const smooth = ltTransform(t => Math.sin(2 * t), 2, 40, 4000);
+  ok('...while a smooth integrand with no breakpoints is the old single piece',
+     Math.abs(smooth - 0.25) < 1e-6, String(smooth));
+}
+
+/* ---- dfDiscLapAvg: Green's representation prices the mean-value failure ---- */
+ok('dfDiscLapAvg: constant Laplacian gives its r^2/4 (the bowl, gap = R^2)',
+   Math.abs(dfDiscLapAvg((x, y) => x * x + y * y, 0.4, 0.3, 0.8) - 0.64) < 2e-3,
+   String(dfDiscLapAvg((x, y) => x * x + y * y, 0.4, 0.3, 0.8)));
+ok('...and a harmonic function prices its failure at zero',
+   Math.abs(dfDiscLapAvg((x, y) => x * x - y * y, 0.4, 0.3, 0.8)) < 1e-3,
+   String(dfDiscLapAvg((x, y) => x * x - y * y, 0.4, 0.3, 0.8)));
+
+/* ---- AG_FUNCS: every preset inverse returns the branch containing the
+   default probe, so the auditsides whitelist on the custom row can never hide
+   a broken preset inverse behind it ---- */
+{
+  let worst = 0, at = '';
+  for(const k in AG_FUNCS){
+    const E = AG_FUNCS[k];
+    const err = Math.abs(E.inv(E.f(1.2)) - 1.2);
+    if(!(err < worst)){ worst = err; at = k; }
+  }
+  ok('AG_FUNCS: every preset inverse round-trips x = 1.2 exactly',
+     worst < 1e-12, at + ' err ' + worst);
+}
+
+/* ---- odVariation vs RK4, compared AT THE SAME t ----
+   8000 steps over [0,22] puts no node at t = 12 and the y'.0.0015 offset
+   printed as a difference between routes that agree to 1e-12. */
+{
+  const g = t => 3 * Math.exp(-0.5 * t);
+  const num = odRK4(1, 0.5, 3, g, 0, 0, 0, 22, 8800);
+  const vp = odVariation(1, 0.5, 3, g, num.ts[4800]).yp;
+  ok('odVariation and RK4 agree at a shared grid time to 1e-9',
+     Math.abs(vp - num.ys[4800]) < 1e-9, vp + ' vs ' + num.ys[4800]);
+}
+
 /* ---- igLamina: a density that changes sign has no centre of mass ----
    rho = y over a region symmetric about the x-axis integrates to EXACTLY zero,
    and the panel divided by it: the cardioid printed y-bar = -1.15e16 as a

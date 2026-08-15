@@ -313,18 +313,30 @@ STAGES.rlOrbit = {
                               v => '×' + fmtNum(Math.round(v), 6) + ' (drawing only)');
   },
   setup(st){
-    /* a is in metres; L from the Newtonian relation, which is the right seed */
-    if(st.sys === 'mercury'){
-      const a = 5.7909050e10;
-      return { GM: GM_SUN, a, e: st.e, P: 87.9691, nm: 'Mercury round the Sun' };
-    }
+    /* a is in metres. L comes from grLFromTurning — the demand that a(1−e) and
+       a(1+e) be turning points of the FULL u-equation — not from the Newtonian
+       vis-viva. For Mercury the two agree to a part in 10⁷; at 6.5 rs the
+       Newtonian seed put the pericentre inside the centrifugal barrier and the
+       "orbit" spiralled in, which is not what "just outside the ISCO" promised. */
+    const mk = (GM, a, P, nm) => {
+      const L = grLFromTurning(GM, a * (1 - st.e), a * (1 + st.e));
+      return { GM, a, e: st.e, P, nm, L };
+    };
+    if(st.sys === 'mercury') return mk(GM_SUN, 5.7909050e10, 87.9691, 'Mercury round the Sun');
     const GM = GM_SUN * 10, rs = grRs(GM);
     const a = (st.sys === 'strong' ? 20 : 6.5) * rs;
-    return { GM, a, e: st.e, P: 0, nm: st.sys === 'strong' ? 'a star at 20 rs' : 'a star just outside the ISCO' };
+    return mk(GM, a, 0, st.sys === 'strong' ? 'a star at 20 rs' : 'a star just outside the ISCO');
   },
   frame(st, dt, ctx, W, H){
     const S = this.setup(st);
-    const L = Math.sqrt(S.GM * S.a * (1 - S.e * S.e));
+    const L = S.L;
+    if(!Number.isFinite(L)){
+      rlText(ctx, W / 2, H / 2, 'no bound orbit has these apsides — the star spirals in', rgbCss(TH.warn),
+             '600 13px ' + FONT_UI, 'center');
+      rlText(ctx, W / 2, H / 2 + 22, 'lower the eccentricity, or move it further out', rgbCss(TH.dim),
+             '11.5px ' + FONT_UI, 'center');
+      return;
+    }
     const steps = 3000 * st.orbits;
     const dphi = 2 * Math.PI * st.orbits / steps;
     const u0 = 1 / (S.a * (1 + S.e));
@@ -426,31 +438,51 @@ STAGES.rlOrbit = {
   },
   readout(st){
     const S = this.setup(st);
-    const L = Math.sqrt(S.GM * S.a * (1 - S.e * S.e));
+    const L = S.L;
     const rs = grRs(S.GM);
-    const res = grOrbitIntegrate(S.GM, L, 1 / (S.a * (1 + S.e)), 0, 2 * Math.PI / 4000, 8000, true);
-    const measured = grPeriapsisAngle(res) - 2 * Math.PI;
+    const res = Number.isFinite(L)
+      ? grOrbitIntegrate(S.GM, L, 1 / (S.a * (1 + S.e)), 0, 2 * Math.PI / 4000, 8000, true)
+      : null;
+    const measured = res ? grPeriapsisAngle(res) - 2 * Math.PI : NaN;
     const formula = grPrecessionPerOrbit(S.GM, S.a, S.e);
     const rp = S.a * (1 - S.e);
+    /* Two different claims share this card and must not share a verdict row.
+       In the weak field the first-order formula IS the prediction and the two
+       routes agree to many figures. This close to the horizon the formula is
+       the FIRST TERM of an expansion in GM/c²r evaluated far outside its
+       radius of usefulness — the gap is the demonstration, and the row says so
+       in its own label rather than posing as a failed agreement. */
+    const strongField = !S.P;
+    const diffRow = !Number.isFinite(measured)
+      ? kv('difference', 'no perihelion to measure — see below')
+      : strongField
+      ? kv('difference — beyond first order', fmtAgree(measured, formula, 'rad/orbit'))
+      : kv('difference', fmtAgree(measured, formula, 'rad/orbit'));
     return `<div class="card tight"><div class="ttl">${S.nm}</div>
       ${kv('GM', fmtNum(S.GM, 5) + ' m³/s²')}
       ${kv('semi-major axis a', fmtNum(S.a, 5) + ' m' + (rs > 0 ? '  =  ' + fmtNum(S.a / rs, 4) + ' rs' : ''))}
       ${kv('eccentricity e', fmtNum(S.e, 4))}
       ${kv('perihelion a(1−e)', fmtNum(rp, 5) + ' m  =  ' + fmtNum(rp / rs, 4) + ' rs')}
-      ${kv('specific angular momentum L', fmtNum(L, 5) + ' m²/s')}
+      ${kv('specific angular momentum L', Number.isFinite(L)
+        ? fmtNum(L, 5) + ' m²/s'
+        : 'none exists — no L makes both apsides turning points')}
       ${kv('GM/(c²·perihelion)', fmtNum(S.GM / (C2 * rp), 4) + '  — the size of the correction')}
     </div>
     <div class="card tight"><div class="ttl">How much it turns</div>
-      ${kv('integrated from the geodesic', fmtNum(measured, 6) + ' rad/orbit')}
+      ${kv('integrated from the geodesic', Number.isFinite(measured)
+        ? fmtNum(measured, 6) + ' rad/orbit'
+        : 'no bound orbit — the star spirals in')}
       ${kv('6πGM/(c²a(1−e²))', fmtNum(formula, 6) + ' rad/orbit')}
-      ${kv('difference', fmtAgree(measured, formula, '%'))}
-      ${kv('in arcseconds per orbit', fmtNum(measured * ARCSEC, 6) + '″')}
+      ${diffRow}
+      ${Number.isFinite(measured) ? kv('in arcseconds per orbit', fmtNum(measured * ARCSEC, 6) + '″') : ''}
       ${S.P ? kv('orbits per century', fmtNum(36525 / S.P, 6)) : ''}
       ${S.P ? kv('arcseconds per century', fmtNum(measured * ARCSEC * 36525 / S.P, 5) + '″') : ''}
       ${S.P ? kv('what Le Verrier could not explain', '43″ per century') : ''}
       <p class="help">${S.P
         ? 'The closed-form prediction and the integrated orbit agree to a fraction of a percent, which is the correct behaviour: the formula is the first term of an expansion in GM/c²r, and here that ratio is ' + fmtNum(S.GM / (C2 * rp), 3) + '. Le Verrier found the 43″ discrepancy in 1859 and proposed a planet, Vulcan, to account for it; people reported seeing it. Einstein computed this number in November 1915 and wrote that it gave him palpitations. It is the only classical test that was a <i>retrodiction</i> — the measurement was already on the table, with no free parameters left to adjust.'
-        : 'This close in, the "correction" is not a correction: the orbit is a rosette, the closed-form first-order formula is well outside its range of validity, and the difference between the integrated answer and the formula is large and honest. Below the ISCO at 3 rs there are no bound circular orbits at all — the effective potential loses its minimum, and anything that drifts inside falls in.'}</p>
+        : !Number.isFinite(measured)
+        ? 'There is no bound orbit with these apsides: this close to the horizon, no angular momentum makes both a(1−e) and a(1+e) turning points — the centrifugal barrier the pericentre needed does not exist, and the star spirals in. That is not a failure of the integrator; it is the physics that gives the ISCO its name. Lower the eccentricity, or move the star further out, and the orbit closes into a rosette again.'
+        : 'This close in, the "correction" is not a correction: the orbit is a rosette, the closed-form first-order formula is well outside its range of validity, and the difference between the integrated answer and the formula is large and honest — it is the next orders of the expansion in GM/c²r, which at this pericentre is ' + fmtNum(S.GM / (C2 * rp), 3) + '. Below the ISCO at 3 rs there are no bound circular orbits at all — the effective potential loses its minimum, and anything that drifts inside falls in.'}</p>
     </div>
     <div class="card tight"><div class="ttl">Why it precesses at all</div>
       ${kv('Newtonian V_eff', '−GM/r + L²/2r²')}
@@ -469,7 +501,6 @@ STAGES.rlOrbit = {
   },
   chip(st){
     const S = this.setup(st);
-    const L = Math.sqrt(S.GM * S.a * (1 - S.e * S.e));
     const adv = grPrecessionPerOrbit(S.GM, S.a, S.e);
     return `<div class="k">Precession</div>
       <div style="color:var(--c-grad)">${fmtNum(adv * ARCSEC, 5)}″ per orbit</div>

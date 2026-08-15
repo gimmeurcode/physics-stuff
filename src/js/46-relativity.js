@@ -456,6 +456,27 @@ function grPrecessionPerCentury(GM, a, e, periodDays){
    The first term alone gives a conic section that closes exactly. The second —
    tiny, of order GM/(c²r) — is why Mercury's does not. Integrated with RK4 in φ
    so the precession is a computed result rather than a formula quoted back. */
+/* The angular momentum whose orbit turns at exactly r1 and r2, in the FULL
+   Schwarzschild u-equation rather than the Newtonian limit.
+
+   The first integral of d²u/dφ² + u = GM/L² + (3GM/c²)u² is
+     (du/dφ)²/2 = E + (GM/L²)u − u²/2 + (GM/c²)u³,
+   and demanding u₁ = 1/r₁ and u₂ = 1/r₂ both be turning points and subtracting
+   the two conditions eliminates E:
+     GM/L² = (u₁+u₂)/2 − (GM/c²)(u₁² + u₁u₂ + u₂²).
+   As c → ∞ this is the Newtonian vis-viva seed L² = GM·a(1−e²) exactly. Close
+   to the horizon the two differ enough to matter: seeding the "star just
+   outside the ISCO" preset with the NEWTONIAN L put its pericentre inside the
+   centrifugal barrier, the star spiralled in, grPeriapsisAngle found no second
+   perihelion, and the readout printed the NaN as "they agree to every digit"
+   (auditsides, 2026-08-15). Returns NaN when no bound orbit has those apsides —
+   the caller must say so rather than print a number. */
+function grLFromTurning(GM, r1, r2){
+  const u1 = 1 / r1, u2 = 1 / r2;
+  const k = (u1 + u2) / 2 - (GM / C2) * (u1 * u1 + u1 * u2 + u2 * u2);
+  return k > 0 ? Math.sqrt(GM / k) : NaN;
+}
+
 function grOrbitIntegrate(GM, L, u0, du0, dphi, steps, relativistic){
   const k = GM / (L * L), q = relativistic ? 3 * GM / C2 : 0;
   const f = u => k + q * u * u - u;
