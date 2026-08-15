@@ -1,4 +1,4 @@
-# auditsides.ps1 -- when a stage computes a quantity TWICE, do the two routes
+﻿# auditsides.ps1 -- when a stage computes a quantity TWICE, do the two routes
 # actually agree, on every preset the reader can select?
 #
 # WHY THIS EXISTS. MASTER-PLAN 3.4 item 2, the "both-sides audit", written after
@@ -123,7 +123,21 @@ setTimeout(function(){
     'vcDiverg|readout|difference':
       'inverse-square through a sphere containing it: div = 0 everywhere it is defined, flux = 4pi. Gauss law',
     'vcDiverg|readout|difference #2':
-      'the same field through the cylinder, 2pi. Same reason'
+      'the same field through the cylinder, 2pi. Same reason',
+    /* Attributed 2026-08-15 from the PRESET-GAP backlog (13 rows measured
+       2026-08-14). Each of these is the preset DESIGNED to fail the claim --
+       the row is the demonstration, not a defect. The cxMap key carries the
+       rendered Wirtinger row verbatim, Unicode and all, WHICH IS WHY THIS
+       FILE NOW HAS A UTF-8 BOM -- PS 5.1 reads a BOM-less .ps1 as ANSI and
+       the key would silently never match (MASTER-PLAN 1.6, bitten twice). */
+    'cxMap|readout||∂f/∂x − (−i)∂f/∂y|':
+      'the conj preset is f = z-bar, THE canonical non-holomorphic function: its Wirtinger derivative is 1, so the row reads exactly 2. Cauchy-Riemann failing is what the preset exists to show; every holomorphic preset gives ~0',
+    'vcConserv|readout|difference':
+      'the rot preset is a rotational field, and the difference between the two path integrals IS its non-conservativity -- curl does not vanish, no potential exists, and the demo is the counterexample the conservative presets are contrasted against',
+    'igDoubleRect|readout|error at m':
+      'a LOWER Riemann sum at m rectangles is exact only for f = 1 (the measured best preset) and deliberately inexact for f = x and f = xy -- the row is labelled "error" because watching it fall as m doubles is the demo',
+    'igDoubleRect|readout|error at 2m':
+      'the same error at twice the rectangles -- kept beside the first so the reader sees it roughly halve, which is the first-order convergence the stage teaches'
   };
 
   /* ---- collection --------------------------------------------------------- */
@@ -359,7 +373,7 @@ $rep = $dom.Substring($a, $b - $a).Replace('&lt;','<').Replace('&gt;','>').Repla
 # LOWER THESE as they are cleared -- a baseline that is never tightened is a
 # backlog with a nice name.
 $BASE_FALSE  = 0
-$BASE_PRESET = 13
+$BASE_PRESET = 9
 
 $false_ = -1; $preset = -1
 foreach ($line in ($rep -split "`n")) {
