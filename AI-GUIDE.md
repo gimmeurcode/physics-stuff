@@ -14,7 +14,7 @@ settling any question of what is allowed; read this before typing.
 ## 1. What this is
 
 A single self-contained page — no build step beyond concatenation, no
-dependencies, no network. 40 wings, 594 guided experiments, 178 canvas stages,
+dependencies, no network. 40 wings, 595 guided experiments, 178 canvas stages,
 4249 unit tests (measured 2026-08-14 — **re-measure rather than quote**;
 `./auditdocs.ps1` fails the build when a figure here drifts from the site).
 Everything on screen is computed live from the actual mathematics: symbolic
@@ -76,7 +76,7 @@ there are, and `./auditdocs.ps1` fails if a script exists that this list, or
 `MASTER-PLAN.md` §1.6 and §4.2, does not mention.
 
 `runall.ps1` proves every demo *runs*. `audittext.ps1` + `auditscan.ps1` prove
-every demo is *readable* — they drive all 594 experiments, harvest the
+every demo is *readable* — they drive all 595 experiments, harvest the
 `textContent` of every panel a student reads, and scan for ASCII stand-ins,
 leaked markup, empty panels and `NaN`. Run them on **rendered output**, never on
 source: grepping `src/` for `sqrt` drowns in `Math.sqrt(` and `theta` drowns in

@@ -242,6 +242,51 @@ function sok(name, cond, detail){
       Math.abs(F.bBuild('sqrt(4) + atan(0) + 0*t').f(0, 0, 5) - 2) < 1e-12, 'mangled');
 })();
 
+/* ---- atomSM typed content: anomaly cancellation in exact arithmetic -------
+   The five triangle sums and the Witten doublet parity are computed over the
+   reader's multiplet list in integer arithmetic, so "sums to zero" is a
+   statement about numerators, never a tolerance. Route B for the
+   gravitational sum expands every multiplet into components and adds
+   Q = T3 + Y; it must equal route A because each multiplet's T3 cancel
+   pairwise.                                                                 */
+(function(){
+  var F = STAGES.atomSM;
+  var SM = 'Q 3 2 1/6\nuc 3b 1 -2/3\ndc 3b 1 1/3\nL 1 2 -1/2\nec 1 1 1';
+  var P = F.parseSheet(SM);
+  sok('atomSM typed: one SM generation parses clean', P.errs.length === 0 && P.rows.length === 5,
+      JSON.stringify(P.errs));
+  var an = F.sums(P.rows);
+  sok('atomSM typed: all five sums vanish exactly (numerator 0, not 1e-16)',
+      an.s333 === 0 && an.s331.n === 0 && an.s221.n === 0 && an.s111.n === 0 && an.sgrav.n === 0,
+      [an.s333, an.s331.n + '/' + an.s331.d, an.s221.n + '/' + an.s221.d,
+       an.s111.n + '/' + an.s111.d, an.sgrav.n + '/' + an.sgrav.d].join(' , '));
+  sok('atomSM typed: 4 SU(2) doublets, even — the Witten check passes',
+      an.doublets === 4, an.doublets);
+  var lines = SM.split('\n'), allBreak = true, detail = '';
+  for(var i = 0; i < 5; i++){
+    var a2 = F.sums(F.parseSheet(lines.slice(0, i).concat(lines.slice(i + 1)).join('\n')).rows);
+    var fails = (a2.s333 !== 0 ? 1 : 0) + (a2.s331.n !== 0 ? 1 : 0) + (a2.s221.n !== 0 ? 1 : 0) +
+                (a2.s111.n !== 0 ? 1 : 0) + (a2.sgrav.n !== 0 ? 1 : 0) + (a2.doublets % 2);
+    if(!fails){ allBreak = false; detail += lines[i] + ' survived removal; '; }
+  }
+  sok('atomSM typed: removing any one multiplet breaks at least one check', allBreak, detail);
+  var q = F.chargeSum(P.rows);
+  sok('atomSM typed: sum of Q over 15 components === sum of Y over multiplets, exactly',
+      q.n === an.sgrav.n && q.d === an.sgrav.d, q.n + '/' + q.d);
+  var cut = F.parseSheet(lines.slice(0, 4).join('\n')).rows;  // ec removed
+  var a3 = F.sums(cut), q3 = F.chargeSum(cut);
+  sok('atomSM typed: the two routes agree on a broken content too, both exactly -1',
+      q3.n === a3.sgrav.n && q3.d === a3.sgrav.d && a3.sgrav.n === -1 && a3.sgrav.d === 1,
+      q3.n + '/' + q3.d + ' vs ' + a3.sgrav.n + '/' + a3.sgrav.d);
+  var E = F.parseSheet('Q 3 2 0.1667');
+  sok('atomSM typed: a decimal Y is rejected with its line number, asking for a fraction',
+      E.errs.length === 1 && E.errs[0].line === 1 && /fraction/.test(E.errs[0].msg),
+      JSON.stringify(E.errs));
+  var E2 = F.parseSheet('Q 5 2 1/6');
+  sok('atomSM typed: an unknown SU(3) rep is rejected by name',
+      E2.errs.length === 1 && /SU\(3\)/.test(E2.errs[0].msg), JSON.stringify(E2.errs));
+})();
+
 /* ---- report ---------------------------------------------------------------- */
 (function(){
   var t = document.createElement('div');

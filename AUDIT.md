@@ -4814,3 +4814,62 @@ driven) · `auditsides` falsescale 0/0 presetgap 0/0 **OK** · `auditresid`
 `auditpanel` **bad=0** · `runall` demos=**594** controls=6462 **caught=0 OK** ·
 `auditdocs` **bad=0 OK** (594 experiments propagated by `-Fix`, diff read).
 Screenshot looked at: the heatmap scene, both EMF rows, the 5-figure agreement.
+
+
+## 2026-08-15 — atomSM's typed particle content: anomaly cancellation in exact integer arithmetic
+
+The second of Programme A's queued editors, and the one §3.1 said needs no
+engine — the rep tables and the rational arithmetic live on the stage object
+in `60e`, where `runstagetests` reaches them. `atomSM` gains a second scene:
+**type a particle content** — one left-handed Weyl multiplet per line as
+`name SU(3) SU(2) Y`, with Y required to be an exact fraction (a decimal is
+rejected with its line number and the reason: the sums must stay exact).
+
+**The property the presets were allowed to assume** (§2.9's rule): that the
+Standard Model's content is quantum-mechanically consistent at all. Six checks
+are computed over whatever the reader lists, all in **integer arithmetic**
+(numerator/denominator with gcd reduction — no floats anywhere in the claim):
+[SU(3)]³, [SU(3)]²U(1), [SU(2)]²U(1), [U(1)]³, grav²U(1), and Witten's doublet
+parity. **Verified for one SM generation: every numerator is exactly 0** —
+[U(1)]³ adds five fractions over denominator 216 and lands on 0/1, not 10⁻¹⁶ —
+and the doublet count is 4, even. **Verified that removing any one of the five
+multiplets breaks at least one check** (all five removals asserted in
+`runstagetests`; deleting `ec` prints −1 on exactly the two sums a
+colour-and-SU(2) singlet can reach — [U(1)]³ and grav²U(1); deleting `uc`
+breaks even the pure three-gluon triangle, +1). That is §3.1's acceptance test,
+measured rather than asserted.
+
+**The two-route claim**: the gravitational sum ΣY·d₃·d₂ over multiplets equals
+ΣQ = Σ(T₃+Y) over the expanded component fermions, because each multiplet's T₃
+cancel pairwise — a different arithmetic path to the same reduced fraction.
+Asserted equal **as exact fractions** on the SM content (0 = 0) and on a
+broken content (−1 = −1). The panel prints both and says the routes agree "to
+every digit — integer arithmetic, no tolerance", which is the honest verdict
+where fmtAgree's floor would be a category error (there is no round-off to
+floor).
+
+One claim of my own the arithmetic overruled mid-session: the help text first
+said deleting `ec` fails *three* checks; the sums say two ([SU(2)]²U(1) cannot
+see an SU(2) singlet). Fixed in all three places before the build ever went
+green — which is what computing the claim, rather than remembering it, is for.
+
+Mechanics: scene seg (`asmSc`, label carries "your own"), Shape C textarea
+(`asmSheet`, `data-audit` holds a *broken* generation so the audit exercises
+the failure path), parser that never throws and keeps the previous content on a
+bad edit, five waterfall staircases drawn per triangle with per-column exact
+nets (`= 0` labels are non-numeric by design so `auditticks` cannot read them
+as tick labels), `dockLegend:true` (the floating key covered the first
+column's caption — seen in the session's first screenshot, fixed, re-shot),
+verdict colours matched to the stylesheet's own semantics (`.err` is
+`--c-pos`; green `--c-grad` affirms), two derive rungs, demo appended at the
+END of its group (see-link safety), and 8 new stage-level tests (53 total).
+
+Gates on the final build: `build` 231 modules · `smoke` OK · `runtests` **4290
+passed, 0 failed** · `runstagetests` **53 passed, 0 failed** · `auditcustom`
+**bad=0 OK** (stages 99 → 100, boxes 135 → 136) · `auditsides` falsescale 0/0
+presetgap 0/0 **OK** (79 demos, 793 combos, 5692 renders) · `auditresid`
+**findings=0** noscale=7 · `auditticks` **OK** · `auditpanel` **bad=0** ·
+`auditsize` **findings=0** · `auditderive` **flagged=0** · `auditlink` **OK**
+(new ids `asmSc`/`asmSheet` restorable) · `runall` demos=**595** **caught=0
+OK** (run twice — once mid-session, once after the legend/colour fix) ·
+screenshots looked at twice (the first found the covered caption).
