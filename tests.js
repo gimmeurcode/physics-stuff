@@ -4722,6 +4722,88 @@ ok('scalar mode div is the Laplacian', sf('x^2+y^2+z^2').laplacian !== null);
     close('the shadow tip moves at x\' H/(H-h)', S.rate(3, 6, 1.8, 1.4).tipd, 1.4 * 6 / 4.2, 1e-13);
     ok('faster than the walker', S.rate(3, 6, 1.8, 1.4).tipd > 1.4);
   })();
+
+  /* implicit differentiation: the rule against the relation itself */
+  (function(){
+    /* the circle x² + y² = 4: the tangent at (1, √3) has slope −1/√3 exactly */
+    const C = mvCompile('x^2 + y^2 - 4');
+    const y0 = Math.sqrt(3);
+    const A = clImplicitSlope(C, 1, y0);
+    ok('implicit: the circle has a slope at (1, √3)', A.ok, A.why);
+    close('implicit: −F_x/F_y = −x/y = −1/√3', A.m, -1 / Math.sqrt(3), 1e-12);
+    const B = clImplicitSecant(C, 1, y0, 1e-4);
+    ok('implicit: the branch secant agrees with the rule to 1e-7',
+       B.ok && Math.abs(B.m - A.m) < 1e-7 * Math.abs(A.m), B.ok ? B.m : B.why);
+    /* the secant's error is its OWN O(h²) — measured by halving h, not asserted */
+    const O = clImplicitOrder(C, 1, y0, 4e-2);
+    ok('implicit: the disagreement is the secant\'s h², halving h cuts it ~4×',
+       O && O.r1 > 3.5 && O.r1 < 4.5 && O.r2 > 3.5 && O.r2 < 4.5,
+       O ? O.r1 + ' , ' + O.r2 : 'no order');
+    /* the vertical tangent is a FACT, reported with its reason, never a NaN */
+    const V = clImplicitSlope(C, 2, 0);
+    ok('implicit: at (2, 0) the tangent is vertical and says so',
+       !V.ok && V.vertical && /vertical/.test(V.why), JSON.stringify(V));
+    /* …and the branch search must REACH that point. x = 2 makes F = y², a
+       double root: |F| touches zero without changing sign, so a bracket-only
+       search reports "not on the curve" at exactly the x the reader is told to
+       slide to. A touch is accepted; being genuinely outside is not. */
+    const yT = clBranchY(C.f, 2, 0.6, 1.6);
+    ok('implicit: the branch search finds a TOUCH, not just a crossing',
+       yT !== null && Math.abs(yT) < 1e-6, yT);
+    ok('implicit: but just outside the circle there is still no branch',
+       clBranchY(C.f, 2.05, 0.6, 1.6) === null, clBranchY(C.f, 2.05, 0.6, 1.6));
+    /* the vertical threshold is √ε because that is the resolution of a double
+       root — and it must NOT swallow a genuinely steep tangent */
+    const xs = 1.9999, ys = Math.sqrt(4 - xs * xs);
+    const Vs = clImplicitSlope(C, xs, ys);
+    ok('implicit: a steep-but-real tangent is printed, not called vertical',
+       Vs.ok && Math.abs(Vs.m - (-xs / ys)) < 1e-9 * Math.abs(xs / ys),
+       Vs.ok ? Vs.m + ' vs ' + (-xs / ys) : Vs.why);
+    /* the folium of Descartes: a curve nobody can solve for y, and the point
+       most textbooks use — x³ + y³ = 3xy at (3/2, 3/2), slope exactly −1 */
+    const Fo = mvCompile('x^3 + y^3 - 3*x*y');
+    const AF = clImplicitSlope(Fo, 1.5, 1.5), BF = clImplicitSecant(Fo, 1.5, 1.5, 1e-4);
+    close('implicit: the folium\'s tangent at (3/2, 3/2) is −1', AF.m, -1, 1e-12);
+    ok('implicit: and the relation itself agrees, unsolved for y',
+       BF.ok && Math.abs(BF.m - AF.m) < 1e-6, BF.ok ? BF.m : BF.why);
+    /* its self-crossing at the origin: both partials vanish, so there is no
+       single tangent — and the panel must say that rather than divide */
+    const S0 = clImplicitSlope(Fo, 0, 0);
+    ok('implicit: the folium\'s node at the origin has no single tangent',
+       !S0.ok && /singular/.test(S0.why), JSON.stringify(S0));
+  })();
+
+  /* the inverse function's derivative, both ways */
+  (function(){
+    /* f = x³ + x is strictly increasing, so it has a global inverse; at a = 1,
+       b = 2, and (f⁻¹)′(2) must be 1/f′(1) = 1/4 exactly */
+    const I = clInverseAt(x => x * x * x + x, x => 3 * x * x + 1, 1, -4, 4);
+    ok('inverse: 1/f′(a) exists at a = 1', I.ok, I.why);
+    close('inverse: (f⁻¹)′(2) = 1/4 by the rule', I.sym, 0.25, 1e-15);
+    ok('inverse: and 1/4 by inverting f numerically and taking the secant',
+       Math.abs(I.num - 0.25) < 1e-10, I.num);
+    /* the raw secant is second order — measured by halving h (J9's rule),
+       which is what licenses the Richardson step above it */
+    const r1 = clInverseAt(x => x*x*x + x, x => 3*x*x + 1, 1, -4, 4, 2e-3);
+    const r2 = clInverseAt(x => x*x*x + x, x => 3*x*x + 1, 1, -4, 4, 1e-3);
+    const rr = Math.abs(r1.raw - 0.25) / Math.abs(r2.raw - 0.25);
+    ok('inverse: the raw secant is h², so Richardson is licensed rather than lucky',
+       rr > 3.5 && rr < 4.5, 'ratio ' + rr);
+    ok('inverse: and Richardson beats the raw secant by two orders',
+       Math.abs(r2.num - 0.25) < 0.02 * Math.abs(r2.raw - 0.25),
+       (r2.num - 0.25) + ' vs raw ' + (r2.raw - 0.25));
+    /* arcsin: the classic, and the place the rule earns its keep — the
+       derivative of the inverse is 1/√(1−x²), which the rule produces from
+       cos alone */
+    const J = clInverseAt(Math.sin, Math.cos, Math.PI / 6, -1.5, 1.5);
+    close('inverse: (arcsin)′(1/2) = 1/√(1−¼) = 2/√3', J.sym, 2 / Math.sqrt(3), 1e-12);
+    ok('inverse: the numeric inversion agrees to 1e-9',
+       Math.abs(J.num - 2 / Math.sqrt(3)) < 1e-9, J.num);
+    /* f′(a) = 0 is a vertical tangent on the inverse — a fact, not an error */
+    const K = clInverseAt(x => x * x * x, x => 3 * x * x, 0, -2, 2);
+    ok('inverse: f′ = 0 gives the inverse a vertical tangent, said in words',
+       !K.ok && /vertical tangent/.test(K.why), JSON.stringify(K));
+  })();
 })();
 
 /* ============================================================================

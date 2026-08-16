@@ -257,10 +257,10 @@ Published copy: https://claude.ai/code/artifact/289811c9-07a8-4419-87cc-b4b55e04
 
 ## Layout
 
-- `src/` — the source modules. There are 231 of them, one concern each, and
+- `src/` — the source modules. There are 232 of them, one concern each, and
   `build.ps1` concatenates them in ordinal filename order into a single script
   scope. **The generated `MAP.md` is the authoritative index**: it lists every
-  module with its size, what it defines, which of the 178 canvas stages it holds,
+  module with its size, what it defines, which of the 179 canvas stages it holds,
   and which file carries each wing's demos, stages and prose. Regenerate it with
   `./map.ps1` after adding or renaming anything. `AI-GUIDE.md` explains how to
   make changes; `CLAUDE.md` carries the rules that must not be broken.
@@ -287,7 +287,7 @@ Published copy: https://claude.ai/code/artifact/289811c9-07a8-4419-87cc-b4b55e04
 - `js/49-fourier.js` — Fourier engine (naive DFT and radix-2 FFT sharing one
   inverse flag, series coefficients, analytic transform pairs, the winding
   integral, windows, convolution, aliasing and spread) — pure, unit-tested.
-- `tests.js` — 4318 unit tests: parser, symbolic differentiation, the operators,
+- `tests.js` — 4337 unit tests: parser, symbolic differentiation, the operators,
   physics writers, RK4 mechanics, quantum eigen-relations, the Schrödinger equation
   checked numerically against the plotted packet, barrier unitarity/continuity,
   SEMF landmarks, field-tensor invariants, and all four Maxwell equations verified
@@ -339,7 +339,7 @@ Published copy: https://claude.ai/code/artifact/289811c9-07a8-4419-87cc-b4b55e04
   A final group pins every published
   constant (CODATA 2022, PDG 2024) so a stale value cannot creep back in.
 - `map.ps1` — regenerates `MAP.md`, the index of modules, stages and wings.
-- `auditperf.ps1` — where a frame actually goes. For all 178 stages it counts
+- `auditperf.ps1` — where a frame actually goes. For all 179 stages it counts
   rasterising calls, path operations, 3D primitives sorted and the bytes of HTML
   the panel regenerates four times a second. Nothing else measures cost, and the
   one guess made without it — that the 3D stages were the expensive ones — was
@@ -360,7 +360,7 @@ Published copy: https://claude.ai/code/artifact/289811c9-07a8-4419-87cc-b4b55e04
   what it last wrote — worth ~2.8 MB of DOM churn a second, and it makes those
   panels stateful. Anything that clears one behind that cache's back leaves it
   believing the old content is still on screen, so the next identical refresh is
-  skipped and the panel stays blank. When that shipped, **145 of the 178 stages
+  skipped and the panel stays blank. When that shipped (2026-08-13), **145 of the 178 stages
   came back empty and `runall.ps1` still reported `caught=0`** — it visits each
   demo once and never returns to one, so the second visit, the only thing that
   can show this, never happened.

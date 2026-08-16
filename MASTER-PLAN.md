@@ -1,4 +1,4 @@
-# MASTER PLAN
+﻿# MASTER PLAN
 
 **The state of the laboratory, the rules it is built to, and everything left to do.**
 
@@ -25,8 +25,8 @@ carried forward.
 | about to reopen a settled question | **§1.7** first — several are already decided with reasons |
 
 **Verified 2026-08-16 (first full-gate day was 2026-08-15).** `build` 231
-modules · `smoke` OK (wings=40, stages=178,
-seelinks=80) · `runtests` **4318 passed, 0 failed** · `runstagetests` **75
+modules · `smoke` OK (wings=40, stages=179,
+seelinks=82) · `runtests` **4337 passed, 0 failed** · `runstagetests` **75
 passed, 0 failed** · `runall` demos=599
 controls=6462 **caught=0 OK** · `auditsides` falsescale=0 presetgap=0 **OK**
 (both ratchets at zero since 2026-08-15; two new FALSE-SCALE rows appeared and
@@ -56,9 +56,9 @@ artifact is published and gated (§3.9); the website half is one hosting setting
 away, which needs a human. Permalink: `#w=…&d=…&c.<id>=…`, 593 of 593 round
 trips exact, gated by `./auditlink.ps1` (§3.6).
 
-**The EM and atom editor blocks are CLOSED (six editors, 2026-08-15/16). The
-next work in order is syllabus gaps B1–B4, then Programme A relativity
-(build `rlGeodesic` first — §3.1 plans items 1–5 together).** Programme D closed 2026-08-15: D2's nine PRESET-GAP rows all
+**The EM and atom editor blocks are CLOSED (six editors, 2026-08-15/16), and
+syllabus gap B1 with them. The next work in order is B2–B4, then Programme A
+relativity (build `rlGeodesic` first — §3.1 plans items 1–5 together).** Programme D closed 2026-08-15: D2's nine PRESET-GAP rows all
 attributed (six fixed, three whitelisted with their mathematics, both
 `auditsides` ratchets at **0**), and D3's stage-level suite is built and
 gated — `./runstagetests.ps1`, 75 assertions (2026-08-16) calling stage helpers directly,
@@ -102,7 +102,7 @@ given so the next session can re-measure rather than trust.
 | guided experiments | **599** | `./measure.ps1`, from `WINGS[*].groups[*].items` in the booted app (re-measured 2026-08-16) |
 | demo groups | **118** | same. **Do not grep `src/` for this** — patterns return 89 or 105 |
 | experiments driving a canvas stage | **508** | same (the other 85 drive the field pipeline) |
-| canvas stages | **178** | `./smoke.ps1` → `stages=178`; `./measure.ps1` confirms `unreachablestages=none` |
+| canvas stages | **178** | `./smoke.ps1` → `stages=179`; `./measure.ps1` confirms `unreachablestages=none` |
 | source modules | **231** | `./build.ps1` |
 | harness scripts | **29** | `Get-ChildItem *.ps1` (re-measured 2026-08-15). Every one must appear in §1.6 and §4.2 — `./auditdocs.ps1` checks |
 | deployable size | **5 524 446 bytes** (5.52 MB, re-measured 2026-08-16) | `./measure.ps1`. **`build.ps1` prints a smaller figure, which is a CHARACTER count** — the Unicode maths symbols cost ~57 KB more as UTF-8 bytes. Both are far inside any upload limit. **A fresh `git clone` builds ~15.6 KB smaller**: `.gitattributes` normalises line endings to LF and 54 of the source files carried CRLF when this was measured, which is 15 627 carriage returns. The app is identical — but this is why the row says *measure*, not *quote* |
@@ -111,7 +111,7 @@ given so the next session can re-measure rather than trust.
 | `mkPlot` call sites | **253** | `./measure.ps1` (re-measured 2026-08-16) |
 | permalink round trips | **599 of 599 exact**, 11 demos measured stochastic | `./auditlink.ps1` (re-measured 2026-08-16) |
 | declared table claims | **249, bad=0** | `./auditclaims.ps1` |
-| "See it in the laboratory" links | 80, all resolving | `./smoke.ps1` → `seelinks=80` |
+| "See it in the laboratory" links | 80, all resolving | `./smoke.ps1` → `seelinks=82` |
 
 **The stale numbers this table replaced.** Each row was true when it was
 written, and every one was found by hand rather than by any gate:
@@ -132,7 +132,7 @@ other figure is a live claim and is checked.
 ## The invariant that must hold on every build
 
 ```
-./build.ps1     → 231 modules, no error
+./build.ps1     → 232 modules, no error
 ./smoke.ps1     → smoke OK        (parses, boots, nav agrees, no ctText shift)
 ./runtests.ps1  → 0 failed
 ./auditdocs.ps1 → bad=0 OK        (the documents still describe the site)
@@ -165,7 +165,7 @@ If those do not pass, nothing else matters and nothing else is worth running.
 src/head.html      <- <meta>, title
 src/styles.css     <- the whole design system
 src/shell.html     <- the DOM skeleton (header, canvas, dock, rail, palette)
-src/js/*.js        <- 231 modules, concatenated in ORDINAL filename order
+src/js/*.js        <- 232 modules, concatenated in ORDINAL filename order
         |
         v  ./build.ps1
 vector-calculus.html   (5 409 933 bytes on 2026-08-14, the deployable artifact)
@@ -249,8 +249,8 @@ that is `em3dBegin`'s job), `dockLegend:true`.
   shows them. Measured 2026-08-13 by `./auditscan.ps1`: **86 statements, 75 with
   proofs, 80 linked to an experiment**, **0 wings without one**.
 - **The plot viewport** (`59c-plot-view.js`) gives every `mkPlot` box pan, zoom
-  and clip — **253 call sites** in `src/`, of which `./auditzoom.ps1` sees **161
-  live plots across 103 stages** in the default state (the rest are behind a mode
+  and clip — **256 call sites** in `src/`, of which `./auditzoom.ps1` sees **162
+  live plots across 104 stages** in the default state (the rest are behind a mode
   switch). **Identity at rest is the invariant**: with no reader
   interaction `mkPlot` returns exactly the four numbers it was handed, which is
   what made it safe to add under 178 stages that know nothing about it.
@@ -291,8 +291,8 @@ script exists that this table does not describe.
 
 | script | time | must print | sees what nothing else does |
 |---|---|---|---|
-| `build.ps1` | ~1 s | `231 modules` | — |
-| `auditperf.ps1` | ~40 s | *(a ranking)* | **where a frame goes** — paint calls, path ops, 3D primitives sorted, and **the bytes a refresh rewrites when nothing has changed**, for all 178 stages. Nothing else measures cost at all, and *both* guesses made without it were wrong: that 3D was the expensive part, and that unbatched strokes were. Its panel column used to report the panel's **size**, which could not see its own fix — it reports **writes** now |
+| `build.ps1` | ~1 s | `232 modules` | — |
+| `auditperf.ps1` | ~40 s | *(a ranking)* | **where a frame goes** — paint calls, path ops, 3D primitives sorted, and **the bytes a refresh rewrites when nothing has changed**, for all 179 stages. Nothing else measures cost at all, and *both* guesses made without it were wrong: that 3D was the expensive part, and that unbatched strokes were. Its panel column used to report the panel's **size**, which could not see its own fix — it reports **writes** now |
 | `measure.ps1` | ~15 s | *(the Part 0 table)* | the headline counts, **from the booted app** — wings, groups, experiments, stage-driven vs field, and any stage no demo reaches. Static greps over `src/` for the group count return 89 or 105 depending on the pattern; the app says 118. Also the artifact's real **byte** size, which `build.ps1` does not print |
 | `smoke.ps1` | ~10 s | `smoke OK` | whether the bundle **parses and boots at all**; nav/home/`NAV_GROUP_OF` agreement; every stage carries all nine methods; all 80 see-links resolve; `ctText` argument shifts; **markup inside canvas text**, which the canvas draws as its own tags and nothing else can see |
 | `runtests.ps1` | ~30 s | `0 failed` | engine arithmetic (modules 21–49 only) |
@@ -301,18 +301,18 @@ script exists that this table does not describe.
 | `auditcustom.ps1` | ~1 min | `bad=0 OK` | the **"type your own" path**, which `runall` never selects. Drives textareas from their `data-audit` attribute |
 | `auditartifact.ps1` | ~1 min | `bad=0` | whether the app survives being **published as a Claude artifact** — nested inside the host's own document, in all three viewer-theme states including the *system* one that stamps no `data-theme` at all. Reads the theme back two ways, the CSS token **and** the array the canvas paints with, because a toggle that moved one and not the other would repaint every picture for the wrong theme |
 | `auditlink.ps1` | ~2 min | `findings=0` / `auditlink OK` | whether a **permalink reproduces the view it was copied from** — all 599 demos, perturbed, copied, navigated away from and followed back, plus one **cold load** through `plInit()` inside `boot()`. Two routes, and the first alone is worthless: the controls, *and* the text the visible panels print **from** those controls. Neutering `plNotify` so a restore fills every box and tells no stage anything leaves 586 of 593 passing the control comparison and fails 505 on the text. Also fails on a **duplicate element id** under `#dock`, because a permalink's keys *are* element ids. It **measures** which demos are stochastic rather than keeping a list of them (11 are) |
-| `auditpanel.ps1` | ~20 s | `bad=0` / `auditpanel OK` | whether a stage still has its readout, ladder and chip **after being left and reopened**. `uiSetHtml` skips a write matching what it last wrote, so the panels are stateful and anything clearing them behind its back makes the next identical refresh a silent no-op. On the build that introduced it **145 of 178 stages came back blank and `runall` still said `caught=0`** — it visits each demo once and never returns to one |
+| `auditpanel.ps1` | ~20 s | `bad=0` / `auditpanel OK` | whether a stage still has its readout, ladder and chip **after being left and reopened**. `uiSetHtml` skips a write matching what it last wrote, so the panels are stateful and anything clearing them behind its back makes the next identical refresh a silent no-op. On the build that introduced it (2026-08-13) **145 of 178 stages came back blank and `runall` still said `caught=0`** — it visits each demo once and never returns to one |
 | `auditderive.ps1` | ~40 s | `flagged=0 OK` | every stage's `derive()`, which **nothing else calls**; and whether rungs carry reasoning or restate algebra |
 | `auditclaims.ps1` | ~30 s | `bad=0 OK` | whether the **preset tables tell the truth** — 249 declared claims across 14 tables recomputed by an independent route. Reaches `EIG_PRESETS` (78b) and `NM_FUNCS` (79g), which are outside the window `runtests` extracts |
 | `auditresid.ps1` | ~1 min | `findings=0` / `auditresid OK` | whether a **residual is printed as though it were a measurement**. A row promising a difference must carry the scale it is read against, and two ways of failing that both shipped: `fmtNum`'s dead zone at [1e-4, 5×10⁻ˢⁱᵍ) printed `dyForce`'s genuine 7.8% gap as "difference 0 J" in the affirmative colour, and a circuit at steady state printed 29.7 fA of pure round-off as a finding. It reads **rendered panel text**, not source, so a new way of getting it wrong is caught too. **Widened 2026-08-14 after its own blind spots were measured**, and each one was hiding real defects: it read only `readout` and `chip`, so the **derive ladder** (~717 000 rendered characters) and the legend were invisible; it tested "is the scale printed?" against the *whole* panel text, and `SCALED` contains `of\s`, so **any panel containing the word "of" exempted itself**; its round-off pattern matched only the typeset `×10⁻ⁿ` form, so every residual printed through **`toExponential`** was invisible; and with `st.own` false at entry it never rendered the **55 stages' reader-supplied surfaces** at all — where 13 of the defects were. Now also reports an **advisory `noscale=`** count that does not fail the build, because no regex separates a two-route residual from a physical difference (`SITE-RULES` Part 4) |
 | `auditsides.ps1` | ~2 min | `auditsides OK` *(a ratchet)* | whether the two routes a theorem stage computes **actually agree, on every preset the reader can select**. `auditresid` asks whether a difference is printed *with its scale*; this one reads the number. It drives the real segmented controls over the whole preset product — **791 combinations across 78 demos, 5676 panel renders, 134 distinct two-route claims**, none of which anything had ever read — and classifies each claim by the verdict `fmtGap` renders. **FALSE-SCALE**: the routes agree to round-off and the panel reports ~100%, because `fmtAgree` derives its scale as `max(|a|,|b|)` and both routes vanished (`dyMoment` at e = 1 printed `1.78×10⁻¹⁵ (100% — agreeing to 0 figures)` under prose promising they "match exactly"; `smBoltz` managed it at **1.81×10⁻¹⁷⁰**). **Found 10, fixed 10 the same day** by `fmtAgreeGross` and a gross per vanishing integral, so **its baseline is 0 and one new instance fails the build**. **PRESET-GAP**: the same claim is exact on one preset and poor on another — the cylinder-normal detector, and it needs no hand-chosen tolerance because the stage's own best preset sets the standard. The **ratchet on `$BASE_PRESET` reached 0 on 2026-08-15** — the whole backlog attributed, so a new row of either class fails the build; eleven honest exceptions are whitelisted **with their reasons** and nothing else is. **weak** rows are advisory: a 14-slice Riemann sum is *supposed* to disagree |
 | `auditmarks.ps1` | ~1 min | *(old → new scores)* | whether the **key points drawn on a plot are real**. `pvFeatures` marked a break wherever a step beat 12× the curve's *median* step — which asks whether this part is steeper than the rest, not whether the curve is broken — so any curve with a long flat tail grew a picket fence of false poles. **2303 → 20 markers** across the stages, with controls proving `tan` and `1/x` keep their real poles: the first attempt scored 2303 → 10 and **silently dropped tan's pole**, which is the whole argument for having a control |
 | `auditdocs.ps1` | ~1 min | `bad=0 OK` | whether **these documents still describe the site**. It re-measures wings, experiments, groups, stages, modules, tests, see-links, scripts and artifact size, then reads every live `.md` and fails on a contradiction; checks that every `*.ps1` on disk is described in §1.6 and §4.2 and listed in `AI-GUIDE.md`; and that every file path a document names exists. **An undated number is a live claim; a number on a line carrying a `YYYY-MM-DD`, or under a dated heading, is a record and is exempt** — that is the only escape hatch, and it is honest because it says when the figure was true. **`-Fix` rewrites the stale counts** (exactly the digits it verified, printing each substitution — then read the diff). **`-SkipTests` makes the run partial and it says so**, because a `bad=0` from a run that did not look is worse than no gate. Nothing else reads a `.md` at all, and eight false counts had survived every other gate indefinitely |
-| `auditzoom.ps1` | ~1 min | `findings=0` | pan/zoom on all 178 stages, **and mkPlot's identity-at-rest** |
+| `auditzoom.ps1` | ~1 min | `findings=0` | pan/zoom on all 179 stages, **and mkPlot's identity-at-rest** |
 | `auditframe.ps1` | ~1 min | `auditframe OK` | how much of each curve falls outside its window, classified `LINE`/`POLE`/`MINOR`/`CUT`. **A gate since 2026-08-15** — §3.10 asked for it, and the work was never the exit code but attributing the four stages that were cut. Two were real and are fixed; three are allowed **by name, with the mathematics that makes each one honest**, and it warns when an allowlist entry stops cutting so a stale name cannot wave a new defect through |
 | `auditsize.ps1` | ~2 min | `findings=0` | eight canvas shapes — layouts that only break at another aspect ratio |
 | `auditviewport.ps1` | ~3 min | `bad=0` | sixteen real window sizes, and the page *around* the canvas |
-| `audittext.ps1` | ~4 min | harvest written | what every panel **says** — drives all 599 experiments, harvests `textContent` |
+| `audittext.ps1` | ~4 min | harvest written | what every panel **says** — drives all 601 experiments, harvests `textContent` |
 | `auditscan.ps1` | ~20 s | 0 HIGH | ASCII stand-ins, leaked markup, empty panels, `NaN` in the harvest |
 | `auditprose.ps1` | ~1 s | *(an inventory)* | essays that decline to justify a result; named theorems with no statement card |
 | `auditcontrast.ps1` | ~1 s | — | WCAG contrast and the 12 px type floor |
@@ -323,7 +323,7 @@ script exists that this table does not describe.
 
 **One blind spot is known and unfixed:**
 
-1. ~~`runtests.ps1` extracts only modules 21–49, so none of the 178 stages' own
+1. ~~`runtests.ps1` extracts only modules 21–49, so none of the 179 stages' own
    arithmetic is unit-tested.~~ **Covered 2026-08-15 by `./runstagetests.ps1`**
    (Programme D item 3): the suite in `tests-stages.js` calls stage helpers
    directly inside the booted bundle. The *corpus* is seeded, not exhaustive —
@@ -508,7 +508,7 @@ time:
 all sort between `60-` and `61-`. **Keep the letter even for a lone file** so the
 next insertion has room. Aim for **under ~600 lines / ~50 KB per file**.
 
-**Name collisions are silent.** All 231 modules share one script scope. Prefix
+**Name collisions are silent.** All 232 modules share one script scope. Prefix
 every engine function with its wing (`nq ga pc mv ig vc od ct ck rl qm dy tm la
 sk lp mx fn lt sy ph cx df ag pb nm nc sl sm pv em es at ws fl op rt wv`) and
 **grep case-sensitively before choosing a name**.
@@ -967,7 +967,7 @@ found only by diffing.
 
 | # | gap | size | where it goes |
 |---|---|---|---|
-| 1 | **Implicit differentiation and inverse-function derivatives** | 1–2 stages | `deriv` wing. **Do this first** — a named AP Calculus AB unit, the technique behind related rates and the tangent to a conic, and `mvLevelCurve` already exists and is unit-tested |
+| 1 | ~~**Implicit differentiation and inverse-function derivatives**~~ | **DONE 2026-08-16** | `deriv` wing — `clImplicit` (`73bb`), two scenes, two demos, two statement cards (the Implicit Function Theorem with its IVT-plus-monotonicity proof, and the inverse-function rule derived from it). Engine in `28-calc1.js`: **route A applies the rule** (−F_x/F_y from symbolic partials; 1/f′(a)), **route B never differentiates at all** — it root-finds on the relation at x ± h and takes the secant. Measured: the folium's tangent at (3/2, 3/2) is −1 by both routes, the gap falling 4× per halving of h (the secant's own order, measured); the inverse route is Richardson-extrapolated because *its* order was measured at h² (4.00, 3.97, 3.89) and then agrees to ~10⁻¹¹. Three degenerate cases get sentences, never numbers: vertical tangent (F_y = 0), singular point (∇F = 0, the lemniscate's node), and f′(a) = 0. **`mvLevelCurve` turned out to be the wrong tool** — it follows *one* component and left the folium's loop, the piece the marked point sits on, undrawn; the picture is marching squares over the whole zero set, and only a screenshot could see it |
 | 2 | **Dielectrics, bound charge and capacitance** | 1 stage | `em` wing. The only AP Physics 2 item not done live |
 | 3 | **Abstract linear maps and inner product spaces** | 2 stages | `vecspace` wing. Polynomials and functions as vectors, a derivative as a matrix — what makes the leap to Fourier series and quantum states feel inevitable. `laProject` is already written for it |
 | 4 | **Existence and uniqueness for ODEs** | 1 stage, or a statement card | `ode` wing |
@@ -976,6 +976,8 @@ found only by diffing.
 
 Items 1–4 are small and sit inside wings that already exist. **They are the
 cheapest real subject matter available and should be taken before Programme C.**
+**B1 is done (2026-08-16); B2, B3 and B4 remain**, and B2 (dielectrics) is the
+next one — the EM wing's stages and the `esCap*` helpers are already there.
 
 ## 3.3 Programme C — the 22 missing wings
 
@@ -1679,7 +1681,7 @@ the gate that would have caught it, then the single-stage items.
 3. **J2** — a break must be a *discontinuity*, not a steep step. Compare against
    the step the neighbouring samples predict, not the median of all of them, and
    require the jump to survive a refinement. Measure the false-positive count
-   across all 178 stages before and after.
+   across all 179 stages before and after.
 4. **J3** — one owner for the ticks.
 5. **J9** — **DONE**, and it was not the bug it looked like. See the entry in the
    progress table.
@@ -1699,7 +1701,7 @@ the gate that would have caught it, then the single-stage items.
 | **J1** the gate | **DONE 2026-08-15.** `auditframe` fails on a `CUT` now, which is what §3.10 asked for. The exit code was five minutes; the fortnight-old part was attributing the four stages it flagged, and the split was **two real, three honest**. Real: **`odSpring` fitted its y-window to the response curve at the reader's damping while drawing three curves — and the LIGHTEST damping has the tallest peak**, so the most instructive curve of the three was the one clipped (max 5.71 against a window ending at 2.24), and its feature caption then floated at the top of the canvas with no marker under it. The fit and the draw now share one list, so they cannot disagree. **`wsADD`** pinned a slider-dependent curve to a hard-coded top of 12 and overflowed it at the defaults. Honest, allowed by name with reasons: `srTaylor` (Taylor polynomials diverging from a window fitted to the function — the divergence *is* the lesson), `atomForces` (a symlog window sized to hold its own ±1000 MeV ticks, against a Yukawa well that genuinely reaches −70 GeV), `odSeries` (truncated power series outside the radius of convergence, with the R = 1 lines drawn beside them). Negative control: `wsADD`'s window put back, gate failed |
 | **J1** clipping | **DONE, and it was four lines in one file.** `plotCurve` always clipped; **everything else went through `ctPath`, `ctFill`, `ctDot` and `ctArrow`, none of which did** — 310 + 155 call sites inheriting one omission. They clip now. The new **`ctClip`** (61a) is what `pvClip` could not be: `pvClip` skips a `ctBox` because §2.5 frees an aspect-true diagram to point an ARROW past its frame, and that exemption is right for arrows and wrong for curves — the phase plane is a ctBox, and its trajectories were crossing the trace–determinant chart beside it. Curves, fills and markers now clip to any framed box; only `ctArrow` keeps the plot-only rule. Verified by screenshot |
 | **J3** doubled ticks | **DONE.** `ctGrid` labelled at `+4px` with 3 figures and `pvDrawAxes` at `+3px` with 4, **both at once** on a moved view — two minus signs a pixel apart, which is the `=40`. `ctGrid` now yields the whole grid to `pvDrawAxes` once the view has moved, because pv's ticks follow the window and a stage's are a fixed list chosen for the author's window |
-| **compute** | **DONE** (asked for separately). `refreshAll` was evaluating the field, its divergence, curl and Jacobian at the probe and rebuilding five panels of HTML **into elements with `display:none`** on every one of the 178 stages, because `applyWingSections` hides the field panels but nothing stopped them being recomputed. It now returns early while a stage is active. Safe because the hiding is all-or-nothing, and the route back always runs `applyField` after `stageExit` |
+| **compute** | **DONE** (asked for separately). `refreshAll` was evaluating the field, its divergence, curl and Jacobian at the probe and rebuilding five panels of HTML **into elements with `display:none`** on every one of the 179 stages, because `applyWingSections` hides the field panels but nothing stopped them being recomputed. It now returns early while a stage is active. Safe because the hiding is all-or-nothing, and the route back always runs `applyField` after `stageExit` |
 | **J9** round-off as measurement | **DONE, and the hypothesis recorded here was wrong in both halves.** It said `gapWork` reached the formatter as an exact zero because `fmtNum(1.499e-4, 3)` returns `0.00015`. Measured on the bundle: `gapWork` is **1.4988e-4, not zero**, and `fmtNum(1.499e-4, 3)` returns **`"0"`**. `fmtNum`'s exponent term is clamped at zero, so below 1 its `sig` counts DECIMALS, not FIGURES — swept, the dead zone is exactly **[1e-4, 5×10⁻ˢⁱᵍ)**, bounded below only because the scientific branch takes over at 1e-4. **But the formatter was the outermost of three layers.** The real defect: `dyForceRun` (31a) integrated ∫F·dx by **trapezoid in dx, second order, under an RK4 trajectory that is fourth**. Halving h showed it converging at exactly h² (ratio 3.999, 4.000, 4.000), so the panel was measuring its own truncation error, not the work–energy theorem. It shows up as 7.8% because the answer is exponentially small — the default law is a damped oscillator run eight damping times, whose net work is the 1.9e-3 J residue of a **13.47 J** sum, a **cancellation factor of 7 × 10³**. Across the laws the help text itself suggests, `-4x - 1.2v` disagreed by **100%** while the chip said "they differ by 0" in `--c-pos`, the affirmative colour. **The fix is ∫F·dx = ∫F·v dt by composite Simpson** — the same line integral (v is signed, so doubling back still subtracts; it is not ∫F dt, the impulse), at the order the stepper has. Not invented here: **`rtSpinRun` (32a) is this routine's rotational twin and has always done it**, and `dyForceRun` already forced `n` even with no Simpson to use it. Pinned against the closed form of m x″ + c x′ + k x = 0: measured order **2.00 → 4.00**, relative gap **7.8e-2 → 2.5e-6**, same cost. New `nqCumSimpson` (21) gives the running integral the ledger plot draws from, and its last entry **is** the composite Simpson total, so panel and picture cannot drift (measured: `Us[n] + wCons = 0` exactly). Also found: `gapEnergy` was never a third check — W_non = W_tot − W_cons by linearity, so it is \|gapPath ∓ gapWork\|, and it equalled `gapWork` to ten figures. New `fmtSig`/`fmtGap` (10) print residuals as figures with the relative gap and a figures-agreed verdict; `ckEngF`/`ckGap` (48a) floor circuit quantities against scales `ckMeasure` now returns, because ε·κ(A)·‖x‖ for a 1 Ω–1 MΩ circuit is ~1e-13 A on a milliamp solution — that *is* the 29.7 fA — and Johnson noise in a 1 kΩ resistor at 300 K is 4 pA/√Hz, a hundred times larger. **20 tests added; the J9 test was corrupted back to the trapezoid once and watched to fail, reporting order 1.9995.** The old tests passed the broken code because their tolerances were absolute against a fixed 4.32 J scale — the new one is relative to the answer, which is what makes it bite |
 | **J4** axis-title collision | **DONE 2026-08-15.** Measured first: **60 plots on 41 stages** drew the rotated y-title through their own tick numbers at the fixed `P.px − 34`. `plotFrame` now computes the labels ctGrid will draw — same step, same `fmtTick` — measures them, and places the title clear of that gutter. The ckLab sub-defect (axis titled `(s)` over ticks that print their own `ms` via `ckEng`) fixed by removing the second unit from the title, scope and spectrum both; the wsRegge double x-label row was already gone (removed in an earlier session — verified by `auditticks`, which finds no duplicate row there) |
 | **J6** headings under the chip | **DONE 2026-08-15.** The class fix is `ctTitleClearChip` (60a): both title owners — `plotFrame` and `ctFrame` — read the live chip rect and slide a title sideways out from under it, so no stage has to know the chip exists. Population measured by the new gate: **5 stages** had fixed captions in the chip zone (agIdent, ftFast, ftConv, rlWire, slSemi) — the three photographed ones were already clean. `./auditticks.ps1` now fails on any ≥11px text anchored inside the visible chip, with a drawn-at-chip-centre control |
@@ -1839,8 +1841,8 @@ is sequenced by *what makes the next piece of work cheaper*, not by subject.
 6. ~~**Programme A, EM and atom**~~ — **DONE 2026-08-16.** All six editors
    (emFaraday, atomSM, emWave, emSandbox, atomForces, atomSim) landed over
    2026-08-15/16; both wings closed, every acceptance test in §3.1 measured.
-7. **Programme B items 1–4** — small, inside wings that already exist, and found
-   only by diffing real syllabi.
+7. **Programme B items 2–4** — small, inside wings that already exist, and found
+   only by diffing real syllabi. **B1 done 2026-08-16** (`clImplicit`).
 8. **Programme A, relativity** — build `rlGeodesic` first and plan items 1–5
    together; one engine opens a quarter of the wing.
 9. **Programme C**, in the **cheapest-first order in §3.3**, not curricular order.
@@ -1957,7 +1959,7 @@ Consolidated. Every one of these has cost real debugging time in this repo.
 
 **Fatal, and invisible to the unit suite**
 
-- **Silent name collisions.** One script scope, 231 modules. Prefix and grep
+- **Silent name collisions.** One script scope, 232 modules. Prefix and grep
   case-sensitively first.
 - **A template hole inside a template hole** is a parse error that takes the
   whole app down while `runtests` still reports passing. `./smoke.ps1` after

@@ -411,6 +411,52 @@ function sok(name, cond, detail){
       lv3.s.length === 0 && /never binds/.test(F.lvReadout(st3)), lv3.s.length);
 })();
 
+/* ---- clImplicit: the rule against the relation, through the stage ---------
+   The engine (clImplicitSlope / clImplicitSecant / clInverseAt, with their
+   measured orders) is pinned in tests.js. Here the stage path: the preset
+   accessor, the branch found by bisection at the reader's x, and the three
+   prose cases that must never become a number.                              */
+(function(){
+  var F = STAGES.clImplicit;
+  var st = { scene:'implicit', key:'folium', src:'', isrc:'', x:1.5, a:1 };
+  F.recompute(st);
+  sok('clImplicit: the folium branch at x = 3/2 is found by bisection on F',
+      Math.abs(st.y - 1.5) < 1e-9, st.y);
+  sok('clImplicit: the rule and the curve agree there, both giving -1',
+      st.A.ok && st.B.ok && Math.abs(st.A.m + 1) < 1e-12 && Math.abs(st.A.m - st.B.m) < 1e-6,
+      (st.A.ok ? st.A.m : st.A.why) + ' / ' + (st.B.ok ? st.B.m : st.B.why));
+  sok('clImplicit: the gap is the secant h^2 - halving the step cuts it ~4x',
+      st.ord && st.ord.r1 > 3.5 && st.ord.r1 < 4.5,
+      st.ord ? st.ord.r1 : 'no order');
+  /* the circle's side: a vertical tangent is a FACT with a sentence */
+  var stv = { scene:'implicit', key:'circle', src:'', isrc:'', x:2, a:1 };
+  F.recompute(stv);
+  var rv = F.readout(stv);
+  sok('clImplicit: near the circle side the panel names the vertical tangent',
+      /vertical/.test(rv) && !/NaN|Infinity/.test(rv), rv.slice(0, 120));
+  /* the lemniscate node: BOTH partials vanish - a different failure */
+  var stn = { scene:'implicit', key:'lemniscate', src:'', isrc:'', x:0, a:1, y0:0 };
+  F.recompute(stn);
+  var A0 = clImplicitSlope(stn.F, 0, 0);
+  sok('clImplicit: the lemniscate node has no tangent, and says singular',
+      !A0.ok && /singular/.test(A0.why), JSON.stringify(A0));
+  /* the inverse scene, through the same stage */
+  var sti = { scene:'inverse', key:'cube', src:'', isrc:'', x:1, a:1 };
+  F.recompute(sti);
+  sok('clImplicit inverse: 1/f′(a) and the numeric inversion agree to 1e-10',
+      sti.I.ok && Math.abs(sti.I.sym - 0.25) < 1e-15 && Math.abs(sti.I.num - 0.25) < 1e-10,
+      sti.I.ok ? sti.I.sym + ' / ' + sti.I.num : sti.I.why);
+  var ri = F.readout(sti);
+  sok('clImplicit inverse: the panel prints no NaN and both routes',
+      !/NaN|Infinity|undefined/.test(ri) && /1\/f/.test(ri), ri.slice(0, 100));
+  /* a typed relation flows through the accessor unchanged */
+  var stc = { scene:'implicit', key:'custom', src:'x^2 + y^2 - 4', isrc:'', x:1, a:1 };
+  F.recompute(stc);
+  sok('clImplicit: a typed relation gets the same two routes',
+      stc.A.ok && Math.abs(stc.A.m + 1 / Math.sqrt(3)) < 1e-9 &&
+      Math.abs(stc.A.m - stc.B.m) < 1e-6, stc.A.ok ? stc.A.m : stc.A.why);
+})();
+
 /* ---- report ---------------------------------------------------------------- */
 (function(){
   var t = document.createElement('div');

@@ -14,7 +14,7 @@ settling any question of what is allowed; read this before typing.
 ## 1. What this is
 
 A single self-contained page — no build step beyond concatenation, no
-dependencies, no network. 40 wings, 599 guided experiments, 178 canvas stages,
+dependencies, no network. 40 wings, 601 guided experiments, 179 canvas stages,
 4249 unit tests (measured 2026-08-14 — **re-measure rather than quote**;
 `./auditdocs.ps1` fails the build when a figure here drifts from the site).
 Everything on screen is computed live from the actual mathematics: symbolic
@@ -25,7 +25,7 @@ Schwarzschild geodesics, exact wavefunctions.
 src/head.html      <- <meta>, title
 src/styles.css     <- the whole design system
 src/shell.html     <- the DOM skeleton (header, canvas, dock, rail, palette)
-src/js/*.js        <- 231 modules, concatenated in filename order
+src/js/*.js        <- 232 modules, concatenated in filename order
         |
         v  ./build.ps1
 vector-calculus.html   (5 409 933 bytes on 2026-08-14, the deployable artifact)
@@ -41,7 +41,7 @@ vector-calculus.html   (5 409 933 bytes on 2026-08-14, the deployable artifact)
 ```powershell
 ./build.ps1        # src/ -> vector-calculus.html          (~1 s)
 ./smoke.ps1        # does the bundle parse and boot at all?              (~10 s)
-./runtests.ps1     # 4318 engine unit tests, must say "0 failed"   (~30 s)
+./runtests.ps1     # 4337 engine unit tests, must say "0 failed"   (~30 s)
 ./runstagetests.ps1 # stage helpers called directly, two routes each (~30 s)
 ./measure.ps1      # the headline counts, from the booted app         (~15 s)
 ./auditdocs.ps1    # do these documents still describe the site?     (~1 min)
@@ -76,7 +76,7 @@ there are, and `./auditdocs.ps1` fails if a script exists that this list, or
 `MASTER-PLAN.md` §1.6 and §4.2, does not mention.
 
 `runall.ps1` proves every demo *runs*. `audittext.ps1` + `auditscan.ps1` prove
-every demo is *readable* — they drive all 599 experiments, harvest the
+every demo is *readable* — they drive all 601 experiments, harvest the
 `textContent` of every panel a student reads, and scan for ASCII stand-ins,
 leaked markup, empty panels and `NaN`. Run them on **rendered output**, never on
 source: grepping `src/` for `sqrt` drowns in `Math.sqrt(` and `theta` drowns in
@@ -97,8 +97,8 @@ marker must always describe what is really in the element. **Every write to
 `#stageReadout`, `#deriveBody` and `#chip` must go through `uiSetHtml`.** A
 direct `el.innerHTML = …` leaves the marker describing a DOM that is gone, so
 the next identical refresh is skipped and the panel silently keeps stale content
-or none. `stageExit` doing exactly that blanked **145 of 178 stages** on
-re-entry while `runall` still reported `caught=0` — it visits each demo once and
+or none. On 2026-08-13 `stageExit` doing exactly that blanked **145 of 178 stages**
+on re-entry while `runall` still reported `caught=0` — it visits each demo once and
 never returns to one. `smoke.ps1` greps for the cause; this measures the effect.
 
 `auditcustom.ps1` must end `bad=0 OK`. It covers the one thing `runall` cannot:
@@ -329,7 +329,7 @@ Notes that matter:
 ### The plot viewport — pan, zoom, clip, overlay
 
 `59c-plot-view.js`. Every flat picture is laid out by `mkPlot`, and there are
-253 calls to it, so the viewport lives there and all of them get it at once.
+256 calls to it, so the viewport lives there and all of them get it at once.
 
 **The identity property is the whole design.** With no reader interaction,
 `mkPlot` returns *exactly* the four numbers it was handed. That is what makes
@@ -373,7 +373,7 @@ polynomials diverging outside the radius of convergence *is* the experiment.
 
 ### The derivation ladder
 
-**Every one of the 178 stages defines `derive(st)`**, returning
+**Every one of the 179 stages defines `derive(st)`**, returning
 `{title, steps, note}`. It renders into the "Where this comes from" dock
 section. Two rung types:
 

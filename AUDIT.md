@@ -5092,3 +5092,81 @@ With this, **Programme A's EM and atom blocks are closed**: six editors over
 two days, every §3.1 acceptance test computed rather than asserted, 34 stage
 assertions and 30 unit tests added, and four instances of the
 floating-key-over-content class found by screenshot and fixed the same day.
+
+
+## 2026-08-16 — B1: implicit differentiation and inverse-function derivatives
+
+Syllabus gap B1 (MASTER-PLAN §3.2), the first of the four small ones and a
+named AP Calculus AB unit the site did not teach. New stage `clImplicit`
+(`73bb`) with two scenes, two demos, and two statement cards; the engine is in
+`28-calc1.js`, inside the unit-tested window.
+
+**The subject makes the two-route check its natural shape.** Route A applies
+the technique: −F_x/F_y from symbolic partials, or 1/f′(a). **Route B never
+differentiates anything** — it root-finds on the relation itself at x ± h by
+bisection and takes the symmetric secant, which is the definition of the
+derivative applied to a curve nobody solved for y. Their agreement is evidence
+that the implicit rule is the chain rule and not a mnemonic.
+
+**Measured (16 unit tests, 8 stage tests):**
+
+- Circle at (1, √3): −1/√3 to 1e-12; the branch secant agrees to **1e-7**.
+- **The gap is the check's own error, not the rule's** — halving h cuts it
+  3.5–4.5× across two halvings, so it is the secant's h² (J9's rule, measured).
+- Folium of Descartes at (3/2, 3/2): exactly −1 by both routes — the curve
+  Descartes sent Fermat in 1638, which has no useful solution for y.
+- Inverse: (f⁻¹)′(2) = 1/4 for x³+x, and arcsin′(½) = 2/√3, **both to 1e-10 by
+  numeric inversion**. The raw secant there was measured at h² (4.00, 3.97,
+  3.89 over three halvings), which is what licensed Richardson-extrapolating
+  it — asserted as its own test, so the extrapolation is not lucky.
+- Three degeneracies get sentences, never numbers: vertical tangent (F_y = 0),
+  singular point (∇F = 0 — the lemniscate's node and the cardioid's cusp), and
+  f′(a) = 0 reflecting into a vertical tangent on the inverse.
+
+**Two defects the work found, both invisible to every gate:**
+
+1. **`mvLevelCurve` was the wrong tool, and only a screenshot could see it.**
+   §3.1 named it as the reusable machinery, and it *follows one component from
+   one seed* — on the folium it walked the asymptotic branch and left the loop
+   undrawn, the very piece the marked point sits on, with the tangent line
+   hanging in empty space over a correct panel. The picture is now marching
+   squares over the whole zero set. Recorded because the plan recommended it.
+2. **A tangency is a double root, and bracket-only bisection cannot see it.**
+   At the side of the circle F = y²: |F| touches zero without changing sign, so
+   the branch search reported "not on the curve" at exactly the x the help text
+   tells the reader to slide to. `clBranchY` now falls back to minimising |F|
+   and accepts a touch only when |F| there is negligible against the scale |F|
+   takes over the scan — so x just *outside* the circle stays correctly
+   rejected, which is asserted. Consequently the vertical-tangent threshold is
+   **√ε, not ε**: at a double root no method locates y better than √ε, a
+   residual F_y of 4×10⁻⁸ is that limit rather than information, and printing
+   "the slope is −9.5×10⁷" would be false precision about a vertical tangent.
+   Above it a steep tangent is printed honestly (−100 at x = 1.9999), asserted
+   against the closed form −x/y.
+
+**And a defect in the documentation harness itself.** `./auditdocs.ps1 -Fix`
+rewrote **"145 of 178 stages"** — the record of the 2026-08-13 uiSetHtml
+incident — to "145 of 179" in six places, restating a past event as a
+falsehood. One of the six was the sentence in `SITE-RULES.md` that *defines*
+historical figures as exempt, using that number as its example. All six are
+restored and now carry `2026-08-13` on the line, which is the documented
+exemption; SITE-RULES §Counts now says so explicitly and tells the next reader
+to date any number that is a record. The instruction `-Fix` prints ("READ THE
+DIFF") is what caught it, and it is worth taking literally.
+
+Formal layer: `stThm` cards for the **Implicit Function Theorem** (proved via
+continuity of F_y ⟹ strict monotonicity on vertical slices ⟹ IVT for existence
+and uniqueness — the proof the stage's bisection literally executes) and the
+**inverse-function rule** (derived from it by taking F = f(y) − x, then again
+directly, with the injectivity step that makes the division legal). See-links
+82, all resolving.
+
+Gates: `build` 232 modules · `smoke` OK (stages=179, seelinks=82) · `runtests`
+**4337 passed, 0 failed** · `runstagetests` **83 passed, 0 failed** ·
+`auditcustom` **bad=0 OK** (104 stages) · `auditsides` falsescale 0/0
+presetgap 0/0 **OK** · `auditresid` **findings=0** · `auditderive`
+**flagged=0** · `auditticks` **OK** · `auditpanel` **bad=0** · `auditzoom`
+**findings=0** (162 plots / 104 stages) · `auditframe` **OK** · `auditsize`
+**findings=0** · `auditlink` **OK** · `runall` demos=**601 caught=0 OK** ·
+`auditdocs` **bad=0 OK**. Both scenes screenshotted and looked at; the first
+screenshot is what found defect 1.

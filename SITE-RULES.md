@@ -1,4 +1,4 @@
-# SITE RULES
+﻿# SITE RULES
 
 **What must be true of this laboratory, and what any change to it owes the rest
 of it.**
@@ -23,8 +23,13 @@ shipped, and the example is given so the rule cannot be argued away as caution.
 
 **Counts go stale within a session.** Nothing in this document quotes one.
 `./measure.ps1` and `./smoke.ps1` report them; historical figures below (e.g.
-"145 of 178 stages") are records of a past measurement and are not current
-totals.
+"145 of 178 stages", 2026-08-13) are records of a past measurement and are not
+current totals. **Carry the date on the line.** That is not decoration:
+`./auditdocs.ps1 -Fix` exempts a figure sharing a line with a `YYYY-MM-DD` and
+otherwise rewrites it to today's measurement — which on 2026-08-16 silently
+turned this very sentence's example into "145 of 179", a past event restated as
+a falsehood. Read the diff after every `-Fix`, and date any number that is a
+record.
 
 ---
 
@@ -178,8 +183,8 @@ A panel that shows stale content is lying as much as a wrong number. The three
 stateful panels — `#stageReadout`, `#deriveBody`, `#chip` — are written through
 `uiSetHtml`, which skips a write matching what it last wrote; a direct
 `.innerHTML =` leaves the cache marker describing a DOM that is gone. `stageExit`
-doing exactly that blanked **145 of 178 stages** on re-entry while `runall` still
-reported `caught=0`.
+doing exactly that blanked **145 of 178 stages** on re-entry (2026-08-13) while
+`runall` still reported `caught=0`.
 
 A control's value must be readable **back**: an element id is a key space, a
 duplicate id is a defect, and a display formatter must never fill a box the
@@ -272,7 +277,7 @@ was reported, or noticed, as a *single* broken thing:
 | a label not appearing | `ctText` args reversed in **24 labels** across three wings |
 | one chip rendering as stacked lines | `.readout-chip` is a flex column — **11 chips** |
 | a label offset on one stage | `parseFloat(ctx.font)` returns the **weight** — **19 stages** |
-| one panel blank after navigation | the `uiSetHtml` marker — **145 of 178 stages** |
+| one panel blank after navigation | the `uiSetHtml` marker — **145 of 178 stages** (2026-08-13) |
 | a negative component reading 0 | `fmtNum` in an editable box — **3 panels**, every û and n̂ |
 | one slider driving the wrong thing | duplicate element id `ciR` — **2 sliders, 1 dock** |
 | one proton-radius constant stale | the value hardcoded in **2 further files** |

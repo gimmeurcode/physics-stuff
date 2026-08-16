@@ -253,6 +253,158 @@ function clAsymptotes(f, a, b){
   };
 }
 
+/* ------------------------------------- implicit and inverse derivatives ------
+   Two techniques with one idea underneath: differentiate a relation you cannot
+   solve. That makes the two-route check the natural shape of the subject —
+
+     ROUTE A (the technique)  dy/dx = −F_x/F_y, from the SYMBOLIC partials;
+                              (f⁻¹)′(b) = 1/f′(a), from the symbolic f′.
+     ROUTE B (the definition) solve the relation itself at x ± h by bisection
+                              and take the symmetric secant. No derivative of
+                              any kind is taken; only F is ever evaluated.
+
+   Route B is the definition of the derivative applied to a curve nobody
+   solved for y, so agreement is evidence that the implicit rule is the chain
+   rule and not a mnemonic. Its error is the secant's own O(h²), which
+   clImplicitOrder measures by halving h rather than asserting.
+
+   Every one of these returns a REASON rather than throwing or emitting NaN:
+   a vertical tangent is a fact about the curve (F_y = 0), not a failure. */
+
+/* the branch of F(x, ·) = 0 nearest y0, by bisection outward from y0 —
+   root-finding on the relation, never on a derivative */
+function clBranchY(F, x, y0, span, n){
+  const N = n || 96, R = span || 0.5;
+  const g = y => F(x, y);
+  const g0 = g(y0);
+  if(!Number.isFinite(g0)) return null;
+  if(g0 === 0) return y0;
+  /* walk outward in both directions at once and take the first sign change,
+     so a branch that curves either way is found without preferring one */
+  let prevUp = g0, prevDn = g0;
+  for(let i = 1; i <= N; i++){
+    const d = R * i / N;
+    const up = g(y0 + d), dn = g(y0 - d);
+    let lo = null, hi = null;
+    if(Number.isFinite(up) && up * prevUp < 0){ lo = y0 + R * (i - 1) / N; hi = y0 + d; }
+    else if(Number.isFinite(dn) && dn * prevDn < 0){ lo = y0 - d; hi = y0 - R * (i - 1) / N; }
+    if(lo !== null){
+      let a = lo, b = hi, fa = g(a);
+      for(let k = 0; k < 80; k++){
+        const m = 0.5 * (a + b), fm = g(m);
+        if(fm === 0){ a = b = m; break; }
+        if(fa * fm < 0) b = m; else { a = m; fa = fm; }
+        if(Math.abs(b - a) < 1e-14 * Math.max(1, Math.abs(m))) break;
+      }
+      return 0.5 * (a + b);
+    }
+    if(Number.isFinite(up)) prevUp = up;
+    if(Number.isFinite(dn)) prevDn = dn;
+  }
+  /* No sign change — but the curve may still be here, TOUCHED rather than
+     crossed. At the side of the circle x = 2 the relation is F = y², a double
+     root: |F| dips to zero without ever changing sign, so a bracket-only
+     search reports "not on the curve" at exactly the point the vertical
+     tangent lives. That is the one x the reader is told to slide to.
+     So: find the y minimising |F| and accept it only if |F| there is
+     negligible against the scale |F| actually takes over the scan — a genuine
+     touch — which keeps x just OUTSIDE the curve rejected, where |F| bottoms
+     out at a real positive number. */
+  let ymin = y0, amin = Infinity, amax = 0;
+  for(let i = 0; i <= N; i++){
+    const d = R * (2 * i / N - 1);
+    const v = Math.abs(g(y0 + d));
+    if(!Number.isFinite(v)) continue;
+    if(v > amax) amax = v;
+    if(v < amin){ amin = v; ymin = y0 + d; }
+  }
+  if(!Number.isFinite(amin)) return null;
+  /* ternary search on |F| to place the touch properly */
+  let lo2 = ymin - 2 * R / N, hi2 = ymin + 2 * R / N;
+  for(let k = 0; k < 90; k++){
+    const m1 = lo2 + (hi2 - lo2) / 3, m2 = hi2 - (hi2 - lo2) / 3;
+    if(Math.abs(g(m1)) < Math.abs(g(m2))) hi2 = m2; else lo2 = m1;
+  }
+  const yt = 0.5 * (lo2 + hi2), at = Math.abs(g(yt));
+  return at <= 1e-9 * (amax + 1) ? yt : null;
+}
+/* ROUTE A: the implicit rule. `F` is an mvCompile'd object (f, fx, fy). */
+function clImplicitSlope(F, x, y){
+  const fx = F.fx(x, y), fy = F.fy(x, y);
+  if(!Number.isFinite(fx) || !Number.isFinite(fy))
+    return { ok:false, why:'the relation is not differentiable here' };
+  const scale = Math.hypot(fx, fy);
+  if(scale < 1e-12)
+    return { ok:false, why:'both partials vanish — a singular point of the curve, where it may cross itself and have no single tangent', fx, fy };
+  /* The threshold is √ε, not ε, and that is a statement about how well the
+     POINT can be known rather than a fudge. Where the curve is tangent to a
+     vertical line, F has a double root in y — F = y² at the side of the
+     circle — so |F| is flat there and no method locates y better than √ε.
+     A residual F_y of 4×10⁻⁸ at such a point is that limit, not information,
+     and turning it into "the slope is −9.5×10⁷" would be false precision
+     about a tangent that is vertical. Above this the slope is genuinely
+     steep and is printed: at x = 1.9999 the circle gives −100, honestly. */
+  if(Math.abs(fy) < 1e-7 * scale)
+    return { ok:false, vertical:true, why:'vertical tangent — ∂F/∂y = 0, so dy/dx is not defined there (but dx/dy = 0 is)', fx, fy };
+  return { ok:true, m: -fx / fy, fx, fy };
+}
+/* ROUTE B: the secant of the branch itself, found by bisection on F. */
+function clImplicitSecant(F, x, y, h, span){
+  const H = h || 1e-3;
+  const yp = clBranchY(F.f, x + H, y, span), ym = clBranchY(F.f, x - H, y, span);
+  if(yp === null || ym === null)
+    return { ok:false, why:'the branch leaves the search band within h — the curve turns back on itself here' };
+  return { ok:true, m:(yp - ym) / (2 * H), yp, ym, h:H };
+}
+/* the secant's order, MEASURED by halving h (J9's rule, never asserted) */
+function clImplicitOrder(F, x, y, h0){
+  const A = clImplicitSlope(F, x, y);
+  if(!A.ok) return null;
+  const H = h0 || 4e-2;
+  const e = k => {
+    const B = clImplicitSecant(F, x, y, H / k);
+    return B.ok ? Math.abs(B.m - A.m) : NaN;
+  };
+  const e1 = e(1), e2 = e(2), e4 = e(4);
+  return { e1, e2, e4, r1:e1 / e2, r2:e2 / e4 };
+}
+/* The inverse function's derivative, both ways. `f` and `df` are plain
+   functions of one variable; a = the point, b = f(a). */
+function clInverseAt(f, df, a, lo, hi, hOpt){
+  const b = f(a), d = df(a);
+  if(!Number.isFinite(b)) return { ok:false, why:'f is not defined there' };
+  if(!Number.isFinite(d) || d === 0)
+    return { ok:false, why:'f′(a) = 0, so the inverse has a vertical tangent at that height — its slope is not defined', b, d };
+  /* route B: invert f numerically at b ± h and take the secant. Bisection on
+     f(x) − target over the bracket the caller says f is monotone on, so the
+     inverse is never differentiated and never symbolically inverted. */
+  const solve = target => {
+    let a0 = lo, b0 = hi, fa = f(a0) - target;
+    if(!Number.isFinite(fa) || fa * (f(b0) - target) > 0) return null;
+    for(let k = 0; k < 90; k++){
+      const m = 0.5 * (a0 + b0), fm = f(m) - target;
+      if(fm === 0) return m;
+      if(fa * fm < 0) b0 = m; else { a0 = m; fa = fm; }
+      if(Math.abs(b0 - a0) < 1e-14 * Math.max(1, Math.abs(m))) break;
+    }
+    return 0.5 * (a0 + b0);
+  };
+  const h = hOpt || 1e-3 * Math.max(1e-3, Math.abs(b));
+  /* The symmetric secant on the numerically inverted f is second order —
+     measured, not assumed: the h-sweep 1.37e-8, 3.42e-9, 8.61e-10, 2.21e-10
+     is 4.00, 3.97, 3.89. Since p = 2 is known, Richardson over h and h/2
+     removes it and the two routes then agree to ~1e-11, which is bisection's
+     own floor rather than the technique's. `raw` keeps the un-extrapolated
+     value so a test can still see the order. */
+  const sec = H => {
+    const xp = solve(b + H), xm = solve(b - H);
+    return (xp === null || xm === null) ? null : (xp - xm) / (2 * H);
+  };
+  const s1 = sec(h), s2 = sec(h / 2);
+  const num = (s1 === null || s2 === null) ? s2 : (4 * s2 - s1) / 3;
+  return { ok:true, b, d, sym:1 / d, num, raw:s1, h };
+}
+
 /* ------------------------------------------------------- related rates ------- */
 /* Each scenario is a constraint plus one known rate; the answer is the chain
    rule solved for the other rate, and the lab also measures it by finite
