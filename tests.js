@@ -6903,6 +6903,137 @@ ok('scalar mode div is the Laplacian', sf('x^2+y^2+z^2').laplacian !== null);
   ok('RREF pivot columns are strictly increasing',
      rr.pivots.every((c, i) => i === 0 || c > rr.pivots[i-1]));
 })();
+
+/* ============================================================================
+   ABSTRACT LINEAR MAPS AND INNER PRODUCT SPACES — B3
+   ============================================================================ */
+(function(){
+  /* --- a linear map has a matrix, and it is the same map --- */
+  const n = 5;
+  const D = laOpMatrix('ddx', n);
+  ok('d/dx on P5 is a 6x6 matrix of integers',
+     D.length === 6 && D.every(r => r.every(v => Math.abs(v - Math.round(v)) < 1e-14)),
+     JSON.stringify(D[0]));
+  close('with 1, 2, 3, 4, 5 on the superdiagonal', D[0][1], 1, 0);
+  close('…', D[4][5], 5, 0);
+  /* THE two-route check: matrix-times-coordinates against symbolic
+     differentiation of the polynomial itself. Integers, so it is exact. */
+  (function(){
+    const p = [7, -3, 0, 2, 5, -1];                 // 7 − 3x + 2x³ + 5x⁴ − x⁵
+    const byMatrix = laMatVec(D, p);
+    const bySymbolic = laPolyFit(laPolyDeriv(p), n);
+    ok('map: matrix·coords equals differentiating the polynomial, EXACTLY',
+       byMatrix.every((v, i) => v === bySymbolic[i]),
+       byMatrix.join(',') + ' vs ' + bySymbolic.join(','));
+    /* and against the site's own symbolic differentiator, a third route that
+       shares nothing with either — parse, diff, evaluate */
+    const g = compile(diff(parse('7 - 3*x + 2*x^3 + 5*x^4 - x^5'), 'x'));
+    ok('map: …and against the parser\'s own diff, at sample points',
+       [-1.3, 0.4, 2.1].every(x => Math.abs(laPolyEval(byMatrix, x) - g(x, 0, 0)) < 1e-12),
+       [-1.3, 0.4, 2.1].map(x => laPolyEval(byMatrix, x) - g(x, 0, 0)).join(','));
+  })();
+  /* rank–nullity, on a map whose kernel you can name: the constants */
+  (function(){
+    const R = laRankNullity(D);
+    ok('map: rank + nullity = dim P5 = 6', R.holds && R.dim === 6, JSON.stringify(R));
+    ok('map: the kernel of d/dx is one-dimensional — the constants', R.nullity === 1, R.nullity);
+    ok('map: and d/dx is nilpotent of index exactly 6', laNilpotency(D) === 6, laNilpotency(D));
+  })();
+  /* multiplication by x is injective on P_n only if you leave room; on P_n it
+     truncates, and the matrix says so */
+  (function(){
+    const X = laOpMatrix('mulx', n);
+    ok('map: x· has a one-dimensional kernel on P5 (xⁿ leaves the space)',
+       laRankNullity(X).nullity === 1, laRankNullity(X).nullity);
+    ok('map: but x·d/dx is diagonal — the monomials are its eigenvectors',
+       laOpMatrix('xddx', n).every((r, i) => r.every((v, j) => i === j || Math.abs(v) < 1e-14)),
+       JSON.stringify(laOpMatrix('xddx', n)[1]));
+    const E = laOpMatrix('xddx', n);
+    ok('map: …with eigenvalues 0, 1, 2, 3, 4, 5 — the degrees themselves',
+       E.every((r, i) => Math.abs(r[i] - i) < 1e-14), E.map((r, i) => r[i]).join(','));
+  })();
+  /* the shift p(x) → p(x+1) is invertible, and its inverse is the shift back */
+  (function(){
+    const S = laOpMatrix('shift', 4);
+    const Sb = laOpMatrix(c => laPolyShift(c, -1), 4);
+    const I = laMul(S, Sb);
+    ok('map: shifting by +1 then −1 is the identity',
+       I.every((r, i) => r.every((v, j) => Math.abs(v - (i === j ? 1 : 0)) < 1e-9)),
+       JSON.stringify(I[1]));
+  })();
+
+  /* --- functions as vectors: the inner product --- */
+  const W = LA_WEIGHTS.legendre;
+  (function(){
+    /* Gram–Schmidt on the monomials must produce Legendre — checked against
+       RODRIGUES' formula, which shares no code with the orthogonalisation */
+    const B = laFnGramSchmidt(5, W);
+    let worst = 0;
+    for(let k = 0; k <= 5; k++){
+      const want = laLegendreUnit(k);
+      /* sign convention: Rodrigues fixes Pₙ(1) = 1; match it before comparing */
+      const s = laPolyEval(B[k].c, 1) * laPolyEval(want, 1) < 0 ? -1 : 1;
+      for(let i = 0; i < want.length; i++)
+        worst = Math.max(worst, Math.abs(s * (B[k].c[i] || 0) - want[i]));
+    }
+    ok('inner: Gram–Schmidt on 1, x, x², … IS Legendre, to 1e-9',
+       worst < 1e-9, 'worst coefficient gap ' + worst);
+    /* orthogonality measured, not asserted: the Gram matrix is the identity */
+    const G = laFnGram(B, W);
+    ok('inner: the Gram matrix is diagonal to 1e-12 — that is what orthogonal MEANS',
+       laGramOffDiag(G) < 1e-12, laGramOffDiag(G));
+    ok('inner: and unit on the diagonal', G.every((r, i) => Math.abs(r[i] - 1) < 1e-12),
+       G.map((r, i) => r[i]).join(','));
+  })();
+  (function(){
+    /* the same code, a different weight, a different classical family */
+    const Wc = LA_WEIGHTS.chebyshev;
+    const B = laFnGramSchmidt(4, Wc);
+    const G = laFnGram(B, Wc);
+    ok('inner: the same Gram–Schmidt under w = 1/√(1−x²) is still orthogonal',
+       laGramOffDiag(G) < 1e-10, laGramOffDiag(G));
+    /* Chebyshev up to normalisation: compare the ZEROS, which are basis-free */
+    const T3 = laChebyshevT(3), got = B[3].c;
+    const zerosOf = c => nqRoots(x => laPolyEval(c, x), -0.999, 0.999, 400).sort((a, b) => a - b);
+    const z1 = zerosOf(T3), z2 = zerosOf(got);
+    ok('inner: …and it is Chebyshev — the three zeros of T₃ agree to 1e-9',
+       z1.length === 3 && z2.length === 3 &&
+       z1.every((v, i) => Math.abs(v - z2[i]) < 1e-9), z1.join(',') + ' vs ' + z2.join(','));
+  })();
+  (function(){
+    /* projection is the best approximation — the property that makes Fourier
+       series inevitable. Measured against 400 random competitors. */
+    const B = laFnGramSchmidt(3, W);
+    const f = x => Math.exp(x);
+    const P = laFnProject(f, B, W);
+    let beaten = 0;
+    for(let t = 0; t < 400; t++){
+      const c = P.c.map(v => v + (Math.random() - 0.5) * 0.05);
+      if(laFnNorm(x => f(x) - laPolyEval(c, x), W) < P.err) beaten++;
+    }
+    ok('inner: no perturbation of the projection fits better — it IS the best',
+       beaten === 0, beaten + ' of 400 competitors beat it');
+    /* Bessel/Parseval: Σaᵢ² ≤ ‖f‖², with the gap exactly the squared error */
+    const Q = laParseval(P);
+    ok('inner: Σaᵢ² ≤ ‖f‖² (Bessel)', Q.sum <= Q.fsq + 1e-12, Q.sum + ' vs ' + Q.fsq);
+    ok('inner: and the shortfall is EXACTLY the squared error — Pythagoras',
+       Math.abs(Q.gap - Q.errsq) < 1e-9 * Q.fsq, Q.gap + ' vs ' + Q.errsq);
+    /* raising the degree can only help, and here it must strictly help */
+    const P4 = laFnProject(f, laFnGramSchmidt(4, W), W);
+    ok('inner: one more basis vector strictly reduces the error', P4.err < P.err,
+       P4.err + ' vs ' + P.err);
+  })();
+  (function(){
+    /* a function already IN the span is reproduced exactly — the degenerate
+       case that a "best approximation" must get right */
+    const B = laFnGramSchmidt(3, W);
+    const P = laFnProject(x => 2 - x + 3 * x * x, B, W);
+    ok('inner: a polynomial in the span is reproduced with zero error',
+       P.err < 1e-12, P.err);
+    ok('inner: …and Parseval is then an equality, not an inequality',
+       Math.abs(laParseval(P).gap) < 1e-12, laParseval(P).gap);
+  })();
+})();
 /* ============================================================================
    TRANSFORMS, SYSTEMS, PHASE PLANE, COMPLEX AND FORMS
    ============================================================================ */

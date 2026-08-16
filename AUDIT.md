@@ -5219,3 +5219,73 @@ passed, 0 failed** · `runstagetests` **90 passed, 0 failed** · `auditcustom`
 (after the fix above) · `auditpanel` **bad=0** · `auditzoom` **findings=0** ·
 `auditframe` **OK** · `auditsize` **findings=0** · `auditlink` **OK** ·
 `runall` demos=**602 caught=0 OK** · `auditdocs` **bad=0 OK**.
+
+
+## 2026-08-16 — B3: abstract linear maps and inner product spaces
+
+The third syllabus gap, and the one the plan called "what makes the leap to
+Fourier series and quantum states feel inevitable". Two stages in `vecspace`
+(`78ca`) over a new engine `38a-linalg-abstract.js`.
+
+**`laAbstract` — a linear map has a matrix.** On P_n with basis {1, x, …, xⁿ},
+an operator becomes a table built column by column: column j is T(xʲ) in
+coordinates, the definition executed. The check applies the operator through
+the **parser** — symbolic `diff`, or adaptive quadrature for ∫₀ˣ — and then
+recovers coordinates by **sampling and solving a Vandermonde system**, so it
+reads no coefficient list anywhere. On integer coefficients the two agree
+*exactly*, not to a tolerance. Rank–nullity holds by construction; d/dx has
+nullity 1 (the constants — the +C, derived rather than asserted) and is
+nilpotent of index n+1; x·d/dx is diagonal with the degrees as its
+eigenvalues.
+
+**`laInnerFn` — an integral is a dot product.** Gram–Schmidt on {1, x, x², …}
+with ⟨f,g⟩ = ∫fgw dx produces the classical orthogonal polynomials from one
+piece of code: **Legendre** under w = 1, checked against Rodrigues' formula to
+1e-9; **Chebyshev** under w = 1/√(1−x²), compared by its *zeros*, which no
+normalisation can move. The Chebyshev weight is integrably singular, so the
+inner product substitutes x = cos θ and removes the singularity exactly —
+which is why its Gram matrix is diagonal to 1e-10 rather than to three
+figures. Projection is verified to be the *best* approximation against 400
+random perturbations, and Parseval closes: Σaⱼ² + ‖error‖² = ‖f‖².
+
+**Three defects, each caught by a different instrument:**
+
+1. **A silent name collision.** `laNorm` already existed as the Euclidean norm
+   of a coordinate vector; my function-space norm took the same name, and the
+   bundle died with "Identifier 'laNorm' has already been declared" — the
+   `src/js/CLAUDE.md` trap, exactly. Renamed `laFnNorm`. It then threw at
+   runtime because a *test* still called the old one with a function; the
+   harness's stack, once forced onto one line, named it immediately.
+2. **The interpolation accepted anything.** `coordsOf` solved an (n+1)×(n+1)
+   Vandermonde, which *always* succeeds — it fits a degree-n curve through
+   n+1 samples of any function whatever. So `sin(x)` in a degree-4 space came
+   back as a quartic and the panel called it "its coordinates", a false
+   statement about the reader's own input. The fit is now verified at 4n+5
+   points it did not use, and refused with how far it misses. Found by a stage
+   test I wrote expecting a refusal and getting silence.
+3. **`auditsides` caught a modelling error on day one.** `x·` and `∫₀ˣ`
+   **raise** the degree, so they are not maps P_n → P_n at all; the matrix
+   truncates (which is why x· has a one-dimensional kernel here), but the
+   check route fitted the raised result straight back to degree n, which
+   interpolates the lost xⁿ⁺¹ across the lower terms. The two routes then
+   disagreed by **1.4** — but only when the input actually reached degree n,
+   which the default preset did and my first tests did not. Both routes now
+   truncate identically, the panel says the map leaves the space and why, and
+   two regressions pin the full-degree case. Ratchet back to 0/0.
+
+**And a class fix in shared machinery.** `pvFeatures`' markers printed
+`zero at x = −1.86×10⁻¹⁰` on the Legendre basis, where every odd polynomial
+has a root at the origin — round-off presented as a measurement. §2.5 already
+had the rule ("snap anything below a millionth of the span") and the feature
+layer was not following it. Now snapped, for the x and y of every marker on
+every stage that draws one; `auditmarks` unchanged at 2303 → 20.
+
+Gates: `build` 235 modules · `smoke` OK (stages=182) · `runtests` **4375
+passed, 0 failed** · `runstagetests` **106 passed, 0 failed** · `auditcustom`
+**bad=0 OK** (107 stages, 142 boxes) · `auditsides` falsescale 0/0 presetgap
+**0/0 OK** (after the fix above) · `auditresid` **findings=0** · `auditticks`
+**OK** · `auditpanel` **bad=0** · `auditzoom` **findings=0** · `auditframe`
+**OK** · `auditsize` **findings=0** · `auditlink` **OK** · `auditderive`
+**flagged=0** · `auditmarks` 2303 → 20 · `runall` **caught=0 OK** ·
+`auditdocs` **bad=0 OK**. Both stages screenshotted; the first screenshot of
+`laAbstract` is what found the matrix sitting under the readout chip.

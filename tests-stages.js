@@ -493,6 +493,86 @@ function sok(name, cond, detail){
       RV.B.gross + ' / ' + RV.kEff);
 })();
 
+/* ---- B3: abstract linear maps and inner product spaces -------------------
+   The engines are pinned in tests.js. Here the stage paths, whose second
+   route is different again: laAbstract recovers coordinates by SAMPLING the
+   operator's output and solving, so it never reads a coefficient list.     */
+(function(){
+  var F = STAGES.laAbstract;
+  var st = { n:5, op:'ddx', src:'7 - 3*x + 2*x^3 + 5*x^4 - x^5' };
+  F.recompute(st);
+  var R = F.reportOf(st);
+  sok('laAbstract: matrix route and sampled-operator route are identical',
+      !st.err && R.worst === 0, st.err || R.worst);
+  sok('laAbstract: d/dx on P5 has rank 5 and nullity 1 - the constants',
+      R.rn.rank === 5 && R.rn.nullity === 1, JSON.stringify(R.rn));
+  sok('laAbstract: and is nilpotent of index exactly 6', R.nil === 6, R.nil);
+  /* the antiderivative's check route is a QUADRATURE, not symbolic algebra */
+  var si = { n:4, op:'integ', src:'3 - 2*x + x^2' };
+  F.recompute(si);
+  var RI = F.reportOf(si);
+  sok('laAbstract: the antiderivative agrees with adaptive quadrature',
+      !si.err && RI.worst < 1e-9, si.err || RI.worst);
+  /* REGRESSION (auditsides, day one): x. and the antiderivative RAISE the
+     degree, so they leave P_n and the stage truncates. Both routes must adopt
+     that same convention - fitting the raised result straight back to degree n
+     interpolates the lost term across the lower ones and disagreed by 1.4.
+     These two cases only bite when the input actually REACHES degree n. */
+  var sm = { n:5, op:'mulx', src:'7 - 3*x + 2*x^3 + 5*x^4 - x^5' };
+  F.recompute(sm);
+  sok('laAbstract: x. truncates, and both routes truncate the same way',
+      !sm.err && sm._r.worst < 1e-9, sm.err || sm._r.worst);
+  var sq = { n:4, op:'integ', src:'1 + x + x^2 + x^3 + x^4' };
+  F.recompute(sq);
+  sok('laAbstract: and so does the antiderivative at full degree',
+      !sq.err && sq._r.worst < 1e-8, sq.err || sq._r.worst);
+  /* x d/dx is diagonal, so the monomials are eigenvectors with eigenvalue j */
+  var sx = { n:5, op:'xddx', src:'x^3' };
+  F.recompute(sx);
+  var RX = F.reportOf(sx);
+  sok('laAbstract: x d/dx is diagonal with the degrees on the diagonal',
+      RX.M.every(function(r, i){ return r.every(function(v, j){ return i === j ? Math.abs(v - i) < 1e-12 : Math.abs(v) < 1e-12; }); }),
+      JSON.stringify(RX.M[2]));
+  /* a polynomial that does not fit the space is refused, in words */
+  /* An (n+1)x(n+1) Vandermonde solve NEVER fails - it fits a degree-n curve
+     through n+1 samples of anything - so the fit is verified at points it did
+     not use. Without that, x^5 in a degree-2 space came back as a quadratic
+     and the panel called it "its coordinates". */
+  var sb = { n:2, op:'ddx', src:'x^5' };
+  F.recompute(sb);
+  sok('laAbstract: too high a degree is refused with a reason, not silently fitted',
+      !!sb.err && /degree/.test(sb.err), sb.err || 'accepted silently');
+  var sn = { n:4, op:'ddx', src:'sin(x)' };
+  F.recompute(sn);
+  sok('laAbstract: and a non-polynomial is refused too, with how far it misses',
+      !!sn.err && /misses by/.test(sn.err), sn.err || 'accepted silently');
+  var sok2 = { n:4, op:'ddx', src:'2 - x + 3*x^2' };
+  F.recompute(sok2);
+  sok('laAbstract: …while a genuine low-degree polynomial still passes',
+      !sok2.err && sok2._r.worst === 0, sok2.err || sok2._r.worst);
+
+  var G = STAGES.laInnerFn;
+  var gs = { wk:'legendre', deg:4, fsrc:'exp(x)' };
+  G.recompute(gs);
+  var GR = G.reportOf(gs);
+  sok('laInnerFn: Gram-Schmidt output is orthonormal to 1e-12',
+      GR.off < 1e-12 && GR.G.every(function(r, i){ return Math.abs(r[i] - 1) < 1e-12; }), GR.off);
+  sok('laInnerFn: and matches Rodrigues formula to 1e-9', GR.cgap < 1e-9, GR.cgap);
+  sok('laInnerFn: Parseval accounts for the whole function',
+      Math.abs(GR.par.sum + GR.par.errsq - GR.par.fsq) < 1e-9 * GR.par.fsq,
+      (GR.par.sum + GR.par.errsq) + ' vs ' + GR.par.fsq);
+  var gc = { wk:'chebyshev', deg:4, fsrc:'exp(x)' };
+  G.recompute(gc);
+  var GC = G.reportOf(gc);
+  sok('laInnerFn: the same code under a different weight is still orthogonal',
+      GC.off < 1e-10, GC.off);
+  sok('laInnerFn: and its zeros are Chebyshev\'s', GC.cgap < 1e-9, GC.cgap);
+  var gb = { wk:'legendre', deg:3, fsrc:'2 - x + 3*x^2' };
+  G.recompute(gb);
+  sok('laInnerFn: a function already in the span is reproduced exactly',
+      G.reportOf(gb).P.err < 1e-12, G.reportOf(gb).P.err);
+})();
+
 /* ---- report ---------------------------------------------------------------- */
 (function(){
   var t = document.createElement('div');

@@ -462,9 +462,18 @@ function pvDrawFeatures(ctx, P){
     const X = P.X(f.x), Y = P.Y(f.y);
     if(!Number.isFinite(X) || !Number.isFinite(Y)) continue;
     /* the printed root is bisected, not the sampled one — a label reading
-       "zero at x = 1.57" should be a zero, not the nearest sample to one */
-    const txt = f.t === 'zero' ? 'zero at x = ' + fmtNum(pvRefineZero(f, fn), 4)
-              : (f.t === 'max' ? 'max ' : 'min ') + fmtNum(f.y, 3) + ' at ' + fmtNum(f.x, 3);
+       "zero at x = 1.57" should be a zero, not the nearest sample to one.
+
+       …and it is then SNAPPED, by §2.5's rule for exactly this: a root that
+       is really at the origin comes back from bisection as −1.86×10⁻¹⁰, and
+       printing that is printing round-off as a measurement. Anything below a
+       millionth of the plotted span is indistinguishable from zero at any
+       magnification the reader has, so it prints as zero. Found on the
+       Legendre basis, where every odd polynomial has a root at the origin. */
+    const snap = (v, span) => (Math.abs(v) < Math.abs(span) * 1e-6 ? 0 : v);
+    const txt = f.t === 'zero' ? 'zero at x = ' + fmtNum(snap(pvRefineZero(f, fn), P.x1 - P.x0), 4)
+              : (f.t === 'max' ? 'max ' : 'min ') + fmtNum(snap(f.y, P.y1 - P.y0), 3) +
+                ' at ' + fmtNum(snap(f.x, P.x1 - P.x0), 3);
     ctText(ctx, X, Y - 8, txt, rgbCss(TH.dim), '10px ' + FONT_UI, 'center', 'bottom');
   }
 }

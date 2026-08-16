@@ -1,6 +1,6 @@
 ﻿# Working in this repository
 
-An interactive mathematics and physics laboratory: 40 wings, 602 guided experiments,
+An interactive mathematics and physics laboratory: 40 wings, 604 guided experiments,
 built from `src/` into one self-contained `vector-calculus.html`.
 
 **Read `SITE-RULES.md` first.** It is the constitutional layer — the nine laws
@@ -75,7 +75,7 @@ falls by 2^p, round-off does not move.
    `./build.ps1`. The same goes for `MAP.md` — run `./map.ps1`.
 2. **Module load order is the filename order.** `build.ps1` concatenates
    `src/js/*.js` by *ordinal* filename sort into one script scope. A file named
-   `60b-` loads after `60a-` and before `61-`. All 233 modules share one global
+   `60b-` loads after `60a-` and before `61-`. All 235 modules share one global
    namespace, so **name collisions are silent** — prefix new engine functions
    (`nq`, `ga`, `pc`, `mv`, `ig`, `vc`, `od`, `ct`, `ck`, `rl`, `qm`, `dy`, `tm`, `la`,`sk`, `lp`, `mx`, `fn`, `lt`, `sy`, `ph`, `cx`, `df`, `ag`, `pb`, `nm`, `nc`, `sl`,`sm`, `pv`)
    and grep case-sensitively before choosing a name. **The same applies to
@@ -86,7 +86,7 @@ falls by 2^p, round-off does not move.
    scope means a single stray character takes the whole app down, and the unit
    suite only sees the engine section (10-49) and would not notice. Then
    `./runtests.ps1` must print `0 failed`
-   (4352 unit tests), and `./runstagetests.ps1` must print `0 failed` — it calls
+   (4375 unit tests), and `./runstagetests.ps1` must print `0 failed` — it calls
    stage helpers **directly** inside the booted bundle, which is the only way the
    stages' own arithmetic (modules ≥ 50, invisible to `runtests`) is tested; a
    stage defect class fixed adds its two-route test to `tests-stages.js` the
@@ -132,7 +132,7 @@ falls by 2^p, round-off does not move.
 
    **For anything touching `mkPlot`, `plotCurve` or the viewport, also
    `./auditzoom.ps1` (`findings=0`) and `./auditframe.ps1`.** `auditzoom` proves
-   the pan/zoom layer works on all 180 stages *and* that with no interaction
+   the pan/zoom layer works on all 182 stages *and* that with no interaction
    `mkPlot` still returns exactly the window it was handed — the invariant that
    keeps the viewport invisible to stages that know nothing about it.
    `auditframe` measures how much of each curve falls outside its own window and
@@ -179,7 +179,7 @@ falls by 2^p, round-off does not move.
    `./auditviewport.ps1` (`bad=0`).** Every other script runs at one window size,
    so a layout that only breaks at a different aspect ratio is invisible to all
    of them — and a label drawn off the canvas is drawn, discarded and reported by
-   nothing. `auditsize` sweeps eight canvas shapes across all 180 stages;
+   nothing. `auditsize` sweeps eight canvas shapes across all 182 stages;
    `auditviewport` launches Chrome at sixteen real window sizes and checks the
    page around the canvas. They found 161 findings on their first run.
 
