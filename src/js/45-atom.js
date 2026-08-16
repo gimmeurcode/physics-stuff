@@ -127,6 +127,41 @@ function atDominanceSwitches(pair, rLo, rHi, n){
   return out;
 }
 
+/* ---- screened hydrogenic levels, solved rather than quoted -----------------
+   The radial equation for u(r) = r·R(r) in Hartree atomic units:
+       u″ = 2·(V_l(r) − E)·u,   V_l(r) = −Z_eff(r)/r + l(l+1)/(2r²)
+   which is exactly the form qmBoundStates (40-quantum.js) marches with its
+   node-counted Numerov. Zeff is the CALLER's function (the reader's screening);
+   Zeff ≡ Z is pure Coulomb and must reproduce Eₙ = −Z²/2n² Hartree — the
+   panel prints it in eV as −13.6057·Z²/n². The u(0) = 0 wall qmShoot imposes
+   is the true boundary condition, and its treat-a-non-finite-V-as-a-wall
+   guard makes the r = 0 grid point harmless (ψ[0] = 0 multiplies it away).
+   The n-th s state carries n−1 radial nodes; the first l = 1 state is 2p. */
+const AT_HARTREE_EV = 27.211386245981;      // CODATA 2022
+/* The Coulomb singularity at r = 0 demotes Numerov from h⁴ to h² — measured,
+   not assumed: halving h cut the 1s error by 3.98 and 3.99 across two
+   halvings. That clean second order is what makes Richardson honest: solve at
+   N and 2N and take E* = (4·E₂ − E₁)/3, which removes the h² term and lands
+   hydrogen 1s at 1×10⁻⁷ relative on a grid where either solve alone sits at
+   ~10⁻⁵. The wavefunction kept is the fine one. */
+function atLevels(Zeff, l, count, opt){
+  opt = opt || {};
+  const rmax = opt.rmax || 60, N = opt.N || 6000;
+  const V = r => r <= 0 ? 1e12 : -Zeff(r) / r + l * (l + 1) / (2 * r * r);
+  const coarse = qmBoundStates(V, 0, rmax, count, N);
+  const fine = qmBoundStates(V, 0, rmax, count, 2 * N);
+  /* A state with E ≥ 0 is not bound at all — it is the continuum discretised
+     by the wall at rmax, and a purely repulsive "screening" produced four of
+     them before this filter existed (caught by the stage suite's repulsive
+     control). V(∞) = 0 for any screened Coulomb, so E < 0 is the boundary. */
+  return fine.map((s, i) => {
+    const E = coarse[i] ? (4 * s.E - coarse[i].E) / 3 : s.E;
+    return { n: i + 1 + l, l, E, Eev: E * AT_HARTREE_EV,
+             Efine: s.E, nodes: s.nodes, at: s.at, h: s.h };
+  }).filter(s => s.E < -1e-12);
+}
+const atBohrEv = (Z, n) => -0.5 * Z * Z / (n * n) * AT_HARTREE_EV;
+
 /* ---- semi-empirical mass formula: binding energy per nucleon, MeV ---- */
 function semfB(A, Z){
   if(A < 1 || Z < 0 || Z > A) return 0;

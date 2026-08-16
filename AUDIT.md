@@ -5033,3 +5033,62 @@ presetgap 0/0 **OK** (83 demos, 145 claims) · `auditresid` **findings=0** ·
 **OK** · `auditzoom` **findings=0** · `auditframe` **OK** · `runall`
 demos=**598 caught=0 OK** · screenshot looked at (n–e scene: two curves, the
 measured hand-over marker, the off-rows explaining themselves).
+
+
+## 2026-08-16 — atomSim's levels lab closes the atom wing, and the EM/atom block with it
+
+The sixth and last of the EM/atom editors. `atomSim` gains a fourth scale —
+**levels · your own screening** — where the reader types Z and Z_eff(r, Z)
+(r rewritten onto the parser's x BEFORE parsing, because r is also the
+parser's radius macro; Z onto y; x accepted as an alias of r since it is the
+slot itself and what the audit harness types; y and z rejected by name) and
+the radial Schrödinger equation is **solved**: `atLevels` in `45-atom.js`
+drives `qmBoundStates`' node-counted Numerov for s and p ladders separately.
+
+**The solver's order was measured before being believed** (J9's rule): the
+Coulomb singularity at the origin demotes Numerov from h⁴ to h² — halving h
+cut the 1s error by 3.98× and 3.99× across two halvings, clean second order —
+so `atLevels` solves at N and 2N and Richardson-extrapolates, which the suite
+asserts buys back two orders of magnitude. Both the measured order and the
+extrapolation gain are pinned as tests, not comments.
+
+**Measured (8 unit tests, 6 stage tests):**
+
+- Hydrogen 1s: −13.605692 eV against the closed form −13.605693 —
+  **1.1×10⁻⁷ relative**; §3.1's acceptance was 1e-6. 2s, 3s land too; Z = 3
+  scales as Z².
+- **The accidental degeneracy**: E(2p) = E(2s) to 1e-6, from two independent
+  solves of two different equations — the pure-1/r problem's hidden symmetry,
+  measured rather than asserted.
+- **The demo screening** (1 + (Z−1)e^(−2r), Z = 3): 1s −52.897 eV,
+  2s −5.4696 eV, 2p −3.6394 eV — the degeneracy broken by **1.830 eV with s
+  below p**, the penetration ordering that builds the periodic table.
+- **A repulsive screening binds nothing.** The first version returned four
+  "states" — the continuum discretised by the wall at rmax — caught by the
+  stage suite's repulsive control on its first run. States with E ≥ 0 are now
+  filtered (V(∞) = 0 for any screened Coulomb) and the card explains itself in
+  prose instead of printing box modes.
+
+**auditcustom initially could not see the new path at all** — the zoom seg's
+buttons carry `data-z`, not the `data-v` its picker detector requires, so the
+typed box sat unaudited while every count stayed green. The levels button now
+carries `data-v="custom"` and the label "your own screening", and the audit's
+counts moved: stages 102 → 103, boxes 137 → 138, bad=0 — the box is driven
+with a formula the build guard accepts.
+
+Screenshot looked at: the ladder scene (1s deep, s solid, p dashed, faint
+Bohr rungs, the 1.83 eV split row); the floating key covered the potential
+curve — fourth instance of the session's class, fixed with `dockLegend:true`.
+
+Gates on the final build: `build` 231 modules · `smoke` OK · `runtests`
+**4318 passed, 0 failed** · `runstagetests` **75 passed, 0 failed** ·
+`auditcustom` **bad=0 OK** (103 stages, 138 boxes) · `auditsides` falsescale
+0/0 presetgap 0/0 **OK** · `auditresid` **findings=0** · `auditlink` **OK** ·
+`auditpanel` **bad=0** · `auditticks` **OK** · `auditzoom` **findings=0** ·
+`auditframe` **OK** · `auditsize` **findings=0** · `runall` demos=**599
+caught=0 OK** · `auditdocs` **bad=0 OK**.
+
+With this, **Programme A's EM and atom blocks are closed**: six editors over
+two days, every §3.1 acceptance test computed rather than asserted, 34 stage
+assertions and 30 unit tests added, and four instances of the
+floating-key-over-content class found by screenshot and fixed the same day.

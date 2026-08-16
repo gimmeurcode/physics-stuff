@@ -1,5 +1,8 @@
 STAGES.atomSim = {
   title: 'Inside the atom',
+  /* the levels scene fills the canvas with a plot; the key sits in the dock
+     (fourth instance of the floating-key-over-content class this session) */
+  dockLegend: true,
   derive(st){
     return {
       title:'Five orders of magnitude, and a different force at each',
@@ -25,14 +28,24 @@ STAGES.atomSim = {
           `${dv('m')}_proton ${dop('≫')} 3${dv('m')}_quark`,
           'the three valence quarks account for about 1% — the rest is gluon field energy'),
         drvSay('so E = mc² is doing most of the work',
-          'Your mass is overwhelmingly the binding energy of the strong field inside your protons and neutrons, not the intrinsic mass of the particles in them. Mass is mostly confined energy.')
+          'Your mass is overwhelmingly the binding energy of the strong field inside your protons and neutrons, not the intrinsic mass of the particles in them. Mass is mostly confined energy.'),
+        drvStep('and the electron\'s energy ladder can be solved, for any screening you type',
+          `${dop('−')}${dfrac('1', '2')}${dv('u')}″ ${dop('−')} ${dfrac(dv('Z') + '_eff(' + dv('r') + ')', dv('r'))}${dv('u')} ${dop('=')} ${dv('E')}${dv('u')}`,
+          'the "levels · solved" scale marches this with node-counted Numerov and Richardson extrapolation — leave Z_eff = Z and the eigenvalues land on −13.6·Z²/n² eV to about 10⁻⁷'),
+        drvSay('and breaking its hidden symmetry builds the periodic table',
+          'For the pure 1/r potential, 2s and 2p come out identical although they solve different equations — an accidental degeneracy protected by a symmetry the Coulomb problem alone possesses. Any screening destroys it, always dropping s below p, because the s electron penetrates the core and sees more charge. Repeat that ordering shell by shell — 4s filling before 3d — and the structure of the periodic table falls out of one typed function.')
       ],
       note:'The cloud is sampled from the actual hydrogen wavefunction, and each potential is plotted from its own formula with real parameters — ħc = 197.3 MeV·fm, α = 1/137, and measured particle masses. The scale bar is honest at every zoom level.'
     };
   },
-  mode: '3d',
+  /* zooms 0–2 are the 3D worlds; zoom 3 is the flat levels laboratory */
+  mode: st => (st && st.zoom === 3) ? '2d' : '3d',
   enter(st, o){
-    st.zoom = o.zoom !== undefined ? o.zoom : 0;     // 0 atom · 1 nucleus · 2 nucleon
+    st.zoom = o.zoom !== undefined ? o.zoom : 0;     // 0 atom · 1 nucleus · 2 nucleon · 3 levels
+    st.Z = o.Z !== undefined ? o.Z : 1;
+    st.zsrc = o.zs || 'Z';
+    st.lv = null; st.lvErr = '';
+    if(st.zoom === 3) this.lvCompute(st);
     st.showPhotons = true; st.showGluons = true; st.showGravitons = false;
     st.cloud = [];
     for(let i = 0; i < 900; i++) st.cloud.push(sampleHydrogen1s(1));  // unit Bohr radius
@@ -50,11 +63,59 @@ STAGES.atomSim = {
                          proton: i % 2 === 0, jig: Math.random() * 6.28 });
     }
   },
+  /* The reader's screening: Z_eff(r), with r in Bohr radii and Z available as
+     a symbol. The parser's slots are x, y, z: r is rewritten onto x and Z onto
+     y — and because `r` is also the parser's radius macro, the rewrite happens
+     BEFORE parsing, never after. A literal x, y or z is rejected first. */
+  zBuild(s){
+    /* x is accepted as an alias for r — it IS the parser slot r lands on, and
+       it is what the audit harness types into an unfamiliar box. y and z have
+       no honest meaning here and are rejected by name. */
+    if(/(?<![A-Za-z])[yz](?![A-Za-z])/.test(String(s)))
+      throw new Error('write the screening as Z_eff(r, Z) — r and Z are the only symbols here');
+    const g = compile(parse(String(s)
+      .replace(/(?<![A-Za-z])r(?![A-Za-z])/g, 'x')
+      .replace(/(?<![A-Za-z])Z(?![A-Za-z])/g, 'y')));
+    return { f: (r, Z) => g(r, Z, 0) };
+  },
+  /* one pair of Numerov ladders per (source, Z) — cached, never in frame() */
+  lvCompute(st){
+    const key = st.zsrc + '|' + st.Z;
+    if(st.lv && st.lv.key === key) return st.lv;
+    const made = this.zBuild(st.zsrc);
+    const Z = st.Z;
+    const Zeff = r => { const v = made.f(r, Z); return Number.isFinite(v) ? v : 0; };
+    const rmax = Z <= 2 ? 60 : Z <= 6 ? 30 : 15;
+    const lv = { key, Z, rmax,
+                 s: atLevels(Zeff, 0, 4, { rmax }),
+                 p: atLevels(Zeff, 1, 3, { rmax }),
+                 Zeff };
+    st.lv = lv;
+    return lv;
+  },
   controls(){
+    if(ST.zoom === 3){
+      return ctlRow('scale', `<div class="seg" id="azSeg">
+        <button data-z="0" aria-pressed="false">atom ·10⁵ fm</button>
+        <button data-z="1" aria-pressed="false">nucleus ·5 fm</button>
+        <button data-z="2" aria-pressed="false">nucleon ·1 fm</button>
+        <button data-z="3" data-v="custom" aria-pressed="true">levels · your own screening</button></div>`) +
+      ctlRow('nuclear charge Z', ctlSlider('azZ', 1, 20, 1, ST.Z)) +
+      fnHtml('azZs', 'Z_eff(r) =', ST.zsrc, 'the charge the electron sees at radius r (Bohr radii); Z itself is available') +
+      `<p class="help">The radial Schrödinger equation is <b>solved</b> for your screened potential
+      −Z_eff(r)/r — node-counted Numerov at two grid sizes, Richardson-extrapolated because the
+      Coulomb singularity demotes the solver to second order (measured: halving h cuts the error
+      3.98×). Leave Z_eff = Z and the levels must land on <b>−13.6·Z²/n² eV</b> — they do, to about
+      10⁻⁷ — and 2s and 2p, solved independently at different ℓ, coincide: the accidental
+      degeneracy. Type a screening like <b>1 + (Z−1)·exp(−2r)</b> and the degeneracy breaks with s
+      below p — the electron that penetrates the core sees more charge. That ordering, repeated
+      shell by shell, is the periodic table.</p>`;
+    }
     return ctlRow('scale', `<div class="seg" id="azSeg">
         <button data-z="0" aria-pressed="${ST.zoom === 0}">atom ·10⁵ fm</button>
         <button data-z="1" aria-pressed="${ST.zoom === 1}">nucleus ·5 fm</button>
-        <button data-z="2" aria-pressed="${ST.zoom === 2}">nucleon ·1 fm</button></div>`) +
+        <button data-z="2" aria-pressed="${ST.zoom === 2}">nucleon ·1 fm</button>
+        <button data-z="3" data-v="custom" aria-pressed="false">levels · your own screening</button></div>`) +
       `<div class="chkgrid">
         <label class="chk"><input type="checkbox" id="azPh" checked><span>photons γ</span></label>
         <label class="chk"><input type="checkbox" id="azGl" checked><span>gluons / pions</span></label>
@@ -72,15 +133,58 @@ STAGES.atomSim = {
   },
   wire(){
     for(const b of $('azSeg').children) b.addEventListener('click', () => {
+      const was3 = ST.zoom === 3, is3 = +b.dataset.z === 3;
       ST.zoom = +b.dataset.z;
+      if(is3) STAGES.atomSim.lvCompute(ST);
+      if(was3 !== is3){ buildStagePanel(); return; }
       for(const c of $('azSeg').children) c.setAttribute('aria-pressed', String(c === b));
       refreshStageReadout(); updateStageLegend();
     });
-    $('azPh').addEventListener('change', e => ST.showPhotons = e.target.checked);
-    $('azGl').addEventListener('change', e => ST.showGluons = e.target.checked);
-    $('azGr').addEventListener('change', e => ST.showGravitons = e.target.checked);
-    $('azBeta').addEventListener('click', () => { ST.beta = { t: 0 }; });
+    if($('azZ')) wireSlider('azZ', () => ST.Z, v => { ST.Z = Math.max(1, Math.round(v)); STAGES.atomSim.lvCompute(ST); }, v => String(Math.round(v)));
+    fnWire('azZs', (made, src) => { ST.zsrc = src; ST.lv = null; STAGES.atomSim.lvCompute(ST); },
+           s => this.zBuild(s));
+    if($('azPh')) $('azPh').addEventListener('change', e => ST.showPhotons = e.target.checked);
+    if($('azGl')) $('azGl').addEventListener('change', e => ST.showGluons = e.target.checked);
+    if($('azGr')) $('azGr').addEventListener('change', e => ST.showGravitons = e.target.checked);
+    if($('azBeta')) $('azBeta').addEventListener('click', () => { ST.beta = { t: 0 }; });
     wireSlider('azProbe', () => ST.probe, v => { ST.probe = v; }, v => (+v).toFixed(2));
+  },
+  lvFrame(st, ctx, W, H){
+    const lv = st.lv || this.lvCompute(st);
+    const all = lv.s.concat(lv.p);
+    if(!all.length){
+      stageNote(ctx, 'no bound states — this screening never binds the electron; make Z_eff positive somewhere', W, H);
+      return;
+    }
+    const E0 = Math.min(...all.map(x => x.Eev), atBohrEv(lv.Z, 1)) * 1.12;
+    const rPlot = Math.min(lv.rmax, Math.max(8, 14 / Math.max(1, lv.Z / 3)));
+    const pl = st.pl = mkPlot(70, 46, W - 104, H - 46 - 46, 0, rPlot, E0, Math.abs(E0) * 0.06);
+    plotFrame(ctx, pl, 'r (Bohr radii)', 'E (eV)',
+              'the potential the electron sees, and the levels it is allowed — solved, not drawn');
+    plotZeroY(ctx, pl);
+    /* the effective potential (ℓ = 0), in eV */
+    plotCurve(ctx, pl, r => r < 0.02 ? E0 * 2 : Math.max(E0 * 2, -lv.Zeff(r) / r * AT_HARTREE_EV),
+              420, rgbCss(TH.faint), 1.6);
+    /* Bohr rungs first (faint), then the solved levels over them */
+    for(let n = 1; n <= 4; n++){
+      const y = pl.Y(atBohrEv(lv.Z, n));
+      if(y < pl.py || y > pl.py + pl.ph) continue;
+      ctx.strokeStyle = rgbCss(TH.grad, 0.45); ctx.setLineDash([3, 5]); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(pl.X(rPlot * 0.55), y); ctx.lineTo(pl.px + pl.pw - 4, y); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    const lvl = (E, x0f, x1f, col, dash, lab) => {
+      const y = pl.Y(E);
+      if(y < pl.py || y > pl.py + pl.ph) return;
+      ctx.strokeStyle = col; ctx.lineWidth = 2.2;
+      if(dash) ctx.setLineDash([6, 4]);
+      ctx.beginPath(); ctx.moveTo(pl.X(rPlot * x0f), y); ctx.lineTo(pl.X(rPlot * x1f), y); ctx.stroke();
+      ctx.setLineDash([]);
+      ctText(ctx, pl.X(rPlot * x0f) - 4, y, lab, col, '600 10.5px ' + FONT_MONO, 'right', 'middle');
+    };
+    for(const s of lv.s) lvl(s.Eev, 0.16, 0.52, rgbCss(TH.warn), false, s.n + 's');
+    for(const p of lv.p) lvl(p.Eev, 0.58, 0.94, rgbCss(TH.neg), true, p.n + 'p');
+    stageNote(ctx, 'solid: s levels · dashed: p levels — solved independently; faint green rungs are the Bohr −13.6·Z²/n²', W, H);
   },
   /* a wavy line between two points, for photon glyphs */
   wavy(a, b, amp, waves, col, w, alpha){
@@ -109,6 +213,7 @@ STAGES.atomSim = {
   },
   qcol(c){ return c === 'r' ? [224, 96, 96] : c === 'g' ? [88, 190, 110] : [96, 130, 230]; },
   frame(st, dt, ctx, W, H){
+    if(st.zoom === 3){ this.lvFrame(st, ctx, W, H); return; }
     st.rot += dt * 0.12;
     R.mode2d = false; R.extent = 3;
     R.begin();
@@ -252,7 +357,43 @@ STAGES.atomSim = {
     R.label(v3(0, -r, 0), label, rgbCss(TH.text), 0, 14, '600 10.5px ' + FONT_MONO);
   },
   pick(st, sx, sy){ /* probe is driven by its slider — 3D picking is ambiguous here */ },
+  lvReadout(st){
+    const lv = st.lv || this.lvCompute(st);
+    if(!lv.s.length && !lv.p.length)
+      return `<div class="card tight"><div class="ttl">No bound states</div>
+        <p class="help">This screening never binds the electron — Z_eff must be positive somewhere for the potential to hold a state. Type a screening that attracts and the ladder returns.</p></div>`;
+    const rows = lv.s.map(s => {
+      const bohr = atBohrEv(lv.Z, s.n);
+      const shift = s.Eev - bohr;
+      return kv(s.n + 's — solved', fmtNum(s.Eev, 6) + ' eV' +
+        (Math.abs(shift) < 1e-4 * Math.abs(bohr)
+          ? ' · −13.6·Z²/n² gives ' + fmtNum(bohr, 6) + ' · ' + fmtAgree(s.Eev, bohr, 'eV')
+          : ' · shifted ' + (shift > 0 ? '+' : '') + fmtNum(shift, 4) + ' eV from the Bohr ' + fmtNum(bohr, 4)));
+    }).join('');
+    let deg = '';
+    if(lv.s.length > 1 && lv.p.length){
+      const split = lv.s[1].Eev - lv.p[0].Eev;
+      deg = Math.abs(split) < 1e-4 * Math.abs(lv.s[1].Eev)
+        ? kv('2s vs 2p — two independent solves', fmtAgree(lv.s[1].Eev, lv.p[0].Eev, 'eV'))
+        : kv('the 2s–2p split', fmtNum(-split, 4) + ' eV — s sits below p: it penetrates the screening and sees more charge');
+    }
+    const gap = lv.s.length > 1
+      ? kv('level spacing E₂ₛ − E₁ₛ', fmtNum(lv.s[1].Eev - lv.s[0].Eev, 5) + ' eV')
+      : '';
+    return `<div class="card tight"><div class="ttl">The levels your screening produces · Z = ${lv.Z}</div>
+      ${kv('Z_eff(r)', pkPretty(st.zsrc))}
+      ${rows}${gap}${deg}
+      <p class="help">Each energy is an eigenvalue of −½u″ − (Z_eff/r)u = Eu, found by node-counted
+      Numerov at two grid sizes and Richardson-extrapolated — the Coulomb singularity demotes the
+      raw solver to second order (measured: halving h cuts the error 3.98×), and the extrapolation
+      is what buys back the 10⁻⁷. With Z_eff = Z the 2s and 2p rows must coincide although they come
+      from different equations: that accidental degeneracy is the hidden symmetry of the pure 1/r
+      problem, and <b>any</b> screening you type destroys it — always with s below p. Fill shells in
+      that order and you have built the periodic table.</p>
+    </div>`;
+  },
   readout(st){
+    if(st.zoom === 3) return this.lvReadout(st);
     if(st.zoom === 0){
       const rB = st.probe;                        // in Bohr radii
       const P = radialP1s(rB, 1);
@@ -281,12 +422,20 @@ STAGES.atomSim = {
     </div>`;
   },
   chip(st){
+    if(st.zoom === 3){
+      const lv = st.lv || this.lvCompute(st);
+      if(!lv.s.length) return `<div class="k">levels · Z = ${lv.Z}</div><div>no bound states</div>`;
+      return `<div class="k">levels · Z = ${lv.Z}</div>
+        <div style="color:var(--c-warn)">1s = ${fmtNum(lv.s[0].Eev, 5)} eV</div>
+        <div>${lv.s.length + lv.p.length} states solved</div>`;
+    }
     if(st.zoom === 0) return `<div class="k">atom · 1s hydrogen</div><div>P(r) at probe = ${fmtNear(radialP1s(st.probe, 1))}</div>`;
     const led = forceLedger(Math.max(0.05, st.probe));
     return `<div class="k">r = ${st.probe.toFixed(2)} fm</div><div>strong: ${fmtNum(led.rows[0].V, 3)} MeV</div><div>EM: ${fmtNum(led.rows[1].V, 3)} MeV</div><div style="color:var(--c-pos)">dominant: ${led.dom}</div>`;
   },
-  legend(){
-    const z = ST ? ST.zoom : 0;
+  legend(st){
+    const z = (st || ST) ? (st || ST).zoom : 0;
+    if(z === 3) return [['var(--c-warn)', 's levels — solved (solid)'], ['var(--c-neg)', 'p levels — solved (dashed)'], ['var(--c-grad)', 'Bohr −13.6·Z²/n² rungs (faint)'], ['var(--faint)', 'the screened potential −Z_eff(r)/r']];
     if(z === 0) return [['var(--accent)', 'electron cloud — sampled |ψ₁ₛ|²'], ['var(--c-warn)', 'virtual photon γ (EM binding)'], ['var(--c-pos)', 'nucleus'], ['var(--faint)', 'graviton rings — hypothetical']];
     if(z === 1) return [['var(--c-pos)', 'proton'], ['var(--mid)', 'neutron'], ['var(--c-curl)', 'pion exchange (residual strong)'], ['var(--c-warn)', 'Coulomb repulsion / W⁻ event']];
     return [['#e06060', 'red quark'], ['#58be6e', 'green quark'], ['#6082e6', 'blue quark'], ['var(--c-curl)', 'gluon — swaps the colours'], ['var(--dim)', 'confinement flux tube']];

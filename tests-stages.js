@@ -383,6 +383,34 @@ function sok(name, cond, detail){
       !lg.some(function(r){ return /strong|electromagnetic/.test(r[1]); }), JSON.stringify(lg));
 })();
 
+/* ---- atomSim levels lab: the reader's screening, solved -------------------
+   Engine routes (atLevels: the acceptance pin, the measured second order, the
+   Richardson gain, the degeneracy and its screening split) live in tests.js;
+   here the stage path — the build guard, the cache, and the demo screening. */
+(function(){
+  var F = STAGES.atomSim;
+  var threw = false;
+  try { F.zBuild('y + Z'); } catch(e){ threw = true; }
+  sok('atomSim levels: a literal y is rejected - the symbols are r and Z', threw, 'accepted');
+  sok('atomSim levels: x is accepted as an alias of r (what the audit types)',
+      Math.abs(F.zBuild('x + Z').f(2, 3) - 5) < 1e-12, F.zBuild('x + Z').f(2, 3));
+  var st = { zoom: 3, Z: 1, zsrc: 'Z', lv: null };
+  var lv = F.lvCompute(st);
+  sok('atomSim levels: pure hydrogen through the stage path lands on -13.6057 eV to 1e-6',
+      lv.s.length >= 3 && Math.abs(lv.s[0].Eev - atBohrEv(1, 1)) < 1e-6 * Math.abs(atBohrEv(1, 1)),
+      lv.s.length ? lv.s[0].Eev : 'none');
+  sok('atomSim levels: the compute is cached against (source, Z)',
+      F.lvCompute(st) === lv, 'recomputed');
+  var st2 = { zoom: 3, Z: 3, zsrc: '1 + (Z-1)*exp(-2*r)', lv: null };
+  var lv2 = F.lvCompute(st2);
+  sok('atomSim levels: the demo screening splits 2s below 2p',
+      lv2.s.length > 1 && lv2.p.length && lv2.s[1].E < lv2.p[0].E, JSON.stringify([lv2.s.length, lv2.p.length]));
+  var st3 = { zoom: 3, Z: 1, zsrc: '0*Z - 1', lv: null };
+  var lv3 = F.lvCompute(st3);
+  sok('atomSim levels: a repulsive screening yields prose, never a blank or NaN',
+      lv3.s.length === 0 && /never binds/.test(F.lvReadout(st3)), lv3.s.length);
+})();
+
 /* ---- report ---------------------------------------------------------------- */
 (function(){
   var t = document.createElement('div');

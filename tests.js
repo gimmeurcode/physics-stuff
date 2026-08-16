@@ -1511,6 +1511,53 @@ ok('scalar mode div is the Laplacian', sf('x^2+y^2+z^2').laplacian !== null);
      swNE.length === 1 && Math.abs(swNE[0].r - 0.2216163) < 1e-6, swNE.length ? swNE[0].r : 'none');
 })();
 
+/* ====== screened hydrogenic levels, solved not quoted ==================== */
+(function(){
+  /* pure Coulomb: Zeff ≡ Z must give En = −Z²/2n² Hartree = −13.6057·Z²/n² eV */
+  const s1 = atLevels(r => 1, 0, 3, { rmax: 60, N: 6000 });
+  ok('levels: hydrogen 1s = −13.6057 eV to 1e-6 (the acceptance test)',
+     Math.abs(s1[0].Eev - atBohrEv(1, 1)) < 1e-6 * Math.abs(atBohrEv(1, 1)),
+     s1[0].Eev + ' vs ' + atBohrEv(1, 1));
+  ok('levels: hydrogen 2s and 3s land on −Z²/2n² too',
+     Math.abs(s1[1].Eev - atBohrEv(1, 2)) < 1e-6 * Math.abs(atBohrEv(1, 2)) &&
+     Math.abs(s1[2].Eev - atBohrEv(1, 3)) < 1e-5 * Math.abs(atBohrEv(1, 3)),
+     s1[1].Eev + ' / ' + s1[2].Eev);
+  const z3 = atLevels(r => 3, 0, 2, { rmax: 20, N: 6000 });
+  ok('levels: Z = 3 scales as Z² (hydrogenic screening reproduces −13.6Z²/n²)',
+     Math.abs(z3[0].Eev - atBohrEv(3, 1)) < 1e-6 * Math.abs(atBohrEv(3, 1)),
+     z3[0].Eev + ' vs ' + atBohrEv(3, 1));
+  /* the accidental degeneracy: 2s and 2p from two INDEPENDENT solves at
+     different l must coincide — the hidden Runge–Lenz symmetry, measured */
+  const p1 = atLevels(r => 1, 1, 1, { rmax: 60, N: 6000 });
+  ok('levels: E(2p) = E(2s) for pure Coulomb — the accidental degeneracy',
+     Math.abs(p1[0].Eev - s1[1].Eev) < 1e-6 * Math.abs(s1[1].Eev),
+     p1[0].Eev + ' vs ' + s1[1].Eev);
+  /* screening must break it the right way round: the s state penetrates the
+     screening cloud and sees more charge, so it sits DEEPER than p */
+  const Zs = r => 1 + 2 * Math.exp(-2 * r);          // a Z=3 core screened to 1
+  const ss = atLevels(Zs, 0, 2, { rmax: 40, N: 6000 });
+  const sp = atLevels(Zs, 1, 1, { rmax: 40, N: 6000 });
+  ok('levels: screening splits 2s below 2p (the periodic table\'s mechanism)',
+     ss[1].E < sp[0].E && (sp[0].E - ss[1].E) > 1e-3 * Math.abs(ss[1].E),
+     ss[1].Eev + ' vs ' + sp[0].Eev);
+  /* the origin's singularity demotes Numerov to SECOND order — measure it
+     (J9's rule) on the un-extrapolated fine energies, then check that the
+     Richardson step is what buys the acceptance */
+  const a = atLevels(r => 1, 0, 1, { rmax: 60, N: 3000 })[0];
+  const b = atLevels(r => 1, 0, 1, { rmax: 60, N: 6000 })[0];
+  const ra = Math.abs(a.Efine * AT_HARTREE_EV - atBohrEv(1,1)) /
+             Math.abs(b.Efine * AT_HARTREE_EV - atBohrEv(1,1));
+  ok('levels: the raw solver is second order at the singular origin (halve h → ~4×)',
+     ra > 3.5 && ra < 4.5, 'ratio ' + ra);
+  ok('levels: Richardson beats either raw solve by two orders of magnitude',
+     Math.abs(b.Eev - atBohrEv(1,1)) < 0.02 * Math.abs(b.Efine * AT_HARTREE_EV - atBohrEv(1,1)),
+     b.Eev - atBohrEv(1,1) + ' vs raw ' + (b.Efine * AT_HARTREE_EV - atBohrEv(1,1)));
+  /* the wall at rmax discretises the continuum; a repulsive potential must
+     yield NO states, not four box modes (found by the stage suite's control) */
+  ok('levels: a purely repulsive potential binds nothing — box states filtered',
+     atLevels(r => -1, 0, 4, { rmax: 60, N: 3000 }).length === 0, 'box states leaked');
+})();
+
 /* ====== the sandbox's dynamics really are the laws of physics ============ */
 (function(){
   /* --- relativistic push: v approaches c and never reaches it --- */
