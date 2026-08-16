@@ -5170,3 +5170,52 @@ presetgap 0/0 **OK** · `auditresid` **findings=0** · `auditderive`
 **findings=0** · `auditlink` **OK** · `runall` demos=**601 caught=0 OK** ·
 `auditdocs` **bad=0 OK**. Both scenes screenshotted and looked at; the first
 screenshot is what found defect 1.
+
+
+## 2026-08-16 — B2: dielectrics, bound charge and capacitance
+
+Syllabus gap B2, "the only AP Physics 2 item not done live" — and the phrase
+was exact: `esDielectric` and `ES_DIELECTRICS` had sat in `37-estat.js` since
+that module was written with **no caller anywhere in the site**. New stage
+`emDielectric` (`60ic`): the reader lists the layers filling the gap, one per
+line, thickness in mm and either a κ or a real material name.
+
+Everything follows from one fact — no free charge inside the dielectric, so
+∇·D = 0 and **D is identical in every layer**. Three measurements:
+
+- **C by two routes with no code in common.** Route one integrates E across
+  the gap to get a voltage and divides. Route two treats each layer as its own
+  capacitor ε₀κᵢA/dᵢ and combines them with `esSeries` — written for circuit
+  theory, with no field in it. They agree to **1e-12**, and that agreement is
+  the content: "D is the same in every layer" and "series capacitors carry the
+  same charge" are one statement in two languages.
+- **κE constant to 1e-12 across every layer**, which is ∇·D = 0 measured
+  rather than asserted; E falls 9157 → 8067 → 6274 V/m as κ rises 3.7 → 4.2 →
+  5.4. (My first test asserted the ordering backwards and the measurement
+  corrected it — E is *smallest* where κ is largest.)
+- **The bound charge telescopes to exactly zero.** −P₁ + (P₁−P₂) + (P₂−P₃) +
+  P₃ = 0 for any layers whatever, because polarising a slab moves charge
+  inside it and creates none. Printed with `fmtAgreeGross` against the 2.3 nC
+  of gross face charge it cancelled out of — the vacuum case has *both* at
+  zero and says so instead of dividing them.
+- **Both forms of Gauss's law on one pillbox**: ∮D·dA = Q_free never moves as
+  the wall slides across an interface; both sides of ∮E·dA = (Q_free+Q_bound)/ε₀
+  jump together and stay equal. That difference is the reason D exists.
+
+Two defects found by looking, in a stage that was already passing:
+
+1. **The window was fitted to E alone while three curves were drawn.** D/ε₀ =
+   κE is up to κ times larger, so D and P were off the top and the legend
+   named two invisible lines — in the stage whose entire point is that D is
+   the flat one. This is §2.5's "fit over the same list you draw from" and it
+   was found by reading the screenshot, not by a gate.
+2. **`auditticks` caught `+Q` under the readout chip** — the charge labels
+   were above the plates, which is the canvas's top-left. Both moved below.
+
+Gates: `build` 233 modules · `smoke` OK (stages=180) · `runtests` **4352
+passed, 0 failed** · `runstagetests` **90 passed, 0 failed** · `auditcustom`
+**bad=0 OK** (105 stages, 140 boxes) · `auditsides` falsescale 0/0 presetgap
+0/0 **OK** (152 claims) · `auditresid` **findings=0** · `auditticks` **OK**
+(after the fix above) · `auditpanel` **bad=0** · `auditzoom` **findings=0** ·
+`auditframe` **OK** · `auditsize` **findings=0** · `auditlink` **OK** ·
+`runall` demos=**602 caught=0 OK** · `auditdocs` **bad=0 OK**.

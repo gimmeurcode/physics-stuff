@@ -161,6 +161,108 @@ const ES_DIELECTRICS = {
   water:   { name:'Water',         k:80.4, strength:65e6 },
   titania: { name:'Strontium titanate', k:310, strength:8e6 }
 };
+/* ------------------------------------------------- a stack of dielectrics ----
+   Syllabus gap B2. A parallel-plate capacitor filled with layers the reader
+   lists: thickness in mm and either a κ or the name of a real material.
+
+   The physics that makes it computable in one line: no FREE charge sits
+   inside the dielectric, so ∇·D = 0 and **D is the same in every layer** —
+   D = σ_free. Everything else follows from that single fact:
+
+       E(x) = D / (ε₀κ(x))        the field is SMALLER where κ is larger
+       P(x) = D (1 − 1/κ(x))      polarisation, from D = ε₀E + P
+       V    = Σ Eᵢ dᵢ             so C = Q/V = ε₀A / Σ(dᵢ/κᵢ)
+
+   Two routes to the capacitance that share nothing but the layer list:
+     FIELD   — integrate E across the stack to get V, then C = Q/V.
+     CIRCUIT — treat each layer as its own capacitor ε₀κᵢA/dᵢ and combine
+               them with `esSeries`, which was written for circuit theory
+               years before this and knows nothing about fields.
+   Their agreement is the reason capacitors in series add reciprocally, met
+   from the other end.
+
+   And the bound charge TELESCOPES to exactly zero — a dielectric is neutral,
+   however many layers it has and whatever they are made of:
+
+       σ_b(left plate face) = −P₁ ,  σ_b(interface i) = Pᵢ − Pᵢ₊₁ ,
+       σ_b(right plate face) = +P_N        →   Σ = 0
+
+   which is `esStackBound`'s whole point, printed against the gross Σ|σ_b| it
+   cancelled out of, since both routes can legitimately vanish (κ ≡ 1). */
+function esStackParse(text, def){
+  const rows = [], errs = [];
+  String(text).split(/\r?\n/).forEach((raw, i) => {
+    const line = raw.trim();
+    if(!line || line.startsWith('#')) return;
+    const t = line.split(/\s+/);
+    if(t.length < 2){ errs.push({ line:i + 1, msg:'two fields — thickness in mm, then κ or a material name' }); return; }
+    const d = parseFloat(t[0]);
+    if(!Number.isFinite(d) || d <= 0){ errs.push({ line:i + 1, msg:'the thickness must be a positive number of mm' }); return; }
+    if(d > 200){ errs.push({ line:i + 1, msg:'200 mm is the most a plate gap can be here' }); return; }
+    const rest = t.slice(1).join(' ');
+    let k, name = null;
+    const named = Object.keys(ES_DIELECTRICS).find(n => n.toLowerCase() === rest.toLowerCase());
+    if(named){ k = ES_DIELECTRICS[named].k; name = ES_DIELECTRICS[named].name; }
+    else {
+      k = parseFloat(rest);
+      if(!Number.isFinite(k)){
+        errs.push({ line:i + 1, msg:'"' + rest + '" is neither a number nor a material — try ' + Object.keys(ES_DIELECTRICS).join(', ') });
+        return;
+      }
+    }
+    if(!(k >= 1)){ errs.push({ line:i + 1, msg:'κ < 1 does not exist in nature — a dielectric can only reduce the field' }); return; }
+    if(k > 1e5){ errs.push({ line:i + 1, msg:'that κ is beyond any measured material' }); return; }
+    rows.push({ d:d * 1e-3, mm:d, k, name:name || ('κ = ' + k) });
+  });
+  if(rows.length > 12) errs.push({ line:0, msg:'twelve layers is the most the picture can hold' });
+  return { layers:rows.length ? rows : (def || []), errs };
+}
+const esStackGap = L => L.reduce((s, l) => s + l.d, 0);
+/* FIELD route: C = ε₀A / Σ(dᵢ/κᵢ) */
+function esStackC(L, A){
+  const s = L.reduce((t, l) => t + l.d / l.k, 0);
+  return s > 0 ? ES_EPS0 * A / s : Infinity;
+}
+/* CIRCUIT route: each layer its own capacitor, combined by the series law */
+const esStackCSeries = (L, A) => esSeries(L.map(l => ES_EPS0 * l.k * A / l.d));
+/* the fields, layer by layer, from D = σ_free */
+function esStackFields(L, A, Q){
+  const D = Q / A;                                   // = σ_free
+  let x = 0, V = 0;
+  const rows = L.map(l => {
+    const E = D / (ES_EPS0 * l.k), P = D * (1 - 1 / l.k);
+    const r = { x0:x, x1:x + l.d, d:l.d, k:l.k, name:l.name, E, P, dV:E * l.d,
+                u:0.5 * ES_EPS0 * l.k * E * E };
+    x += l.d; V += r.dV;
+    return r;
+  });
+  return { D, rows, V, U:rows.reduce((s, r) => s + r.u * A * r.d, 0) };
+}
+/* every bound surface charge, and the zero they must add up to */
+function esStackBound(L, A, Q){
+  const F = esStackFields(L, A, Q);
+  const faces = [];
+  if(!F.rows.length) return { faces, total:0, gross:0, A };
+  faces.push({ where:'at the + plate', sigma:-F.rows[0].P, x:0 });
+  for(let i = 0; i + 1 < F.rows.length; i++)
+    faces.push({ where:'interface ' + (i + 1) + '–' + (i + 2), sigma:F.rows[i].P - F.rows[i + 1].P, x:F.rows[i].x1 });
+  const last = F.rows[F.rows.length - 1];
+  faces.push({ where:'at the − plate', sigma:last.P, x:last.x1 });
+  const total = faces.reduce((s, f) => s + f.sigma, 0) * A;
+  const gross = faces.reduce((s, f) => s + Math.abs(f.sigma), 0) * A;
+  return { faces, total, gross, A, fields:F };
+}
+/* Gauss's law on a pillbox from the + plate to depth x, in BOTH forms:
+   ∮D·dA counts free charge only; ∮E·dA counts free AND bound. */
+function esStackGauss(L, A, Q, x){
+  const F = esStackFields(L, A, Q);
+  let E = 0, P = 0;
+  for(const r of F.rows) if(x >= r.x0 - 1e-15 && x <= r.x1 + 1e-15){ E = r.E; P = r.P; break; }
+  const qFree = Q, qBound = -P * A;
+  return { fluxD:F.D * A, qFree, fluxE:E * A, qEnc:(qFree + qBound) / ES_EPS0,
+           qBound, E, P, D:F.D };
+}
+
 /* a charged particle steered by a uniform field — the CRT, the inkjet head,
    and the mass spectrometer, all the same calculation */
 function esDeflect(q, m, V, d, L, v0){

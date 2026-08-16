@@ -457,6 +457,42 @@ function sok(name, cond, detail){
       Math.abs(stc.A.m - stc.B.m) < 1e-6, stc.A.ok ? stc.A.m : stc.A.why);
 })();
 
+/* ---- emDielectric: the stack the reader lists ----------------------------
+   The engine (esStack*) is pinned in tests.js. Here the stage path: the sheet
+   applied, the cached report, and the two prose guards.                     */
+(function(){
+  var F = STAGES.emDielectric;
+  var st = { sheet:ED_SHEET, A:0.01, Q:3e-9, probe:0.66e-3, connected:false, L:[] };
+  F.applySheet(st);
+  sok('emDielectric: the default sheet gives three layers and no error',
+      !st.err && st.L.length === 3, st.err || st.L.length);
+  var R = F.reportOf(st);
+  sok('emDielectric: the field route and the series route agree to 1e-12',
+      Math.abs(R.cField - R.cSeries) < 1e-12 * R.cField, R.cField + ' vs ' + R.cSeries);
+  sok('emDielectric: the effective kappa sits between the smallest and largest layer',
+      R.kEff > 3.7 && R.kEff < 5.4, R.kEff);
+  sok('emDielectric: the bound charges cancel exactly against a real gross',
+      R.B.gross > 1e-12 && Math.abs(R.B.total) < 1e-12 * R.B.gross,
+      R.B.total + ' / ' + R.B.gross);
+  sok('emDielectric: the report is cached against the stack and the sliders',
+      F.reportOf(st) === R, 'recomputed');
+  /* a bad sheet keeps the previous stack — never blanks the picture */
+  var before = st.L.length;
+  st.sheet = '0.4 unobtainium';
+  F.applySheet(st);
+  sok('emDielectric: a bad edit keeps the previous stack and explains itself',
+      st.L.length === before && /neither a number nor a material/.test(st.err), st.err);
+  /* vacuum: both the total AND the gross vanish, and the panel must say so
+     rather than print a ratio of two zeros */
+  var sv = { sheet:'1.2 1', A:0.01, Q:3e-9, probe:0.6e-3, connected:false, L:[] };
+  F.applySheet(sv);
+  var RV = F.reportOf(sv);
+  var rv = F.readout(sv);
+  sok('emDielectric: an empty gap has no bound charge, and no NaN anywhere',
+      RV.B.gross < 1e-18 && Math.abs(RV.kEff - 1) < 1e-9 && !/NaN|Infinity/.test(rv),
+      RV.B.gross + ' / ' + RV.kEff);
+})();
+
 /* ---- report ---------------------------------------------------------------- */
 (function(){
   var t = document.createElement('div');

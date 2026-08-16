@@ -6667,6 +6667,61 @@ ok('scalar mode div is the Laplacian', sf('x^2+y^2+z^2').laplacian !== null);
     close('the voltage drops by kappa', iso.V, 12 / 5, 1e-13);
     ok('and the energy falls', iso.dU < 0);
   })();
+  /* a stack of dielectric layers — B2 */
+  (function(){
+    const A = 0.01, Q = 3e-9;
+    const P = esStackParse('0.4 paper\n0.3 4.2\n0.5 mica');
+    ok('stack: three layers parse, names and numbers alike',
+       P.errs.length === 0 && P.layers.length === 3 &&
+       Math.abs(P.layers[0].k - ES_DIELECTRICS.paper.k) < 1e-12, JSON.stringify(P.errs));
+    const L = P.layers;
+    /* THE two-route check: the field integral against the circuit series law */
+    const cF = esStackC(L, A), cS = esStackCSeries(L, A);
+    ok('stack: C from integrating E equals C from the series law, to 1e-12',
+       Math.abs(cF - cS) < 1e-12 * cF, cF + ' vs ' + cS);
+    /* a single layer must reduce to the textbook formula */
+    close('stack: one slab is exactly kappa eps0 A / d',
+          esStackC(esStackParse('0.5 5.6').layers, A), esCapPlate(A, 5e-4, 5.6), 1e-24);
+    /* D is the same everywhere; E is not — that IS the physics */
+    const F = esStackFields(L, A, Q);
+    /* D is the same in every layer — that IS the physics, so κE must be too,
+       and E therefore falls monotonically as κ rises */
+    ok('stack: kappa*E is the same in every layer (D is continuous)',
+       F.rows.every(r => Math.abs(r.k * r.E * ES_EPS0 - F.D) < 1e-12 * F.D),
+       F.rows.map(r => r.k * r.E * ES_EPS0).join(' , '));
+    ok('stack: so E is smallest where kappa is largest',
+       F.rows[0].E > F.rows[1].E && F.rows[1].E > F.rows[2].E,
+       F.rows.map(r => r.E).join(' , '));
+    close('stack: V is the sum of the layer drops, and Q = CV',
+          Q / F.V, cF, 1e-9 * cF);
+    close('stack: the energy is Q^2/2C, computed from the energy density',
+          F.U, 0.5 * Q * Q / cF, 1e-9 * (0.5 * Q * Q / cF));
+    /* the zero that is the point: a dielectric is neutral, and the bound
+       surface charges telescope — printed against the gross they cancelled */
+    const B = esStackBound(L, A, Q);
+    ok('stack: every interface carries a bound charge…',
+       B.gross > 1e-12 && B.faces.length === 4, B.gross + ' / ' + B.faces.length);
+    ok('…and they sum to exactly zero — the slab is neutral',
+       Math.abs(B.total) < 1e-12 * B.gross, B.total + ' against gross ' + B.gross);
+    /* both forms of Gauss's law, at a depth inside the middle layer */
+    const G = esStackGauss(L, A, Q, 0.55e-3);
+    close('stack: ∮D·dA counts the free charge alone', G.fluxD, Q, 1e-18);
+    close('stack: ∮E·dA counts free AND bound, and the two agree',
+          G.fluxE, G.qEnc, 1e-9 * Math.abs(G.qEnc));
+    ok('stack: the enclosed bound charge opposes the free charge',
+       G.qBound * Q < 0, G.qBound);
+    /* vacuum is the degenerate case both routes must survive */
+    const V0 = esStackBound(esStackParse('1 1').layers, A, Q);
+    ok('stack: with no dielectric there is no bound charge at all — gross is 0 too',
+       V0.gross < 1e-18 && Math.abs(V0.total) < 1e-18, V0.gross + ' / ' + V0.total);
+    /* the parser refuses what cannot exist, by name */
+    ok('stack: kappa < 1 is rejected as impossible',
+       /does not exist/.test((esStackParse('0.4 0.5').errs[0] || {}).msg || ''),
+       JSON.stringify(esStackParse('0.4 0.5').errs));
+    ok('stack: an unknown material is rejected and the known ones listed',
+       /neither a number nor a material/.test((esStackParse('0.4 unobtainium').errs[0] || {}).msg || ''),
+       JSON.stringify(esStackParse('0.4 unobtainium').errs));
+  })();
   (function(){
     const D = esDeflect(-ES_E, 9.109e-31, 200, 0.02, 0.05, 2e7);
     ok('an electron in a CRT deflects measurably', Math.abs(D.y) > 1e-4);
