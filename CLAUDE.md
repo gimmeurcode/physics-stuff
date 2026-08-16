@@ -1,6 +1,6 @@
 ﻿# Working in this repository
 
-An interactive mathematics and physics laboratory: 40 wings, 597 guided experiments,
+An interactive mathematics and physics laboratory: 40 wings, 598 guided experiments,
 built from `src/` into one self-contained `vector-calculus.html`.
 
 **Read `SITE-RULES.md` first.** It is the constitutional layer — the nine laws
@@ -86,7 +86,7 @@ falls by 2^p, round-off does not move.
    scope means a single stray character takes the whole app down, and the unit
    suite only sees the engine section (10-49) and would not notice. Then
    `./runtests.ps1` must print `0 failed`
-   (4302 unit tests), and `./runstagetests.ps1` must print `0 failed` — it calls
+   (4310 unit tests), and `./runstagetests.ps1` must print `0 failed` — it calls
    stage helpers **directly** inside the booted bundle, which is the only way the
    stages' own arithmetic (modules ≥ 50, invisible to `runtests`) is tested; a
    stage defect class fixed adds its two-route test to `tests-stages.js` the

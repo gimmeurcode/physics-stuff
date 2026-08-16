@@ -54,6 +54,79 @@ function forceLedger(r){
   return { rows, dom: dom.id };
 }
 
+/* ---- the same ledger for ANY pair the reader chooses -----------------------
+   A pair is {q1, q2} in units of e, {m1, m2} in MeV, {h1, h2} hadron flags.
+   Every potential here is one term C·e^(−r/R)/r (R = ∞ for the 1/r laws), so
+   a dominance hand-over has a CLOSED FORM — |C_a|e^(−r/R_a) = |C_b|e^(−r/R_b)
+   gives r* = ln|C_a/C_b| / (1/R_a − 1/R_b) — and the stage can therefore
+   measure each crossover twice: log-space bisection on the potentials, and
+   the algebraic solve, sharing nothing. Two parallel 1/r laws never cross;
+   their ratio is a single number (p–e: EM/gravity ≈ 2.27×10³⁹, the famous
+   one), and the ledger reports that instead. */
+function atPairForces(pair){
+  const both = !!(pair.h1 && pair.h2);
+  const mm = (pair.m1 * pair.m2) / (M_P * M_P);
+  return [
+    { id:'strong', name:'strong (residual)', C: both ? -G2_NUCLEAR : 0, R: RANGE_PION,
+      on: both, carrier:'π (as residual); gluons underneath' },
+    { id:'em', name:'electromagnetic', C: pair.q1 * pair.q2 * ALPHA_EM * HBARC, R: Infinity,
+      on: pair.q1 * pair.q2 !== 0, carrier:'photon γ (massless)' },
+    { id:'weak', name:'weak', C: -0.7 * ALPHA_EM * HBARC, R: RANGE_W,
+      on: true, carrier:'W±, Z⁰ (80–91 GeV)' },
+    { id:'gravity', name:'gravity', C: -G_GRAV_PP * mm * HBARC, R: Infinity,
+      on: mm > 0, carrier:'graviton? (hypothetical)' }
+  ];
+}
+const atVOf = (f, r) => (f.on && f.C !== 0) ? f.C * Math.exp(-r / f.R) / r : 0;
+function atPairLedger(pair, r){
+  const rows = atPairForces(pair).map(f =>
+    ({ id: f.id, name: f.name, V: atVOf(f, r), carrier: f.carrier, on: f.on && f.C !== 0 }));
+  let dom = rows[0];
+  for(const w of rows) if(Math.abs(w.V) > Math.abs(dom.V)) dom = w;
+  return { rows, dom: dom.id };
+}
+function atCrossClosed(a, b){
+  if(!a.on || !b.on || !a.C || !b.C) return null;
+  const k = 1 / a.R - 1 / b.R;
+  if(k === 0) return null;                 // parallel laws — a fixed ratio, no crossover
+  const r = Math.log(Math.abs(a.C / b.C)) / k;
+  return (r > 0 && Number.isFinite(r)) ? r : null;
+}
+function atCrossBisect(a, b, lo, hi){
+  const g = r => Math.abs(atVOf(a, r)) - Math.abs(atVOf(b, r));
+  let flo = g(lo);
+  if(!(flo * g(hi) < 0)) return null;
+  let llo = Math.log(lo), lhi = Math.log(hi);
+  for(let i = 0; i < 80; i++){
+    const mid = 0.5 * (llo + lhi), fm = g(Math.exp(mid));
+    if(flo * fm <= 0) lhi = mid;
+    else { llo = mid; flo = fm; }
+  }
+  return Math.exp(0.5 * (llo + lhi));
+}
+/* every dominance switch over [rLo, rHi]: scan the argmax on a log grid, then
+   bisect each boundary, and carry the closed form beside it */
+function atDominanceSwitches(pair, rLo, rHi, n){
+  const F = atPairForces(pair);
+  const N = n || 600, out = [];
+  let prev = null, prevR = rLo;
+  for(let i = 0; i <= N; i++){
+    const r = rLo * Math.pow(rHi / rLo, i / N);
+    let dom = null, best = -1;
+    for(const f of F){
+      const v = Math.abs(atVOf(f, r));
+      if(v > best){ best = v; dom = f; }
+    }
+    if(best <= 0){ prev = null; prevR = r; continue; }
+    if(prev && dom.id !== prev.id)
+      out.push({ from: prev.id, to: dom.id,
+                 r: atCrossBisect(prev, dom, prevR, r),
+                 closed: atCrossClosed(prev, dom) });
+    prev = dom; prevR = r;
+  }
+  return out;
+}
+
 /* ---- semi-empirical mass formula: binding energy per nucleon, MeV ---- */
 function semfB(A, Z){
   if(A < 1 || Z < 0 || Z > A) return 0;

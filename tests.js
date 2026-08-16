@@ -1476,6 +1476,41 @@ ok('scalar mode div is the Laplacian', sf('x^2+y^2+z^2').laplacian !== null);
      r1 / r2 > 2.6 && r1 / r2 < 6, 'ratio ' + r1 / r2);
 })();
 
+/* ====== force crossovers for an arbitrary particle pair ================== */
+(function(){
+  const PP = { q1:1, m1:M_P, h1:true, q2:1, m2:M_P, h2:true };
+  const led1 = atPairLedger(PP, 1), led0 = forceLedger(1);
+  ok('pair ledger: reduces exactly to the p-p ledger',
+     led1.rows.every((w, i) => Math.abs(w.V - led0.rows[i].V) <= 1e-12 * Math.abs(led0.rows[i].V)),
+     JSON.stringify(led1.rows.map(w => w.V)));
+  const sw = atDominanceSwitches(PP, 1e-3, 10);
+  ok('p-p: exactly one hand-over in [10^-3, 10] fm — strong to EM',
+     sw.length === 1 && sw[0].from === 'strong' && sw[0].to === 'em', JSON.stringify(sw));
+  ok('p-p: bisection and the closed form agree to 1e-9',
+     sw.length === 1 && Math.abs(sw[0].r - sw[0].closed) < 1e-9 * sw[0].closed,
+     sw.length ? sw[0].r + ' vs ' + sw[0].closed : 'none');
+  /* n-e: no strong (one hadron only), no EM (a neutral partner) — the weak
+     force against gravity, and GRAVITY wins beyond a quarter femtometre */
+  const NE = { q1:0, m1:M_N, h1:true, q2:-1, m2:M_E, h2:false };
+  const swNE = atDominanceSwitches(NE, 1e-3, 10);
+  ok('n-e: one hand-over — weak to gravity',
+     swNE.length === 1 && swNE[0].from === 'weak' && swNE[0].to === 'gravity', JSON.stringify(swNE));
+  /* p-e: two 1/r laws never cross — the ledger must report a fixed ratio,
+     and it is the textbook 2.27x10^39 */
+  const PE = { q1:1, m1:M_P, h1:true, q2:-1, m2:M_E, h2:false };
+  const FPE = atPairForces(PE);
+  const em = FPE.find(f => f.id === 'em'), gr = FPE.find(f => f.id === 'gravity');
+  ok('p-e: EM and gravity are parallel — no closed-form crossover exists',
+     atCrossClosed(em, gr) === null, atCrossClosed(em, gr));
+  const ratio = Math.abs(em.C / gr.C);
+  ok('p-e: the EM/gravity ratio is the textbook 2.27x10^39',
+     Math.abs(ratio - 2.269e39) < 0.005e39, ratio);
+  ok('p-p: the hand-over lands at the model\'s own 5.49 fm (measured, then pinned)',
+     sw.length === 1 && Math.abs(sw[0].r - 5.4910907) < 1e-6, sw.length ? sw[0].r : 'none');
+  ok('n-e: gravity beats the weak force beyond 0.2216 fm (measured, then pinned)',
+     swNE.length === 1 && Math.abs(swNE[0].r - 0.2216163) < 1e-6, swNE.length ? swNE[0].r : 'none');
+})();
+
 /* ====== the sandbox's dynamics really are the laws of physics ============ */
 (function(){
   /* --- relativistic push: v approaches c and never reaches it --- */

@@ -14,7 +14,7 @@ settling any question of what is allowed; read this before typing.
 ## 1. What this is
 
 A single self-contained page — no build step beyond concatenation, no
-dependencies, no network. 40 wings, 597 guided experiments, 178 canvas stages,
+dependencies, no network. 40 wings, 598 guided experiments, 178 canvas stages,
 4249 unit tests (measured 2026-08-14 — **re-measure rather than quote**;
 `./auditdocs.ps1` fails the build when a figure here drifts from the site).
 Everything on screen is computed live from the actual mathematics: symbolic
@@ -41,7 +41,7 @@ vector-calculus.html   (5 409 933 bytes on 2026-08-14, the deployable artifact)
 ```powershell
 ./build.ps1        # src/ -> vector-calculus.html          (~1 s)
 ./smoke.ps1        # does the bundle parse and boot at all?              (~10 s)
-./runtests.ps1     # 4302 engine unit tests, must say "0 failed"   (~30 s)
+./runtests.ps1     # 4310 engine unit tests, must say "0 failed"   (~30 s)
 ./runstagetests.ps1 # stage helpers called directly, two routes each (~30 s)
 ./measure.ps1      # the headline counts, from the booted app         (~15 s)
 ./auditdocs.ps1    # do these documents still describe the site?     (~1 min)
@@ -76,7 +76,7 @@ there are, and `./auditdocs.ps1` fails if a script exists that this list, or
 `MASTER-PLAN.md` §1.6 and §4.2, does not mention.
 
 `runall.ps1` proves every demo *runs*. `audittext.ps1` + `auditscan.ps1` prove
-every demo is *readable* — they drive all 597 experiments, harvest the
+every demo is *readable* — they drive all 598 experiments, harvest the
 `textContent` of every panel a student reads, and scan for ASCII stand-ins,
 leaked markup, empty panels and `NaN`. Run them on **rendered output**, never on
 source: grepping `src/` for `sqrt` drowns in `Math.sqrt(` and `theta` drowns in

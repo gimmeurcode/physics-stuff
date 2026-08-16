@@ -358,6 +358,31 @@ function sok(name, cond, detail){
       dB.fmax === 0 && /vanishes/.test(F.lawsCard(st)), 'fmax ' + dB.fmax);
 })();
 
+/* ---- atomForces: the pair is the reader's, the crossovers are measured ----
+   Engine routes (atPairLedger, atCrossClosed vs atCrossBisect) are pinned in
+   tests.js; here the stage path — the accessor, a typed quark pair, and the
+   scene-keyed legend. */
+(function(){
+  var F = STAGES.atomForces;
+  var st = { pairKey:'ne', custom:{}, probe:1, showCornell:false };
+  var pair = F.pairOf(st);
+  sok('atomForces pair: the ne preset resolves through the accessor',
+      pair.q1 === 0 && pair.h2 === false, JSON.stringify(pair));
+  var sw = atDominanceSwitches(pair, 1e-3, 10);
+  sok('atomForces pair: weak -> gravity at 0.2216 fm, bisection = closed form',
+      sw.length === 1 && sw[0].from === 'weak' && sw[0].to === 'gravity' &&
+      Math.abs(sw[0].r - sw[0].closed) < 1e-9 * sw[0].closed &&
+      Math.abs(sw[0].r - 0.2216163) < 1e-6,
+      JSON.stringify(sw));
+  var st2 = { pairKey:'custom', custom:{ q1: 2/3, m1: 2.16, h1:true, q2: -1/3, m2: 4.7, h2:true }, probe: 1 };
+  var led = atPairLedger(F.pairOf(st2), 1);
+  sok('atomForces pair: a typed quark pair gets the strong force and an attractive EM',
+      led.rows[0].on && led.rows[1].V < 0, JSON.stringify(led.rows.map(function(w){ return w.V; })));
+  var lg = F.legend(st);
+  sok('atomForces pair: the n-e legend drops the strong and EM rows it cannot draw',
+      !lg.some(function(r){ return /strong|electromagnetic/.test(r[1]); }), JSON.stringify(lg));
+})();
+
 /* ---- report ---------------------------------------------------------------- */
 (function(){
   var t = document.createElement('div');

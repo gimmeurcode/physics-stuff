@@ -294,8 +294,20 @@ STAGES.atomSim = {
 };
 
 /* ---- 9 · the four potentials, on one chart ------------------------------------ */
+/* The pairs the four-forces chart can compare. `custom` is filled from the
+   reader's own charges, masses and hadron flags. */
+const AF_PAIRS = [
+  { k:'pp', label:'p – p',            q1: 1, m1: M_P, h1: true,  q2:  1, m2: M_P, h2: true  },
+  { k:'pe', label:'p – e (the atom)', q1: 1, m1: M_P, h1: true,  q2: -1, m2: M_E, h2: false },
+  { k:'ee', label:'e – e',            q1:-1, m1: M_E, h1: false, q2: -1, m2: M_E, h2: false },
+  { k:'nn', label:'n – n',            q1: 0, m1: M_N, h1: true,  q2:  0, m2: M_N, h2: true  },
+  { k:'ne', label:'n – e',            q1: 0, m1: M_N, h1: true,  q2: -1, m2: M_E, h2: false }
+];
 STAGES.atomForces = {
   title: 'Four forces, one chart',
+  /* one full-canvas plot — the key sits in the dock (the floating key covered
+     the lower-left of the curves; same class as atomSM/emWave, same session) */
+  dockLegend: true,
   derive(st){
     return {
       title:'Comparing the four, at a distance where the comparison means something',
@@ -321,21 +333,87 @@ STAGES.atomForces = {
         drvSay('which is the hierarchy problem, and it is unsolved',
           'Nobody knows why gravity is 36 orders of magnitude weaker than electromagnetism. It is not a small discrepancy to be tidied up; it is one of the largest unexplained numbers in physics, and it motivates much of the search for new theories.'),
         drvSay('and yet gravity is the one that shapes the universe',
-          'It is the only force that is always attractive and never screened. Electric charges cancel and the strong force is confined, so both die away at scale. Gravity accumulates — which is why the weakest force determines the structure of everything larger than an asteroid.')
+          'It is the only force that is always attractive and never screened. Electric charges cancel and the strong force is confined, so both die away at scale. Gravity accumulates — which is why the weakest force determines the structure of everything larger than an asteroid.'),
+        drvStep('and every hand-over radius is measured, twice',
+          `${dv('r')}* ${dop('=')} ${dfrac('ln|' + dv('C') + '₁/' + dv('C') + '₂|', '1/' + dv('R') + '₁ ' + dop('−') + ' 1/' + dv('R') + '₂')}`,
+          'every law here is one term C·e^(−r/R)/r, so where two dominances swap has a closed form — and the panel finds the same radius independently by bisection on the potentials themselves'),
+        drvSay('pick a different pair, and the rankings rearrange honestly',
+          'A neutron beside an electron shares no charge and no strong force, so only the weak Yukawa and gravity compete — and gravity wins beyond 0.22 fm, which almost nobody guesses. A proton and an electron pit two 1/r laws against each other, and two 1/r laws never cross: their ratio is one number at every separation, 2.27×10³⁹, the hierarchy problem stated as a measurement. The "type your own pair" option runs the same ledger on any charges and masses you invent.')
       ],
       note:'Every potential is computed from real constants — ħc = 197.3269804 MeV·fm, α = 1/137.035999, and PDG 2024 masses. The probe reads each force at the same separation, so the comparison is like for like.'
     };
   },
-  enter(st, o){ st.probe = 1; st.showCornell = false; },
-  controls(){
-    return `<label class="chk"><input type="checkbox" id="afC"><span>Show quark-level Cornell potential (confinement)</span></label>
-      <p class="help">V(r) between two protons, from 10⁻³ to 10 fm, on a symmetric-log energy axis (linear near zero, logarithmic beyond ±0.1 MeV). Click to place the probe; every number in the panel is the exact potential at that r.</p>`;
+  enter(st, o){
+    st.probe = 1; st.showCornell = false;
+    st.pairKey = o.pair || 'pp';
+    st.custom = { q1: 1, m1: M_P, h1: true, q2: -1, m2: M_E, h2: false };
   },
-  wire(){ $('afC').addEventListener('change', e => { ST.showCornell = e.target.checked; updateStageLegend(); }); },
+  /* the accessor: everything downstream reads the pair through here */
+  pairOf(st){
+    return st.pairKey === 'custom' ? st.custom
+         : (AF_PAIRS.find(p => p.k === st.pairKey) || AF_PAIRS[0]);
+  },
+  pairName(st){
+    const P = this.pairOf(st);
+    return st.pairKey === 'custom'
+      ? `(q=${fmtNum(P.q1, 2)}, ${fmtNum(P.m1, 4)} MeV${P.h1 ? ', hadron' : ''}) – (q=${fmtNum(P.q2, 2)}, ${fmtNum(P.m2, 4)} MeV${P.h2 ? ', hadron' : ''})`
+      : (AF_PAIRS.find(p => p.k === st.pairKey) || AF_PAIRS[0]).label;
+  },
+  controls(){
+    const st = ST, C = st.custom;
+    const one = (tag, q, m, h) =>
+      `<div class="row wrap" style="gap:6px;align-items:center">
+        <span class="help" style="min-width:64px">particle ${tag}</span>
+        q <input id="af${tag}q" value="${fmtEdit(q, 4)}" size="4" style="width:52px">
+        m (MeV) <input id="af${tag}m" value="${fmtEdit(m, 6)}" size="8" style="width:86px">
+        <label class="chk"><input type="checkbox" id="af${tag}h" ${h ? 'checked' : ''}><span>hadron</span></label>
+      </div>`;
+    return ctSeg('afPr', st.pairKey,
+        AF_PAIRS.map(p => [p.k, p.label]).concat([['custom', 'type your own pair']])) +
+      (st.pairKey === 'custom'
+        ? one('1', C.q1, C.m1, C.h1) + one('2', C.q2, C.m2, C.h2) +
+          `<p class="help">Charges in units of e (quarks are ±⅓ and ±⅔ — type 0.667), masses in MeV.
+          <b>hadron</b> means the particle feels the residual strong force, which acts only when
+          <i>both</i> do. Every hand-over radius below is measured twice: bisection on the actual
+          potentials, and the closed form ln|C₁/C₂|/(1/R₁ − 1/R₂) — two routes sharing nothing.</p>`
+        : '') +
+      `<label class="chk"><input type="checkbox" id="afC" ${st.showCornell ? 'checked' : ''}><span>Show quark-level Cornell potential (confinement)</span></label>
+      <p class="help">V(r) for the chosen pair, from 10⁻³ to 10 fm, on a symmetric-log energy axis (linear near zero, logarithmic beyond ±0.1 MeV). Click to place the probe; every number in the panel is the exact potential at that r. Try <b>n – e</b>: no charge, no shared strong force — and gravity beats the weak force beyond a quarter of a femtometre, measured.</p>`;
+  },
+  wire(){
+    ctWireSeg('afPr', v => { ST.pairKey = v; buildStagePanel(); });
+    if($('afC')) $('afC').addEventListener('change', e => { ST.showCornell = e.target.checked; updateStageLegend(); });
+    const num = (id, get, set, lo, hi) => {
+      const el = $(id); if(!el) return;
+      el.addEventListener('change', () => {
+        const v = parseFloat(el.value);
+        if(Number.isFinite(v)) set(Math.max(lo, Math.min(hi, v)));
+        el.value = fmtEdit(get(), 6);      // echo what was actually kept
+        refreshStageReadout(); updateStageChip();
+      });
+    };
+    num('af1q', () => ST.custom.q1, v => { ST.custom.q1 = v; }, -10, 10);
+    num('af2q', () => ST.custom.q2, v => { ST.custom.q2 = v; }, -10, 10);
+    num('af1m', () => ST.custom.m1, v => { ST.custom.m1 = v; }, 1e-3, 1e7);
+    num('af2m', () => ST.custom.m2, v => { ST.custom.m2 = v; }, 1e-3, 1e7);
+    const flag = (id, set) => { const el = $(id); if(el) el.addEventListener('change', e => { set(e.target.checked); refreshStageReadout(); updateStageChip(); }); };
+    flag('af1h', v => { ST.custom.h1 = v; });
+    flag('af2h', v => { ST.custom.h2 = v; });
+  },
   symlog(v){ const s = Math.sign(v); const a = Math.abs(v) / 0.1; return s * Math.log10(1 + a); },
+  /* gravity's boost exponent: enough to see the curve, labelled honestly */
+  gravBoost(st){
+    const g = atPairForces(this.pairOf(st)).find(f => f.id === 'gravity');
+    if(!g.on || !g.C) return 0;
+    return Math.max(0, Math.min(44, Math.round(-Math.log10(Math.abs(g.C)) - 1)));
+  },
+  sup(n){ return String(n).split('').map(c => '⁰¹²³⁴⁵⁶⁷⁸⁹'[+c]).join(''); },
   frame(st, dt, ctx, W, H){
+    const pair = this.pairOf(st);
+    const F = atPairForces(pair);
     const pl = st.pl = mkPlot(70, 46, W - 100, H - 46 - 46, -3, 1, -4.2, 4.2);   // x = log10 r
-    plotFrame(ctx, pl, 'r (fm) — log scale', 'symlog V (MeV)', 'potential energy between two protons');
+    plotFrame(ctx, pl, 'r (fm) — log scale', 'symlog V (MeV)',
+              'potential energy: ' + this.pairName(st));
     plotTicksX(ctx, pl, [-3, -2, -1, 0, 1], v => '10' + ['⁻³', '⁻²', '⁻¹', '⁰', '¹'][v + 3]);
     plotZeroY(ctx, pl);
     /* y ticks */
@@ -343,16 +421,16 @@ STAGES.atomForces = {
     for(const mv of [-1000, -10, 0, 10, 1000]){
       ctx.fillText(mv + ' MeV', pl.px - 5, pl.Y(this.symlog(mv)));
     }
-    const curves = [
-      [r => vYukawaNN(r), TH.curl, 'strong'],
-      [r => vCoulombPP(r), TH.warn, 'EM'],
-      [r => vWeak(r), TH.neg, 'weak'],
-      [r => vGravityPP(r) * 1e34, TH.faint, 'gravity ×10³⁴']
-    ];
-    if(st.showCornell) curves.push([r => vCornell(r), TH.grad, 'Cornell (quarks)']);
-    for(const [fn, col, name] of curves){
-      plotCurve(ctx, pl, lx => this.symlog(fn(Math.pow(10, lx))), 340, rgbCss(col), 2);
+    const gk = this.gravBoost(st);
+    const colOf = { strong: TH.curl, em: TH.warn, weak: TH.neg, gravity: TH.faint };
+    for(const f of F){
+      if(!f.on || !f.C) continue;
+      const boost = f.id === 'gravity' ? Math.pow(10, gk) : 1;
+      plotCurve(ctx, pl, lx => this.symlog(atVOf(f, Math.pow(10, lx)) * boost), 340,
+                rgbCss(colOf[f.id]), 2);
     }
+    if(st.showCornell)
+      plotCurve(ctx, pl, lx => this.symlog(vCornell(Math.pow(10, lx))), 340, rgbCss(TH.grad), 2);
     /* landmark radii */
     for(const [r, lbl] of [[RANGE_W, 'W range'], [RANGE_PION, 'π range'], [R_PROTON, 'proton radius']]){
       const lx = Math.log10(r);
@@ -363,26 +441,73 @@ STAGES.atomForces = {
       ctx.fillStyle = rgbCss(TH.faint); ctx.font = '10px ' + FONT_UI; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
       ctx.fillText(lbl, pl.X(lx), pl.py + 2);
     }
+    /* the measured hand-overs, drawn where they land */
+    for(const s of atDominanceSwitches(pair, 1e-3, 10)){
+      if(!s.r) continue;
+      const lx = Math.log10(s.r);
+      if(lx < pl.x0 || lx > pl.x1) continue;
+      ctx.strokeStyle = rgbCss(TH.pos, 0.7); ctx.setLineDash([2, 4]); ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(pl.X(lx), pl.py); ctx.lineTo(pl.X(lx), pl.py + pl.ph); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = rgbCss(TH.pos); ctx.font = '10px ' + FONT_UI; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      ctx.fillText(s.from + ' → ' + s.to, pl.X(lx), pl.py + pl.ph - 4);
+    }
     probeLine(ctx, pl, Math.log10(st.probe), 'r = ' + fmtNum(st.probe, 3) + ' fm');
-    stageNote(ctx, 'gravity is drawn ×10³⁴ and still hugs zero — yet it runs the cosmos, because it has no negative charge to cancel it', W, H);
+    stageNote(ctx, gk > 0
+      ? 'gravity is drawn ×10' + this.sup(gk) + ' and still hugs zero — yet it runs the cosmos, because it has no negative charge to cancel it'
+      : 'every curve is the exact potential for this pair — the dashed hand-overs are measured, not sketched', W, H);
   },
   pick(st, sx){ if(st.pl) st.probe = Math.pow(10, Math.max(st.pl.x0, Math.min(st.pl.x1, st.pl.invX(sx)))); },
   readout(st){
-    const r = st.probe, led = forceLedger(r);
-    return `<div class="card tight"><div class="ttl">Exact values at r = ${fmtNum(r, 4)} fm</div>
-      ${led.rows.map(w => kv(w.name + (led.dom === w.id ? ' ◀' : ''), (Math.abs(w.V) < 1e-3 && w.V !== 0 ? fmtSig(w.V, 4) : fmtNum(w.V, 4)) + ' MeV')).join('')}
-      ${kv('Cornell (quark level)', fmtNum(vCornell(r), 2) + ' MeV')}
+    const r = st.probe, pair = this.pairOf(st);
+    const led = atPairLedger(pair, r);
+    const sw = atDominanceSwitches(pair, 1e-3, 10);
+    const F = atPairForces(pair);
+    const em = F.find(f => f.id === 'em'), gr = F.find(f => f.id === 'gravity');
+    const swRows = sw.filter(s => s.r).map(s =>
+      kv(s.from + ' → ' + s.to + ' hand-over', fmtNum(s.r, 6) + ' fm' +
+        (s.closed ? ' · closed form ' + fmtNum(s.closed, 6) + ' fm · ' + fmtAgree(s.r, s.closed, 'fm') : ''))
+    ).join('');
+    const ratioRow = (em.on && em.C && gr.on && gr.C)
+      ? kv('|EM| / |gravity| — the same at every r', fmtSig(Math.abs(em.C / gr.C), 5) +
+           (st.pairKey === 'pe' ? ' — the textbook 2.27×10³⁹' : ''))
+      : '';
+    return `<div class="card tight"><div class="ttl">Exact values at r = ${fmtNum(r, 4)} fm · ${esc(this.pairName(st))}</div>
+      ${led.rows.map(w => kv(w.name + (led.dom === w.id ? ' ◀' : ''),
+        !w.on ? 'off — ' + (w.id === 'strong' ? 'both particles must be hadrons' : w.id === 'em' ? 'a neutral partner' : 'massless')
+              : (Math.abs(w.V) < 1e-3 && w.V !== 0 ? fmtSig(w.V, 4) : fmtNum(w.V, 4)) + ' MeV')).join('')}
+      ${pair.h1 && pair.h2 ? kv('Cornell (quark level)', fmtNum(vCornell(r), 2) + ' MeV') : ''}
       ${kv('carrier ranges ħ/mc', 'π: ' + fmtNum(RANGE_PION, 3) + ' fm · W: ' + fmtSig(RANGE_W, 3) + ' fm')}
       <p class="help">Yukawa's 1935 argument runs backwards from here: a force of range R needs a carrier of mass ħ/Rc. The 1.4 fm nuclear range predicted a ~140 MeV particle — the pion, found in 1947.</p>
+    </div>
+    <div class="card tight"><div class="ttl">Where the ranking flips — measured, twice</div>
+      ${swRows || kv('hand-overs in [10⁻³, 10] fm', 'none — one force dominates the whole window')}
+      ${ratioRow}
+      <p class="help">Each hand-over radius is found by bisection on the two actual potentials, then
+      again from the closed form ln|C₁/C₂|/(1/R₁ − 1/R₂) — every law here is one term C·e^(−r/R)/r,
+      so the algebra is exact and the two routes share nothing. Two 1/r laws never cross: their
+      ratio is a single number at every distance, which for the proton–electron pair is the famous
+      2.27×10³⁹ of the hierarchy problem.</p>
     </div>`;
   },
   chip(st){
-    const led = forceLedger(st.probe);
-    return `<div class="k">V(r) explorer · r = ${fmtNum(st.probe, 3)} fm</div><div style="color:var(--c-pos)">dominant: ${led.dom}</div>`;
+    const led = atPairLedger(this.pairOf(st), st.probe);
+    const sw = atDominanceSwitches(this.pairOf(st), 1e-3, 10).filter(s => s.r);
+    return `<div class="k">V(r) · ${esc(st.pairKey === 'custom' ? 'your pair' : this.pairName(st))} · r = ${fmtNum(st.probe, 3)} fm</div>
+      <div style="color:var(--c-pos)">dominant: ${led.dom}</div>
+      <div>${sw.length ? sw.map(s => s.from + '→' + s.to + ' at ' + fmtNum(s.r, 3) + ' fm').join(' · ') : 'no hand-over in window'}</div>`;
   },
-  legend(){
-    const rows = [['var(--c-curl)', 'strong (π Yukawa)'], ['var(--c-warn)', 'electromagnetic 1/r'], ['var(--c-neg)', 'weak (W-mass Yukawa)'], ['var(--faint)', 'gravity ×10³⁴']];
-    if(ST && ST.showCornell) rows.push(['var(--c-grad)', 'Cornell −4αs/3r + σr']);
+  legend(st){
+    const s = st || ST;
+    const F = atPairForces(this.pairOf(s));
+    const gk = this.gravBoost(s);
+    const rows = [];
+    if(F[0].on) rows.push(['var(--c-curl)', 'strong (π Yukawa)']);
+    if(F[1].on && F[1].C) rows.push(['var(--c-warn)', 'electromagnetic 1/r']);
+    rows.push(['var(--c-neg)', 'weak (W-mass Yukawa)']);
+    if(F[3].on && F[3].C) rows.push(['var(--faint)', 'gravity' + (gk > 0 ? ' ×10' + this.sup(gk) : '')]);
+    rows.push(['var(--c-pos)', 'measured hand-over radii (dashed)']);
+    if(s && s.showCornell) rows.push(['var(--c-grad)', 'Cornell −4αs/3r + σr']);
     return rows;
   }
 };

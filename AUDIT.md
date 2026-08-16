@@ -4989,3 +4989,47 @@ the 2 findings above fixed same-day) · `auditresid` **findings=0** ·
 `auditpanel` **bad=0** · `auditticks` **OK** · `auditlink` **OK** ·
 `auditcustom` **bad=0 OK** · `runall` demos=**597 caught=0 OK** · screenshot
 looked at (audit sphere, label, probe clear of sources).
+
+
+## 2026-08-16 — atomForces: the pair is the reader's, and every crossover is measured twice
+
+The fifth of Programme A's queued editors. `atomForces` gains a pair picker —
+p–p, p–e, e–e, n–n, n–e, or typed charges (units of e, quark fractions
+welcome), masses (MeV) and hadron flags — and the four-force ledger becomes
+`atPairForces`/`atPairLedger` in `45-atom.js`. Every potential is one term
+C·e^(−r/R)/r (R = ∞ for the 1/r laws), which buys the two-route structure for
+free: **each dominance hand-over radius is found by log-space bisection on the
+actual potentials AND from the closed form ln|C₁/C₂|/(1/R₁ − 1/R₂)** — one
+route pure numerics, the other pure algebra, sharing nothing.
+
+**Measured (tests.js, 9 new unit tests; tests-stages.js, 4):**
+
+- The generalised ledger reduces exactly to the old p–p `forceLedger`.
+- **p–p**: exactly one hand-over in [10⁻³, 10] fm, strong→EM at
+  **5.4910907 fm**, bisection and closed form agreeing to the last floating-
+  point digit (5.491090704729576 vs …577).
+- **n–e**: no charge between them, no shared strong force — weak→gravity at
+  **0.2216163 fm**. Beyond a quarter femtometre, gravity is the stronger
+  force between a neutron and an electron, which almost nobody guesses; the
+  demo's `out:` leads with it.
+- **p–e**: two 1/r laws never cross — `atCrossClosed` returns null and the
+  ledger prints the fixed ratio instead: **2.2687×10³⁹**, the textbook
+  hierarchy-problem number, computed from α, G, m_p, m_e rather than quoted.
+- A typed quark pair (q = ⅔ against −⅓, both hadrons) gets the strong force
+  and an attractive EM, and the scene-keyed legend drops the strong and EM
+  rows for pairs that cannot have them (the legend(st) rule).
+
+The screenshot found one instance of this session's known class — the floating
+legend covering the plot's lower-left — fixed with `dockLegend:true` like
+atomSM and emWave before it. Gravity's on-screen boost is now computed per
+pair and labelled ×10ᵏ honestly instead of a hard-wired ×10³⁴.
+
+Gates on the final build: `build` 231 modules · `smoke` OK · `runtests`
+**4310 passed, 0 failed** · `runstagetests` **69 passed, 0 failed** ·
+`auditcustom` **bad=0 OK** (stages 101 → 102) · `auditsides` falsescale 0/0
+presetgap 0/0 **OK** (83 demos, 145 claims) · `auditresid` **findings=0** ·
+`auditlink` **OK** (ids `afPr`, `af1q/af1m/af1h/af2q/af2m/af2h` restorable;
+`fmtEdit` fills every editable box) · `auditpanel` **bad=0** · `auditticks`
+**OK** · `auditzoom` **findings=0** · `auditframe` **OK** · `runall`
+demos=**598 caught=0 OK** · screenshot looked at (n–e scene: two curves, the
+measured hand-over marker, the off-rows explaining themselves).
