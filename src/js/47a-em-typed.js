@@ -442,3 +442,108 @@ function emMonopoleSweep(G, spheres){
   }
   return { rows, worst:rows.reduce((a, r) => Math.max(a, r.rel), 0) };
 }
+
+/* ============================================================================
+   THE 1-D MAXWELL MARCHER — the wave speed as an OUTPUT, never an input
+
+   emFDTD1D drives the two curl equations on a staggered (Yee) grid with a
+   sheet current K(t) [A/m] on one plane:
+
+       ∂E_y/∂t = −(1/ε₀) ∂H_z/∂x − J_y/ε₀
+       ∂H_z/∂t = −(1/μ₀) ∂E_y/∂x
+
+   The update coefficients contain μ₀ and ε₀ SEPARATELY and never c — the
+   propagation speed is a property the marching *produces*, which is the whole
+   point: the stage measures it from the transit between two probes and only
+   then compares it with 1/√(μ₀ε₀). (The time step is chosen as a fraction S
+   of the stability bound dx·√(μ₀ε₀); that bound references the constants, but
+   the dynamics do not — halve S and the measured speed must not move, which
+   the unit suite asserts.)
+
+   Everything is SI: metres, seconds, V/m, A/m. K is called with time in
+   SECONDS — a caller whose reader types t in nanoseconds wraps it.
+
+   Timing is a front crossing: the first time |E| at a probe rises through
+   `frac` of that probe's own peak, refined by linear interpolation. Both
+   probes see the same waveform to O(dispersion), so the same relative
+   threshold cancels and the delay is the transit. (A centroid was tried and
+   rejected: for a switched-on step it lands mid-record and reports 2c.)
+
+   Boundaries are first-order Mur; the closed form the caller compares against
+   is the retarded sheet solution E_y = −(μ₀c/2)·K(t − |x−xs|/c).            */
+const EM_MU0  = 1.25663706127e-6;   // N/A² — CODATA 2022 (measured since 2019 SI)
+const EM_EPS0 = 8.8541878188e-12;   // F/m  — CODATA 2022
+
+function emFDTD1D(K, o){
+  o = o || {};
+  const dx = o.dx || 0.01;                       // m
+  const L  = o.L  || 24;                         // m
+  const S  = o.S  || 0.9;                        // Courant fraction
+  const xs = o.xs !== undefined ? o.xs : 4;      // source plane, m
+  const xa = o.xa !== undefined ? o.xa : 10;     // near probe, m
+  const xb = o.xb !== undefined ? o.xb : 20;     // far probe, m
+  const T  = o.T  || 80e-9;                      // s
+  const frac = o.frac || 0.02;                   // front threshold
+  const N  = Math.round(L / dx);
+  const dt = S * dx * Math.sqrt(EM_MU0 * EM_EPS0);
+  const steps = Math.round(T / dt);
+  const Ey = new Float64Array(N + 1);            // E_y at integer nodes
+  const Hz = new Float64Array(N);                // H_z at half nodes
+  const ce = dt / (EM_EPS0 * dx), ch = dt / (EM_MU0 * dx);
+  const mur = (S - 1) / (S + 1);
+  const is = Math.round(xs / dx), ia = Math.round(xa / dx), ib = Math.round(xb / dx);
+  const tArr = new Float64Array(steps), Ea = new Float64Array(steps),
+        Eb = new Float64Array(steps), Hb = new Float64Array(steps);
+  const snapEvery = o.snapEvery || 0, skip = Math.max(1, Math.round(N / 480)), snaps = [];
+  let e0 = 0, e1 = 0, eN = 0, eN1 = 0;           // Mur memory
+  for(let n = 0; n < steps; n++){
+    for(let i = 0; i < N; i++) Hz[i] -= ch * (Ey[i + 1] - Ey[i]);
+    e0 = Ey[0]; e1 = Ey[1]; eN = Ey[N]; eN1 = Ey[N - 1];
+    for(let i = 1; i < N; i++) Ey[i] -= ce * (Hz[i] - Hz[i - 1]);
+    /* soft source: the sheet current K [A/m] smeared over one cell */
+    Ey[is] -= (dt / EM_EPS0) * K((n + 0.5) * dt) / dx;
+    Ey[0] = e1 + mur * (Ey[1] - e0);             // Mur-1 absorbing walls
+    Ey[N] = eN1 + mur * (Ey[N - 1] - eN);
+    tArr[n] = (n + 1) * dt;
+    Ea[n] = Ey[ia]; Eb[n] = Ey[ib];
+    Hb[n] = 0.5 * (Hz[ib - 1] + Hz[ib]);
+    if(snapEvery && n % snapEvery === 0){
+      const row = new Float32Array(Math.floor(N / skip) + 1);
+      for(let i = 0; i < row.length; i++) row[i] = Ey[i * skip];
+      snaps.push({ t: tArr[n], E: row });
+    }
+  }
+  const front = w => {
+    let m = 0;
+    for(let k = 0; k < w.length; k++) m = Math.max(m, Math.abs(w[k]));
+    const th = frac * m;
+    for(let k = 1; k < w.length; k++){
+      const a = Math.abs(w[k - 1]), b = Math.abs(w[k]);
+      if(b >= th && a < th) return tArr[k - 1] + dt * (th - a) / (b - a);
+    }
+    return NaN;
+  };
+  const ta = front(Ea), tb = front(Eb);
+  const c0 = 1 / Math.sqrt(EM_MU0 * EM_EPS0);
+  const cMeas = (xb - xa) / (tb - ta);
+  /* impedance from the energy the far probe records — E and H staggered half
+     a step in time, which is O(ω dt) and far inside the claim */
+  let se = 0, sh = 0;
+  for(let k = 0; k < steps; k++){ se += Eb[k] * Eb[k]; sh += Hb[k] * Hb[k]; }
+  const zMeas = Math.sqrt(se / Math.max(1e-300, sh));
+  const z0 = Math.sqrt(EM_MU0 / EM_EPS0);
+  /* the whole waveform against the retarded closed form, using the constants'
+     own c — a pointwise two-route comparison, not a single number */
+  let s2 = 0, pk = 0;
+  const lag = (xb - xs) / c0;
+  for(let k = 0; k < steps; k++){
+    const cf = -(EM_MU0 * c0 / 2) * K(tArr[k] - lag);
+    s2 += (Eb[k] - cf) * (Eb[k] - cf);
+    pk = Math.max(pk, Math.abs(cf));
+  }
+  const shapeRms = Math.sqrt(s2 / steps);
+  return { c: cMeas, c0, cRel: Math.abs(cMeas - c0) / c0,
+           z: zMeas, z0, zRel: Math.abs(zMeas - z0) / z0,
+           shapeRms, shapePeak: pk, ta, tb,
+           t: tArr, Ea, Eb, Hb, snaps, dx, dt, steps, N, xs, xa, xb, L };
+}

@@ -287,7 +287,7 @@ Published copy: https://claude.ai/code/artifact/289811c9-07a8-4419-87cc-b4b55e04
 - `js/49-fourier.js` — Fourier engine (naive DFT and radix-2 FFT sharing one
   inverse flag, series coefficients, analytic transform pairs, the winding
   integral, windows, convolution, aliasing and spread) — pure, unit-tested.
-- `tests.js` — 4290 unit tests: parser, symbolic differentiation, the operators,
+- `tests.js` — 4296 unit tests: parser, symbolic differentiation, the operators,
   physics writers, RK4 mechanics, quantum eigen-relations, the Schrödinger equation
   checked numerically against the plotted packet, barrier unitarity/continuity,
   SEMF landmarks, field-tensor invariants, and all four Maxwell equations verified

@@ -1402,6 +1402,33 @@ ok('scalar mode div is the Laplacian', sf('x^2+y^2+z^2').laplacian !== null);
   })();
 })();
 
+/* ====== the 1-D Maxwell marcher: c is an output ========================== */
+(function(){
+  /* A Gaussian sheet current, t in seconds (peak 10 ns, width 3 ns). The
+     update equations contain mu0 and eps0 separately and never c, so the
+     transit between the probes is a MEASUREMENT of the propagation speed. */
+  const K = t => Math.exp(-Math.pow((t - 10e-9) / 3e-9, 2));
+  const r = emFDTD1D(K, {});
+  const c0 = 1 / Math.sqrt(EM_MU0 * EM_EPS0);
+  close('FDTD: c0 from the CODATA constants is the defined c', r.c0, 299792458, 0.5);
+  ok('FDTD: transit speed matches 1/√(μ₀ε₀) to 1e-4 (the acceptance test)',
+     r.cRel < 1e-4, 'rel ' + r.cRel);
+  ok('FDTD: wave impedance E/H matches √(μ₀/ε₀) to 1e-3', r.zRel < 1e-3,
+     'z ' + r.z + ' vs ' + r.z0 + ' rel ' + r.zRel);
+  ok('FDTD: the far waveform matches the retarded closed form −(μ₀c/2)K(t−x/c)',
+     r.shapeRms / r.shapePeak < 0.01, 'rms/peak ' + (r.shapeRms / r.shapePeak));
+  /* the speed is a property of the PDE, not of the marching step: halve the
+     Courant fraction and the measured c must not move at the claimed level */
+  const r2 = emFDTD1D(K, { S: 0.45 });
+  ok('FDTD: halving the time step leaves the measured c inside 1e-4',
+     Math.abs(r2.c - r.c) / r.c0 < 1e-4, (r.c - r2.c) / r.c0);
+  /* dispersion is second order: halving dx must cut the shape error ~4x
+     (measured, not asserted — J9's rule for telling truncation from noise) */
+  const r4 = emFDTD1D(K, { dx: 0.02 });
+  ok('FDTD: halving h cuts the closed-form mismatch by ~2^p with p ≈ 2',
+     r4.shapeRms / r.shapeRms > 2.5, 'ratio ' + r4.shapeRms / r.shapeRms);
+})();
+
 /* ====== the sandbox's dynamics really are the laws of physics ============ */
 (function(){
   /* --- relativistic push: v approaches c and never reaches it --- */

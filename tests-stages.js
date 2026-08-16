@@ -287,6 +287,29 @@ function sok(name, cond, detail){
       E2.errs.length === 1 && /SU\(3\)/.test(E2.errs[0].msg), JSON.stringify(E2.errs));
 })();
 
+/* ---- emWave typed source: the speed of light as an output -----------------
+   The stage path over emFDTD1D (the engine's own convergence and acceptance
+   tests live in tests.js, inside the 21-49 window). Here: the build guard,
+   the stage's cached compute, and the sign convention of the radiated field. */
+(function(){
+  var F = STAGES.emWave;
+  var threw = false;
+  try { F.kBuild('x + t'); } catch(e){ threw = true; }
+  sok('emWave typed: a stray x is rejected - the source depends on time alone', threw, 'accepted');
+  var st = { scene:'own', src:'exp(-((t-10)/3)^2)', ownR:null };
+  var r = F.ownCompute(st);
+  sok('emWave typed: measured c matches 1/sqrt(mu0 eps0) to 1e-4 (the acceptance test)',
+      r.cRel < 1e-4, 'rel ' + r.cRel);
+  sok('emWave typed: E/H at the far probe is the impedance of free space',
+      r.zRel < 1e-3, 'rel ' + r.zRel);
+  sok('emWave typed: the compute is cached against the source text',
+      F.ownCompute(st) === r, 'recomputed');
+  var mn = 0, mx = 0;
+  for(var i = 0; i < r.steps; i++){ mn = Math.min(mn, r.Eb[i]); mx = Math.max(mx, r.Eb[i]); }
+  sok('emWave typed: the radiated E opposes a positive sheet current',
+      mn < -10 && Math.abs(mx) < Math.abs(mn) * 0.2, mn + ' / ' + mx);
+})();
+
 /* ---- report ---------------------------------------------------------------- */
 (function(){
   var t = document.createElement('div');

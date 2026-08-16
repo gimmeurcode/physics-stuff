@@ -4873,3 +4873,63 @@ presetgap 0/0 **OK** (79 demos, 793 combos, 5692 renders) · `auditresid`
 (new ids `asmSc`/`asmSheet` restorable) · `runall` demos=**595** **caught=0
 OK** (run twice — once mid-session, once after the legend/colour fix) ·
 screenshots looked at twice (the first found the covered caption).
+
+
+## 2026-08-15 — emWave's typed source: the speed of light as an output
+
+The third of Programme A's queued editors. `emWave` gains a second scene:
+**type any sheet current K(t)** (t in nanoseconds; a stray x, y or z is
+rejected with its own message), and the two curl equations are marched on a
+1-D staggered grid by `emFDTD1D` (`47a-em-typed.js`, inside the unit-tested
+21–49 window). **The update rule contains 1/ε₀ and 1/μ₀ separately — the
+product μ₀ε₀ never appears in the dynamics** — so the propagation speed is a
+property the march produces, and the panel measures it before comparing.
+
+**Three claims, all measured on the default Gaussian pulse:**
+
+- **c from the transit**: the front (2% threshold, linearly interpolated) is
+  timed at probes 10 m apart — 33.356 ns, i.e. 299 795 488 m/s, which is
+  **1.01×10⁻⁵ relative** from 1/√(μ₀ε₀) = 299 792 458 m/s. The §3.1
+  acceptance was 1e-4; the measurement beat it by an order of magnitude.
+- **The impedance of free space**: √(∫E²/∫H²) at the far probe = 376.7361 Ω,
+  **1.5×10⁻⁵** from √(μ₀/ε₀).
+- **The whole waveform**: the FDTD field at probe B against the retarded
+  closed form −(μ₀c/2)·K(t − x/c), sampled fresh from the reader's K —
+  rms **1.6×10⁻⁵ of peak**.
+
+**Attribution of the residual, by J9's rule (truncation vs round-off):**
+halving the Courant fraction moves the measured c by 2.9×10⁻⁵ (inside the
+claim), and **halving dx cuts the closed-form mismatch by 4.00×** — measured
+second order, exactly the grid's dispersion, so the residual is the scheme's
+truncation and not physics. Both assertions are pinned in `tests.js` (6 new
+unit tests); the stage path adds 5 more in `tests-stages.js` (the build guard,
+the acceptance, the impedance, the compute cache, and the sign convention —
+the radiated E opposes a positive sheet current, computed not asserted).
+
+Timing method note, recorded because the wrong one looked fine: a centroid of
+|E|² was tried first and is wrong for a switched-on step (it lands mid-record
+at both probes and reports 2c); the front-threshold crossing is what shipped.
+
+One instance of the session's own defect class: the first build broke smoke —
+a duplicated `frame(st, dt, ctx, W, H){` header left by an edit, exactly the
+"one stray character takes the whole app down" failure `smoke.ps1` exists for,
+and it caught it in ten seconds.
+
+Mechanics: scene seg (`ewSc`, label carries "your own"), `fnHtml` box whose
+hint names t so `auditcustom` offers it a t-only formula, `mode` as a function
+of state (the wave scene stays 3-D, the typed scene is 2-D plots — the
+`63b`/`65b` pattern), `dockLegend:true` after the screenshot showed the
+floating key covering the lower plot's axis (the same class as atomSM's
+covered caption, found the same way), compiled K cached on the result so
+`frame()` never re-parses, two derive rungs, demo appended at the END of its
+group with every number in `out:` measured this session.
+
+Gates on the final build: `build` 231 modules · `smoke` OK (after the catch
+above) · `runtests` **4296 passed, 0 failed** · `runstagetests` **58 passed,
+0 failed** · `auditcustom` **bad=0 OK** (stages 100 → 101, boxes 136 → 137) ·
+`auditsides` falsescale 0/0 presetgap 0/0 **OK** (80 demos, 795 combos, 140
+claims) · `auditresid` **findings=0** · `auditticks` **OK** · `auditpanel`
+**bad=0** · `auditzoom` **findings=0** · `auditframe` **OK** (cut=3, the three
+allowed) · `auditlink` **OK** (`ewSc`/`ewSrc` restorable) · `runall`
+demos=**596** **caught=0 OK** · screenshots looked at twice (the first found
+the covered axis).

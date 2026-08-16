@@ -254,26 +254,138 @@ STAGES.emWave = {
           `${dv('E')} ${dop('⊥')} ${dv('B')} ${dop('⊥')} ${dv('k')}, &nbsp; |${dv('E')}| ${dop('=')} ${dv('c')}|${dv('B')}|`,
           'the panel draws all three and the probe reads their instantaneous values'),
         drvSay('and the constancy of c is what forced relativity',
-          'This derivation contains no reference frame. It gives the same c to every observer, which is flatly incompatible with Galilean velocity addition. Einstein took the equations at their word rather than patching them, and special relativity is the consequence.')
+          'This derivation contains no reference frame. It gives the same c to every observer, which is flatly incompatible with Galilean velocity addition. Einstein took the equations at their word rather than patching them, and special relativity is the consequence.'),
+        drvStep('then measure it, from a current you invent',
+          `${dv('c')}_meas ${dop('=')} ${dfrac('Δ' + dv('x'), 'Δ' + dv('t'))}`,
+          'the "type your own source" scene marches the two curl equations — whose update contains μ₀ and ε₀ separately and never c — and times the front of your wave between two probes 10 m apart'),
+        drvSay('because the update rule has never heard of light',
+          'Each step advances E from the neighbouring H using 1/ε₀, and H from the neighbouring E using 1/μ₀. Nothing in the loop knows the product μ₀ε₀ matters. That the front still crosses 10 m in 33.36 ns — for a Gaussian, a square pulse, or anything else you type — is the wave equation asserting itself, and the panel prints the measured speed beside 1/√(μ₀ε₀) with the difference. The impedance E/H = √(μ₀/ε₀) and the retarded waveform are checked the same way.')
       ],
       note:'The value printed is computed from the CODATA values of μ₀ and ε₀ at run time, not quoted. Since the 2019 SI redefinition c is exact by definition and ε₀ is measured, so the tiny residual is in the constants rather than in the derivation.'
     };
   },
-  mode: '3d',
+  /* the wave scene is 3D; the typed-source scene is a flat pair of plots, and
+     the core clears the canvas for it (mode may be a function of the state).
+     The typed scene fills the canvas with plots, so the key sits in the dock. */
+  mode: st => (st && st.scene === 'own') ? '2d' : '3d',
+  dockLegend: true,
   enter(st, o){
+    st.scene = o.scene || 'wave';
     st.k = 1.6; st.probe = 0;
+    st.src = 'exp(-((t-10)/3)^2)';
+    st.ownR = null; st.ownErr = '';
+    if(st.scene === 'own') this.ownCompute(st);
     R.cam.az = 0.62; R.cam.el = 0.30; R.cam.dist = 11; R.cam.tx = R.cam.ty = R.cam.tz = 0;
   },
+  /* The typed source is K(t) with t in NANOSECONDS — the one variable allowed.
+     The parser's slots are x, y, z, so t is rewritten onto x; a stray x, y or
+     z in the source is rejected with its own message rather than silently
+     read as something. */
+  kBuild(s){
+    if(/(?<![A-Za-z])[xyz](?![A-Za-z])/.test(String(s)))
+      throw new Error('the sheet current depends on time alone — write K(t), with t in ns');
+    const g = compile(parse(String(s).replace(/(?<![A-Za-z])t(?![A-Za-z])/g, 'x')));
+    return { f: tns => g(tns, 0, 0) };
+  },
+  /* One marcher run per typed source — cached against the text, never re-run
+     inside frame(). ~30 ms: 2400 cells × 2960 steps. */
+  ownCompute(st){
+    if(st.ownR && st.ownR.src === st.src) return st.ownR;
+    const made = this.kBuild(st.src);
+    const KSI = s => { const v = made.f(s * 1e9); return Number.isFinite(v) ? v : 0; };
+    const r = emFDTD1D(KSI, { snapEvery: 8 });
+    r.src = st.src; r.kf = made.f;
+    let pk = 1e-12;
+    for(let i = 0; i < r.steps; i++) pk = Math.max(pk, Math.abs(r.Eb[i]), Math.abs(r.Ea[i]));
+    r.pk = Math.max(pk, r.shapePeak);
+    st.ownR = r;
+    return r;
+  },
   controls(){
-    return ctlRow('wavenumber k', ctlSlider('ewK', 0.6, 3.2, 0.05, ST.k)) +
-      ctlRow('probe x', ctlSlider('ewX', -4, 4, 0.05, ST.probe)) +
-      `<p class="help">Nothing here is drawn by hand: this is the solution of Maxwell's equations in empty space. <b>E ⊥ B ⊥ direction of travel</b>, in phase, equal in size (in these units), moving at c = 1/√(μ₀ε₀). Each field sustains the other — Faraday turns the changing B into E, Maxwell's new term turns the changing E back into B — so the pair propagates forever with no charges anywhere. Drag to orbit and check the perpendicularity from any angle.</p>`;
+    const st = ST;
+    return ctSeg('ewSc', st.scene, [['wave', 'the plane wave'], ['own', 'type your own source current']]) +
+      (st.scene === 'own'
+        ? fnHtml('ewSrc', 'K(t) =', st.src, 'the sheet current in A/m, t in nanoseconds') +
+          `<p class="help">Your K(t) drives a current sheet, and the two curl equations are marched
+          forward on a grid — an update rule that contains <b>μ₀ and ε₀ separately and never c</b>.
+          Whatever you type travels at one speed: the panel times the front between two probes 10 m
+          apart and only then compares the result with 1/√(μ₀ε₀). It also checks the wave impedance
+          E/H against √(μ₀/ε₀) = 376.73 Ω, and the whole waveform against the retarded closed form
+          −(μ₀c/2)·K(t − x/c). Make the pulse sharper and watch the grid's own resolution show up in
+          the comparison — the mismatch is the quadrature's, never Maxwell's.</p>`
+        : ctlRow('wavenumber k', ctlSlider('ewK', 0.6, 3.2, 0.05, ST.k)) +
+          ctlRow('probe x', ctlSlider('ewX', -4, 4, 0.05, ST.probe)) +
+          `<p class="help">Nothing here is drawn by hand: this is the solution of Maxwell's equations in empty space. <b>E ⊥ B ⊥ direction of travel</b>, in phase, equal in size (in these units), moving at c = 1/√(μ₀ε₀). Each field sustains the other — Faraday turns the changing B into E, Maxwell's new term turns the changing E back into B — so the pair propagates forever with no charges anywhere. Drag to orbit and check the perpendicularity from any angle.</p>`);
   },
   wire(){
+    ctWireSeg('ewSc', v => { ST.scene = v; if(v === 'own') STAGES.emWave.ownCompute(ST); buildStagePanel(); });
+    fnWire('ewSrc', (made, src) => { ST.src = src; ST.ownR = null; STAGES.emWave.ownCompute(ST); },
+           s => this.kBuild(s));
     wireSlider('ewK', () => ST.k, v => { ST.k = v; }, v => (+v).toFixed(2));
     wireSlider('ewX', () => ST.probe, v => { ST.probe = v; }, v => (+v).toFixed(2));
   },
+  frameOwn(st, ctx, W, H){
+    const r = st.ownR || this.ownCompute(st);
+    const Tns = r.t[r.steps - 1] * 1e9;
+    const loop = (st.t * 8) % Tns;                       // 8 ns of wave time per second
+    /* top: the snapshot E(x) at the loop time, with source and probes marked */
+    const si = Math.min(r.snaps.length - 1, Math.floor(loop / Tns * r.snaps.length));
+    const snap = r.snaps[si];
+    const topH = Math.max(120, H * 0.38);
+    const pk = r.pk * 1.15;
+    const pl = st.pl = mkPlot(60, 42, W - 104, topH, 0, r.L, -pk, pk);
+    plotFrame(ctx, pl, 'x (m)', 'E (V/m)', 'the sheet at x = 4 m radiating your K(t) — snapshot');
+    pvClip(ctx, pl, () => {
+      ctx.strokeStyle = rgbCss(TH.faint, 0.8); ctx.setLineDash([5, 4]); ctx.lineWidth = 1.4;
+      for(const xv of [r.xs, r.xa, r.xb]){
+        ctx.beginPath(); ctx.moveTo(pl.X(xv), pl.Y(-pk)); ctx.lineTo(pl.X(xv), pl.Y(pk)); ctx.stroke();
+      }
+      ctx.setLineDash([]);
+      ctText(ctx, pl.X(r.xs) + 4, pl.Y(pk * 0.9), 'source', rgbCss(TH.dim), '10px ' + FONT_UI);
+      ctText(ctx, pl.X(r.xa) + 4, pl.Y(pk * 0.9), 'probe A', rgbCss(TH.dim), '10px ' + FONT_UI);
+      ctText(ctx, pl.X(r.xb) + 4, pl.Y(pk * 0.9), 'probe B', rgbCss(TH.dim), '10px ' + FONT_UI);
+    });
+    const sampX = x => {
+      const u = Math.max(0, Math.min(1, x / r.L)) * (snap.E.length - 1);
+      const k = Math.min(snap.E.length - 2, Math.floor(u));
+      return snap.E[k] + (snap.E[k + 1] - snap.E[k]) * (u - k);
+    };
+    plotCurve(ctx, pl, sampX, 480, rgbCss(TH.warn), 2.2);
+    ctText(ctx, pl.px + pl.pw - 8, pl.py + 14, 't = ' + fmtNum(snap.t * 1e9, 3) + ' ns',
+           rgbCss(TH.dim), '600 11px ' + FONT_MONO, 'right');
+    /* bottom: what the probes recorded, with the closed form over probe B —
+       the closed form is sampled fresh from the reader's K, so the dashed
+       curve shares nothing with the march it rides on */
+    const y1 = 42 + topH + 46;
+    const pl2 = st.pl2 = mkPlot(60, y1, W - 104, Math.max(80, H - y1 - 52), 0, Tns, -pk, pk);
+    plotFrame(ctx, pl2, 't (ns)', 'E (V/m)', 'the two probes — and the retarded closed form riding on B');
+    const sampT = arr => tns => {
+      const u = tns * 1e-9 / r.dt - 1;
+      if(u < 0 || u > r.steps - 1) return 0;
+      const k = Math.min(r.steps - 2, Math.max(0, Math.floor(u)));
+      return arr[k] + (arr[k + 1] - arr[k]) * (u - k);
+    };
+    plotCurve(ctx, pl2, sampT(r.Ea), 480, rgbCss(TH.neg, 0.75), 1.6);
+    plotCurve(ctx, pl2, sampT(r.Eb), 480, rgbCss(TH.warn), 2.2);
+    ctx.setLineDash([6, 4]);
+    plotCurve(ctx, pl2, tns => {
+      const v = -(EM_MU0 * r.c0 / 2) * r.kf(tns - (r.xb - r.xs) / r.c0 * 1e9);
+      return Number.isFinite(v) ? v : 0;
+    }, 480, rgbCss(TH.grad), 1.6);
+    ctx.setLineDash([]);
+    pvClip(ctx, pl2, () => {
+      for(const [tv, lab] of [[r.ta, 'front at A'], [r.tb, 'front at B']]){
+        if(!Number.isFinite(tv)) continue;
+        ctx.strokeStyle = rgbCss(TH.grad, 0.6); ctx.lineWidth = 1; ctx.setLineDash([2, 3]);
+        ctx.beginPath(); ctx.moveTo(pl2.X(tv * 1e9), pl2.Y(-pk));
+        ctx.lineTo(pl2.X(tv * 1e9), pl2.Y(pk * 0.72)); ctx.stroke(); ctx.setLineDash([]);
+        ctText(ctx, pl2.X(tv * 1e9) + 3, pl2.Y(pk * 0.72) + 8, lab, rgbCss(TH.dim), '10px ' + FONT_UI);
+      }
+    });
+    stageNote(ctx, 'the update rule holds μ₀ and ε₀ and has never heard of c — the speed is measured off this picture', W, H);
+  },
   frame(st, dt, ctx, W, H){
+    if(st.scene === 'own'){ this.frameOwn(st, ctx, W, H); return; }
     R.mode2d = false; R.extent = 4;
     R.begin();
     const L = 4.4, N = 78;
@@ -304,7 +416,36 @@ STAGES.emWave = {
     R.label(v3(st.probe, 0, -2.7), 'S = E×B always points along the travel direction', rgbCss(TH.grad), 0, 0, '600 11px ' + FONT_UI);
     R.flush();
   },
+  readoutOwn(st){
+    const r = st.ownR || this.ownCompute(st);
+    return `<div class="card tight"><div class="ttl">The speed, measured — then compared</div>
+      ${kv('K(t)', pkPretty(st.src) + ' A/m')}
+      ${kv('front reaches probe A', fmtNum(r.ta * 1e9, 5) + ' ns')}
+      ${kv('front reaches probe B', fmtNum(r.tb * 1e9, 5) + ' ns')}
+      ${kv('c, measured over the 10 m', '<b>' + fmtSig(r.c, 9) + ' m/s</b>')}
+      ${kv('1/√(μ₀ε₀), from the constants', fmtSig(r.c0, 9) + ' m/s')}
+      ${kv('difference', fmtAgree(r.c, r.c0, 'm/s'))}
+      <p class="help">The march updates E from the neighbouring H with 1/ε₀ and H from the
+      neighbouring E with 1/μ₀ — <b>two separate constants, never their product</b>. That whatever
+      you type crosses the 10 m between the probes in the same 33.356 ns is a property the
+      equations produce, not one they were told. Maxwell did this algebraically in 1862 and
+      concluded light "is an electromagnetic disturbance"; here it happens numerically, on a
+      current no one prepared.</p>
+    </div>
+    <div class="card tight"><div class="ttl">Two more things the wave must get right</div>
+      ${kv('E/H recorded at probe B', fmtNum(r.z, 6) + ' Ω')}
+      ${kv('√(μ₀/ε₀), the impedance of free space', fmtNum(r.z0, 6) + ' Ω')}
+      ${kv('difference', fmtAgree(r.z, r.z0, 'Ω'))}
+      ${kv('waveform vs −(μ₀c/2)·K(t − x/c)', fmtGap(r.shapeRms, r.shapePeak, 'V/m'))}
+      <p class="help">The dashed curve is the retarded closed form for a current sheet, sampled
+      straight from your K — it shares no grid, step or sample with the march. The residual that
+      remains is the grid's second-order dispersion: <b>halve the cell and it falls fourfold</b>,
+      which the unit suite asserts by doing exactly that. A sharper pulse raises it — that is the
+      grid running out of resolution, not Maxwell failing.</p>
+    </div>`;
+  },
   readout(st){
+    if(st.scene === 'own') return this.readoutOwn(st);
     const w = emPlaneWave(st.probe, st.t, st.k, 1.6);
     const S = vcross(w.E, w.B);
     const u = 0.5 * (vdot(w.E, w.E) + vdot(w.B, w.B));
@@ -324,11 +465,22 @@ STAGES.emWave = {
     </div>`;
   },
   chip(st){
+    if(st.scene === 'own'){
+      const r = st.ownR || this.ownCompute(st);
+      return `<div class="k">your source, timed</div>
+        <div style="color:var(--c-warn)">c = ${fmtSig(r.c, 7)} m/s</div>
+        <div>${fmtAgreeTight(r.c, r.c0)} vs 1/√(μ₀ε₀)</div>`;
+    }
     const w = emPlaneWave(st.probe, st.t, st.k, 1.6);
     return `<div class="k">EM wave · λ = ${fmtNum(2 * Math.PI / st.k, 3)}</div>
       <div style="color:var(--c-warn)">E = ${fmtNum(w.E.y, 3)}</div>
       <div style="color:var(--c-neg)">B = ${fmtNum(w.B.z, 3)}</div><div>E·B = 0 · speed = c</div>`;
   },
-  legend(){ return [['var(--c-warn)','E field — transverse'],['var(--c-neg)','B field — perpendicular to E'],['var(--c-grad)','S = E×B — energy flow at c']]; }
+  legend(st){
+    return (st && st.scene === 'own')
+      ? [['var(--c-warn)','E from the march — snapshot, and probe B'],['var(--c-neg)','probe A (10 m nearer the sheet)'],
+         ['var(--c-grad)','retarded closed form −(μ₀c/2)·K(t−x/c), and the front times'],['var(--faint)','the source sheet and the two probes']]
+      : [['var(--c-warn)','E field — transverse'],['var(--c-neg)','B field — perpendicular to E'],['var(--c-grad)','S = E×B — energy flow at c']];
+  }
 };
 
