@@ -547,3 +547,87 @@ function emFDTD1D(K, o){
            shapeRms, shapePeak: pk, ta, tb,
            t: tArr, Ea, Eb, Hb, snaps, dx, dt, steps, N, xs, xa, xb, L };
 }
+
+/* ============================================================================
+   THE LAWS, MEASURED ON AN ARBITRARY ARRANGEMENT
+
+   The sandbox lets a reader place any charges, wires and magnets; these three
+   functions measure what the presets were allowed to assume about the field
+   those objects make. Everything reads emField alone — nothing consults the
+   object list — so agreement is evidence about the FIELD, not bookkeeping.
+
+   emDivAt        ∇·E or ∇·B by fourth-order central differences, with the
+                  gross Σ|∂ᵢFᵢ| beside it — the Laplace residual, since
+                  E = −∇V makes ∇·E = −∇²V off the sources.
+   emBallU        ∭ u dV over a probe-centred ball (radial Gauss–Legendre ×
+                  angular midpoint).
+   emPoyntingBalance  ∮S·dA over the sphere against −dU/dt inside it, the
+                  time derivative taken by re-evaluating the field with every
+                  object translated along its own velocity (emPos carries t) —
+                  two routes sharing no samples. The gross is ∮|S|dA,
+                  magnitudes not |S·n̂|, because circulating energy (a static
+                  charge beside a wire) has ∮S·dA = 0 with |S| finite, and
+                  that case is the point.                                    */
+function emDivAt(objs, p, h, which, t){
+  const w = which || 'E', tt = t || 0;
+  const F = (x, y, z) => emField(objs, v3(x, y, z), tt)[w];
+  /* The gross is the sum of |coefficient × sample|/12h over the whole stencil —
+     what the zero cancelled OUT OF — never Σ|∂ᵢFᵢ|: on the default dipole the
+     probe sits on the symmetry plane where E is purely x̂ and even, so every
+     DERIVATIVE term is individually zero and that "gross" was itself round-off.
+     auditsides flagged the resulting 100% verdict the day it shipped (the
+     fmtAgreeGross doctrine, in FD clothing). fmax lets a caller say "the field
+     vanishes here" instead of printing a ratio of two round-offs. */
+  const C = [1, -8, 8, -1], O = [-2, -1, 1, 2];
+  let gross = 0, fmax = 0, div = 0;
+  const axes = [['x', 1, 0, 0], ['y', 0, 1, 0], ['z', 0, 0, 1]];
+  for(const [comp, sx, sy, sz] of axes){
+    let s = 0;
+    for(let k = 0; k < 4; k++){
+      const f = F(p.x + O[k] * h * sx, p.y + O[k] * h * sy, p.z + O[k] * h * sz)[comp];
+      s += C[k] * f;
+      gross += Math.abs(C[k] * f) / (12 * h);
+      fmax = Math.max(fmax, Math.abs(f));
+    }
+    div += s / (12 * h);
+  }
+  return { div, gross, fmax };
+}
+function emBallU(objs, c, R, t, nth, nph){
+  const NT = nth || 16, NP = nph || 32;
+  const shell = r => {
+    let s = 0, wsum = 0;
+    for(let i = 0; i < NT; i++){
+      const th = Math.PI * (i + 0.5) / NT, sth = Math.sin(th);
+      for(let j = 0; j < NP; j++){
+        const ph = 2 * Math.PI * (j + 0.5) / NP;
+        const p = v3(c.x + r * sth * Math.cos(ph), c.y + r * sth * Math.sin(ph),
+                     c.z + r * Math.cos(th));
+        const u = emEnergyDensity(emField(objs, p, t));
+        if(Number.isFinite(u)){ s += u * sth; wsum += sth; }
+      }
+    }
+    return wsum ? s / wsum * 4 * Math.PI * r * r : 0;
+  };
+  return nqGauss(shell, 0, R, 5, 2);
+}
+function emPoyntingBalance(objs, c, R, o){
+  o = o || {};
+  const NT = o.nth || 16, NP = o.nph || 32, ht = o.ht || 0.01;
+  let flux = 0, gross = 0;
+  const dA = (Math.PI / NT) * (2 * Math.PI / NP) * R * R;
+  for(let i = 0; i < NT; i++){
+    const th = Math.PI * (i + 0.5) / NT, sth = Math.sin(th);
+    for(let j = 0; j < NP; j++){
+      const ph = 2 * Math.PI * (j + 0.5) / NP;
+      const n = v3(sth * Math.cos(ph), sth * Math.sin(ph), Math.cos(th));
+      const p = v3(c.x + R * n.x, c.y + R * n.y, c.z + R * n.z);
+      const S = emPoynting(emField(objs, p, 0));
+      if(!Number.isFinite(S.x + S.y + S.z)) continue;
+      flux += vdot(S, n) * sth * dA;
+      gross += vlen(S) * sth * dA;
+    }
+  }
+  const dUdt = (emBallU(objs, c, R, ht, NT, NP) - emBallU(objs, c, R, -ht, NT, NP)) / (2 * ht);
+  return { flux, dUdt, gross, R };
+}

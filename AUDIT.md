@@ -4933,3 +4933,59 @@ claims) · `auditresid` **findings=0** · `auditticks` **OK** · `auditpanel`
 allowed) · `auditlink` **OK** (`ewSc`/`ewSrc` restorable) · `runall`
 demos=**596** **caught=0 OK** · screenshots looked at twice (the first found
 the covered axis).
+
+
+## 2026-08-16 — emSandbox's laws card closes the EM wing: Laplace residual and the Poynting balance, and auditsides earns its keep
+
+The fourth of Programme A's queued editors, and the one where the reader's
+arrangement was already typed — the placement tools are the editor. What was
+missing was §3.1's measurement: the properties the presets were allowed to
+assume, computed for whatever the reader builds. `emDivAt`, `emBallU` and
+`emPoyntingBalance` live in `47a` (unit-tested window); the card and its
+adaptive audit sphere live on the stage.
+
+**Measured, engine route (tests.js, 7 new unit tests):**
+
+- **∇·E off the sources** (the Laplace residual, since E = −∇V): 4th-order FD,
+  1.8×10⁻⁷ of gross at h = 0.02 on the dipole — acceptance was 1e-6.
+- **∇·B**: 7.4×10⁻⁸ of gross on a wire + magnet arrangement.
+- **Poynting balance for a uniformly moving charge** (an exact Maxwell
+  solution): ∮S·dA vs −dU/dt agree to **8.2×10⁻⁴**, attributed to the angular
+  quadrature — doubling the node count cuts the residual **4.06×** (measured
+  O(N⁻²), J9's rule).
+- **The moving magnet misses honestly**: its pair (B rigid, E = −v×B) is first
+  order in v/c, so the balance residual is the model's O(β²) — halving v cuts
+  it **4.46×**, asserted. The card says this in prose whenever a magnet moves.
+- **Static charge + wire**: net flux 4.6×10⁻¹⁸ and dU/dt = 0 against a finite
+  circulating gross ∮|S|dA — energy flowing in closed loops, printed with the
+  gross that makes the verdict honest.
+
+**auditsides caught the card's own defect the day it shipped — two FALSE-SCALE
+rows, and the fix is a textbook instance of the fmtAgreeGross doctrine.** The
+first gross was Σ|∂ᵢFᵢ| — the sum of the derivative *terms*. On the default
+dipole the probe sits on the arrangement's symmetry plane, where E is purely
+x̂ and even in x, so all three terms cancel *identically* and that gross was
+itself round-off: the panel printed a 100% disagreement over a perfect
+cancellation (gap 5.8×10⁻¹⁷ against a scale of 5.8×10⁻¹⁷). The gross is now
+the sum of |coefficient × sample|/12h over the whole stencil — what the zero
+cancelled OUT OF — and an identically vanishing field (the B of static
+charges, fmax = 0) becomes prose ("nothing to differentiate") rather than a
+ratio of two round-offs. Both cases are pinned as same-day regressions in
+`tests-stages.js`; `auditsides` returned to falsescale 0/0. Under the honest
+gross the demo arrangement's Laplace residual reads 2.4×10⁻⁹.
+
+Mechanics: adaptive sphere `ballOf` (¾ of the way to the nearest object,
+clamped — the balance is always source-free by construction, and a probe ON a
+source gets the delta-function prose instead of a spike), the sphere drawn
+dashed with a 10px label when Poynting display is on, `o.probe` accepted in
+`enter`, demo appended at the END of its group after a mid-edit mangle briefly
+put it mid-group and beheaded the compass item — smoke's see-link resolution
+plus a structure diff caught it before anything shipped.
+
+Gates on the final build: `build` 231 modules · `smoke` OK · `runtests`
+**4302 passed, 0 failed** · `runstagetests` **65 passed, 0 failed** ·
+`auditsides` falsescale **0/0** presetgap 0/0 **OK** (82 demos, 143 claims;
+the 2 findings above fixed same-day) · `auditresid` **findings=0** ·
+`auditpanel` **bad=0** · `auditticks` **OK** · `auditlink` **OK** ·
+`auditcustom` **bad=0 OK** · `runall` demos=**597 caught=0 OK** · screenshot
+looked at (audit sphere, label, probe clear of sources).

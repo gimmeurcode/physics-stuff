@@ -24,12 +24,13 @@ carried forward.
 | wondering if something was checked | `AUDIT.md` (the accuracy record) |
 | about to reopen a settled question | **§1.7** first — several are already decided with reasons |
 
-**Verified 2026-08-15 — every gate in §1.6 was run, and this is the first day
-that has been true.** `build` 231 modules · `smoke` OK (wings=40, stages=178,
-seelinks=80) · `runtests` **4296 passed, 0 failed** · `runstagetests` **58
-passed, 0 failed** · `runall` demos=596
+**Verified 2026-08-16 (first full-gate day was 2026-08-15).** `build` 231
+modules · `smoke` OK (wings=40, stages=178,
+seelinks=80) · `runtests` **4302 passed, 0 failed** · `runstagetests` **65
+passed, 0 failed** · `runall` demos=597
 controls=6462 **caught=0 OK** · `auditsides` falsescale=0 presetgap=0 **OK**
-(both ratchets at zero since 2026-08-15) · `auditresid` **findings=0**
+(both ratchets at zero since 2026-08-15; two new FALSE-SCALE rows appeared and
+were fixed same-day on 2026-08-16 — §3.1 emSandbox) · `auditresid` **findings=0**
 noscale=7 · `auditcustom` **bad=0 OK** over the 101
 stages carrying typed input · `auditclaims` 249 claims **bad=0 OK** ·
 `auditframe` cut=3, all three allowed by name **OK** · `auditsize`
@@ -55,13 +56,13 @@ artifact is published and gated (§3.9); the website half is one hosting setting
 away, which needs a human. Permalink: `#w=…&d=…&c.<id>=…`, 593 of 593 round
 trips exact, gated by `./auditlink.ps1` (§3.6).
 
-**The next work in order is Programme A's remaining EM and atom scenario
-editors (3 stages — `emSandbox`, `atomForces`, `atomSim`; `emFaraday`, `atomSM`
-and `emWave` done 2026-08-15), then syllabus gaps B1–B4, then Programme A
-relativity.** Programme D closed 2026-08-15: D2's nine PRESET-GAP rows all
+**The next work in order is Programme A's two remaining atom editors
+(`atomForces`, `atomSim`; the EM wing closed 2026-08-16 with `emSandbox`, after
+`emFaraday`, `atomSM` and `emWave` on 2026-08-15), then syllabus gaps B1–B4,
+then Programme A relativity.** Programme D closed 2026-08-15: D2's nine PRESET-GAP rows all
 attributed (six fixed, three whitelisted with their mathematics, both
 `auditsides` ratchets at **0**), and D3's stage-level suite is built and
-gated — `./runstagetests.ps1`, 58 assertions (2026-08-15) calling stage helpers directly,
+gated — `./runstagetests.ps1`, 65 assertions (2026-08-16) calling stage helpers directly,
 first run red for a real reason. §3.4 has both records; `AUDIT.md` same date
 has the fixes. The standing rule that keeps D3 alive: every stage defect class
 fixed adds its two-route test to `tests-stages.js` the same day. Note what the permalink cost and returned: it
@@ -99,17 +100,17 @@ given so the next session can re-measure rather than trust.
 | quantity | value | how it was measured |
 |---|---|---|
 | wings | **40** | `./measure.ps1` (and `./smoke.ps1` → `wings=40`) |
-| guided experiments | **596** | `./measure.ps1`, from `WINGS[*].groups[*].items` in the booted app (re-measured 2026-08-15) |
+| guided experiments | **597** | `./measure.ps1`, from `WINGS[*].groups[*].items` in the booted app (re-measured 2026-08-16) |
 | demo groups | **118** | same. **Do not grep `src/` for this** — patterns return 89 or 105 |
 | experiments driving a canvas stage | **508** | same (the other 85 drive the field pipeline) |
 | canvas stages | **178** | `./smoke.ps1` → `stages=178`; `./measure.ps1` confirms `unreachablestages=none` |
 | source modules | **231** | `./build.ps1` |
 | harness scripts | **29** | `Get-ChildItem *.ps1` (re-measured 2026-08-15). Every one must appear in §1.6 and §4.2 — `./auditdocs.ps1` checks |
-| deployable size | **5 409 933 bytes** (5.41 MB / 5.16 MiB) | `./measure.ps1`. **`build.ps1` prints a smaller figure, which is a CHARACTER count** — the Unicode maths symbols cost ~57 KB more as UTF-8 bytes. Both are far inside any upload limit. **A fresh `git clone` builds ~15.6 KB smaller**: `.gitattributes` normalises line endings to LF and 54 of the source files carried CRLF when this was measured, which is 15 627 carriage returns. The app is identical — but this is why the row says *measure*, not *quote* |
-| source lines | ~77 044 (all of `src/`) | `./measure.ps1`; `./map.ps1` reports `src/js` alone |
-| unit tests | **4296 passed, 0 failed** | `./runtests.ps1` (re-measured 2026-08-15) |
+| deployable size | **5 524 446 bytes** (5.52 MB, re-measured 2026-08-16) | `./measure.ps1`. **`build.ps1` prints a smaller figure, which is a CHARACTER count** — the Unicode maths symbols cost ~57 KB more as UTF-8 bytes. Both are far inside any upload limit. **A fresh `git clone` builds ~15.6 KB smaller**: `.gitattributes` normalises line endings to LF and 54 of the source files carried CRLF when this was measured, which is 15 627 carriage returns. The app is identical — but this is why the row says *measure*, not *quote* |
+| source lines | ~78 852 (all of `src/`, re-measured 2026-08-16) | `./measure.ps1`; `./map.ps1` reports `src/js` alone |
+| unit tests | **4302 passed, 0 failed** | `./runtests.ps1` (re-measured 2026-08-16) |
 | `mkPlot` call sites | **252** | `./measure.ps1` (re-measured 2026-08-15) |
-| permalink round trips | **596 of 596 exact**, 11 demos measured stochastic | `./auditlink.ps1` (re-measured 2026-08-15) |
+| permalink round trips | **597 of 597 exact**, 11 demos measured stochastic | `./auditlink.ps1` (re-measured 2026-08-16) |
 | declared table claims | **249, bad=0** | `./auditclaims.ps1` |
 | "See it in the laboratory" links | 80, all resolving | `./smoke.ps1` → `seelinks=80` |
 
@@ -300,7 +301,7 @@ script exists that this table does not describe.
 | `runall.ps1` | ~18 min | `caught=0 OK` | every demo × every control actually runs; greps prose for `undefined`/`NaN`/`Infinity` |
 | `auditcustom.ps1` | ~1 min | `bad=0 OK` | the **"type your own" path**, which `runall` never selects. Drives textareas from their `data-audit` attribute |
 | `auditartifact.ps1` | ~1 min | `bad=0` | whether the app survives being **published as a Claude artifact** — nested inside the host's own document, in all three viewer-theme states including the *system* one that stamps no `data-theme` at all. Reads the theme back two ways, the CSS token **and** the array the canvas paints with, because a toggle that moved one and not the other would repaint every picture for the wrong theme |
-| `auditlink.ps1` | ~2 min | `findings=0` / `auditlink OK` | whether a **permalink reproduces the view it was copied from** — all 596 demos, perturbed, copied, navigated away from and followed back, plus one **cold load** through `plInit()` inside `boot()`. Two routes, and the first alone is worthless: the controls, *and* the text the visible panels print **from** those controls. Neutering `plNotify` so a restore fills every box and tells no stage anything leaves 586 of 593 passing the control comparison and fails 505 on the text. Also fails on a **duplicate element id** under `#dock`, because a permalink's keys *are* element ids. It **measures** which demos are stochastic rather than keeping a list of them (11 are) |
+| `auditlink.ps1` | ~2 min | `findings=0` / `auditlink OK` | whether a **permalink reproduces the view it was copied from** — all 597 demos, perturbed, copied, navigated away from and followed back, plus one **cold load** through `plInit()` inside `boot()`. Two routes, and the first alone is worthless: the controls, *and* the text the visible panels print **from** those controls. Neutering `plNotify` so a restore fills every box and tells no stage anything leaves 586 of 593 passing the control comparison and fails 505 on the text. Also fails on a **duplicate element id** under `#dock`, because a permalink's keys *are* element ids. It **measures** which demos are stochastic rather than keeping a list of them (11 are) |
 | `auditpanel.ps1` | ~20 s | `bad=0` / `auditpanel OK` | whether a stage still has its readout, ladder and chip **after being left and reopened**. `uiSetHtml` skips a write matching what it last wrote, so the panels are stateful and anything clearing them behind its back makes the next identical refresh a silent no-op. On the build that introduced it **145 of 178 stages came back blank and `runall` still said `caught=0`** — it visits each demo once and never returns to one |
 | `auditderive.ps1` | ~40 s | `flagged=0 OK` | every stage's `derive()`, which **nothing else calls**; and whether rungs carry reasoning or restate algebra |
 | `auditclaims.ps1` | ~30 s | `bad=0 OK` | whether the **preset tables tell the truth** — 249 declared claims across 14 tables recomputed by an independent route. Reaches `EIG_PRESETS` (78b) and `NM_FUNCS` (79g), which are outside the window `runtests` extracts |
@@ -312,7 +313,7 @@ script exists that this table does not describe.
 | `auditframe.ps1` | ~1 min | `auditframe OK` | how much of each curve falls outside its window, classified `LINE`/`POLE`/`MINOR`/`CUT`. **A gate since 2026-08-15** — §3.10 asked for it, and the work was never the exit code but attributing the four stages that were cut. Two were real and are fixed; three are allowed **by name, with the mathematics that makes each one honest**, and it warns when an allowlist entry stops cutting so a stale name cannot wave a new defect through |
 | `auditsize.ps1` | ~2 min | `findings=0` | eight canvas shapes — layouts that only break at another aspect ratio |
 | `auditviewport.ps1` | ~3 min | `bad=0` | sixteen real window sizes, and the page *around* the canvas |
-| `audittext.ps1` | ~4 min | harvest written | what every panel **says** — drives all 596 experiments, harvests `textContent` |
+| `audittext.ps1` | ~4 min | harvest written | what every panel **says** — drives all 597 experiments, harvests `textContent` |
 | `auditscan.ps1` | ~20 s | 0 HIGH | ASCII stand-ins, leaked markup, empty panels, `NaN` in the harvest |
 | `auditprose.ps1` | ~1 s | *(an inventory)* | essays that decline to justify a result; named theorems with no statement card |
 | `auditcontrast.ps1` | ~1 s | — | WCAG contrast and the 12 px type floor |
@@ -811,7 +812,7 @@ stage by stage:
 |---|---|---|---|
 | relativity | 21 | 0 | **21** |
 | string theory | 15 | 0 | **15** |
-| electromagnetism | 6 | 5 | **1** |
+| electromagnetism | 6 | 6 | 0 — closed |
 | the atom | 5 | 3 | **2** |
 | mechanics | 6 | 6 | 0 — closed |
 | rotation | 5 | 5 | 0 — closed |
@@ -821,23 +822,24 @@ stage by stage:
 | thermodynamics | 2 | 2 | 0 — closed |
 | waves | 2 | 2 | 0 — closed |
 | fluids | 2 | 2 | 0 — closed |
-| **total** | **75** | **36** | **39** |
+| **total** | **75** | **37** | **38** |
 
-Plus `opWave` outside the twelve, so **37 scenario editors exist and 39 remain**
-(re-counted 2026-08-15 after `emFaraday`, `atomSM` and `emWave`).
+Plus `opWave` outside the twelve, so **38 scenario editors exist and 38 remain**
+(re-counted 2026-08-16; `emFaraday`, `atomSM`, `emWave` landed 2026-08-15 and
+`emSandbox` closed the EM wing 2026-08-16).
 
-## 3.1 Programme A — the 39 remaining scenario editors (42 until emFaraday, atomSM and emWave, all 2026-08-15)
+## 3.1 Programme A — the 38 remaining scenario editors (42 until the EM wing closed, 2026-08-15/16)
 
 Each row: what the reader supplies, what gets **measured rather than asserted**,
 and the acceptance test. `[reuse]` names machinery that already exists.
 
-### Electromagnetism — 1 left (do it first: the machinery exists; emFaraday and emWave done 2026-08-15)
+### Electromagnetism — 0 left, closed 2026-08-16
 
 | stage | file | reader supplies | measured | acceptance test |
 |---|---|---|---|---|
 | ~~`emFaraday`~~ **DONE 2026-08-15** | `60i` | a typed B·n̂(x, y, t) on the loop plane | EMF by d/dt ∬B·dA **and** by ∬∂B/∂t·dA — the Leibniz rule measured; for a fixed loop that identity *is* the law, and the ∮E·dl form is the moving-magnet scene beside it | measured: 5.7×10⁻⁶ relative on the default field, constant in t (pure quadrature truncation); Lenz's sign printed; static B → both routes vanish together; gated by `runstagetests` (4 assertions) and `auditcustom` |
 | ~~`emWave`~~ **DONE 2026-08-15** | `60ia` | a sheet current K(t), t in ns | `emFDTD1D` (`47a`) marches the two curl equations with μ₀ and ε₀ **separately — c never appears in the update**; the front is timed between probes 10 m apart, E/H is read at a probe, and the whole waveform is compared with the retarded closed form −(μ₀c/2)K(t−x/c) | measured on the default pulse: c to **1.0×10⁻⁵** of 1/√(μ₀ε₀) (acceptance was 1e-4), impedance to 1.5×10⁻⁵ of √(μ₀/ε₀), waveform to 1.6×10⁻⁵ of peak; halving the Courant fraction leaves c inside 1e-4 and halving dx cuts the mismatch 4.00× — order measured, J9's rule; 6 unit tests + 5 stage tests |
-| `emSandbox` | `60h` | a charge/current arrangement | the Laplace residual, and the Poynting energy balance | residual < 1e-6; ∮S·dA matches dU/dt |
+| ~~`emSandbox`~~ **DONE 2026-08-16** | `60h` | a charge/current arrangement (the placement tools *are* the editor) | `emDivAt`/`emPoyntingBalance` (`47a`): ∇·E and ∇·B by 4th-order FD with the gross taken from the **stencil samples** (the derivative-terms gross was itself round-off on the symmetry-plane dipole — `auditsides` caught the two FALSE-SCALE rows the day the card shipped, and the fix + regression landed the same day); ∮S·dA vs −dU/dt on a sphere that adapts to stay source-free, gross ∮\|S\|dA | measured: Laplace residual 2.4×10⁻⁹ of gross on the demo arrangement (acceptance was 1e-6); moving-charge balance 8.2×10⁻⁴, attributed to angular quadrature (doubling nodes cuts it 4.06×); moving-magnet miss is the model's O(β²) (halving v cuts it 4.46×); static charge+wire: net flux 5×10⁻¹⁸ against a finite circulating ∮\|S\|dA = 0.058 — 7 unit tests, 7 stage tests |
 
 `emFaraday` is the highest value-per-unit-work item in the entire programme:
 `47a-em-typed.js` already has the cell machinery, `emCellCircB` already
@@ -1288,8 +1290,8 @@ Three pieces of infrastructure would have caught most of the fourteen:
    reader sees on a preset combination nothing else visits; none would have been
    caught by making the arithmetic more accurate.
 3. ~~**Stage-level unit tests.**~~ **HARNESS BUILT 2026-08-15 —
-   `./runstagetests.ps1` + `tests-stages.js`, 41 assertions at birth (58 by the
-   same evening, via emFaraday, atomSM and emWave), `0 failed`, and
+   `./runstagetests.ps1` + `tests-stages.js`, 41 assertions at birth (65 by
+   2026-08-16, via emFaraday, atomSM, emWave and emSandbox), `0 failed`, and
    its first run failed for a real reason** (the ISCO preset's zoom–whirl
    orbit was being called a plunge — a third case the readout now names). The
    corpus is seeded on the two-route helpers this programme's own defects came
@@ -1834,9 +1836,9 @@ is sequenced by *what makes the next piece of work cheaper*, not by subject.
    standing rule, not a queue item: **a stage defect class fixed adds its
    two-route test to `tests-stages.js` the same day**, and a new wing's stage
    helpers with two routes get tests as they are written.
-6. **Programme A, EM and atom** (3 stages left; emFaraday, atomSM and emWave
-   done 2026-08-15) — the machinery already exists, so these are the cheapest
-   scenario editors left.
+6. **Programme A, EM and atom** (2 stages left — `atomForces`, `atomSim`; the
+   EM wing closed 2026-08-16) — the machinery already exists, so these are the
+   cheapest scenario editors left.
 7. **Programme B items 1–4** — small, inside wings that already exist, and found
    only by diffing real syllabi.
 8. **Programme A, relativity** — build `rlGeodesic` first and plan items 1–5

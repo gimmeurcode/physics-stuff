@@ -310,6 +310,54 @@ function sok(name, cond, detail){
       mn < -10 && Math.abs(mx) < Math.abs(mn) * 0.2, mn + ' / ' + mx);
 })();
 
+/* ---- emSandbox: the laws measured on an arbitrary arrangement -------------
+   The engine routes (emDivAt, emPoyntingBalance) are pinned in tests.js with
+   their orders measured; here the stage path — the adaptive audit sphere, the
+   two prose guards, and the demo arrangement's actual values.               */
+(function(){
+  var F = STAGES.emSandbox;
+  var st = { objs:[{ kind:'charge', q:1.5, p:{x:-1.4,y:0,z:0}, v:{x:0,y:0,z:0} },
+                   { kind:'wire', I:2, p:{x:1.2,y:0.4,z:0} }],
+             probeP:{ x:0.2, y:1.3, z:0 } };
+  var B = F.ballOf(st);
+  sok('emSandbox laws: the audit sphere keeps clear of the nearest source',
+      B.Rb <= 0.751 * B.near && B.Rb >= 0.3, B.Rb + ' vs near ' + B.near);
+  var dv = F && emDivAt(st.objs, B.p, B.hd, 'E');
+  sok('emSandbox laws: Laplace residual under 1e-6 of its gross on the demo arrangement',
+      Math.abs(dv.div) < 1e-6 * dv.gross, dv.div / dv.gross);
+  var bal = emPoyntingBalance(st.objs, B.p, B.Rb);
+  sok('emSandbox laws: static crossed fields circulate - net flux ~ 0, gross finite',
+      Math.abs(bal.flux) < 1e-9 * bal.gross && Math.abs(bal.dUdt) < 1e-9 * bal.gross && bal.gross > 1e-3,
+      bal.flux + ' / ' + bal.dUdt + ' / gross ' + bal.gross);
+  var onSrc = F.lawsCard({ objs: st.objs, probeP:{ x:-1.38, y:0.04, z:0 } });
+  sok('emSandbox laws: on a source the card explains the delta function instead of printing a spike',
+      /delta function/.test(onSrc), 'no guard prose');
+  var empty = F.lawsCard({ objs:[], probeP:{ x:0, y:0, z:0 } });
+  sok('emSandbox laws: an empty scene gets prose, never NaN',
+      /Nothing is placed/.test(empty) && !/NaN/.test(empty), 'bad empty card');
+})();
+
+/* Regression for the two FALSE-SCALE rows auditsides caught the day the card
+   shipped: the default dipole probed on its own symmetry plane, where E is
+   purely x and even, so every derivative TERM cancels identically and a gross
+   built from Sum|d_i F_i| was itself round-off. The gross now comes from the
+   stencil SAMPLES (what the zero cancelled out of), and an identically-zero
+   field becomes prose instead of a ratio of two round-offs. */
+(function(){
+  var F = STAGES.emSandbox;
+  var st = { objs:[{ kind:'charge', q: 1.5, p:{x:-1.6,y:0,z:0}, v:{x:0,y:0,z:0} },
+                   { kind:'charge', q:-1.5, p:{x: 1.6,y:0,z:0}, v:{x:0,y:0,z:0} }],
+             probeP:{ x:0, y:1.4, z:0 } };
+  var B = F.ballOf(st);
+  var dE = emDivAt(st.objs, B.p, B.hd, 'E');
+  sok('emSandbox laws: symmetry-plane dipole - div is round-off against a REAL gross',
+      dE.gross > 0.1 && Math.abs(dE.div) < 1e-9 * dE.gross,
+      'div ' + dE.div + ' gross ' + dE.gross);
+  var dB = emDivAt(st.objs, B.p, B.hd, 'B');
+  sok('emSandbox laws: static charges have exactly zero B - the card says so as prose',
+      dB.fmax === 0 && /vanishes/.test(F.lawsCard(st)), 'fmax ' + dB.fmax);
+})();
+
 /* ---- report ---------------------------------------------------------------- */
 (function(){
   var t = document.createElement('div');

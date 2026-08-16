@@ -1429,6 +1429,53 @@ ok('scalar mode div is the Laplacian', sf('x^2+y^2+z^2').laplacian !== null);
      r4.shapeRms / r.shapeRms > 2.5, 'ratio ' + r4.shapeRms / r.shapeRms);
 })();
 
+/* ====== the laws measured on an arbitrary arrangement ==================== */
+(function(){
+  const dip = [{ kind:'charge', q: 1.5, p:{x:-1.6,y:0,z:0} },
+               { kind:'charge', q:-1.5, p:{x: 1.6,y:0,z:0} }];
+  const pr = v3(0.3, 1.1, 0.2);
+  const dE = emDivAt(dip, pr, 0.02, 'E');
+  ok('divergence: ∇·E vanishes off the sources (the Laplace residual)',
+     Math.abs(dE.div) / dE.gross < 1e-6, dE.div / dE.gross);
+  const mixed = [{ kind:'wire', I: 2, p:{x:0.8,y:-0.5,z:0} },
+                 { kind:'magnet', m:{x:1.5,y:0.4,z:0}, p:{x:-1.2,y:0.9,z:0} }];
+  const dB = emDivAt(mixed, pr, 0.02, 'B');
+  ok('divergence: ∇·B vanishes everywhere (no monopoles, measured)',
+     Math.abs(dB.div) / dB.gross < 1e-6, dB.div / dB.gross);
+  /* a uniformly moving charge is an exact Maxwell solution, so Poynting's
+     theorem must balance to quadrature: ∮S·dA = −dU/dt on a source-free ball */
+  const mov = [{ kind:'charge', q: 1.5, p:{x:-2.4,y:0.2,z:0}, v:{x:0.5,y:0,z:0} }];
+  const bal = emPoyntingBalance(mov, v3(0.4, 1.2, 0), 0.9, { nth: 24, nph: 48 });
+  ok('Poynting: ∮S·dA = −dU/dt for a uniformly moving charge (exact solution)',
+     Math.abs(bal.flux + bal.dUdt) / Math.max(Math.abs(bal.flux), Math.abs(bal.dUdt)) < 2e-3,
+     bal.flux + ' vs ' + (-bal.dUdt));
+  /* attribute the residual: it must be the angular quadrature's O(N⁻²), so
+     doubling the node count has to cut it — J9's rule, halve h and look */
+  const balC = emPoyntingBalance(mov, v3(0.4, 1.2, 0), 0.9, { nth: 12, nph: 24 });
+  const eA = Math.abs(bal.flux + bal.dUdt), eC = Math.abs(balC.flux + balC.dUdt);
+  ok('Poynting: the residual is quadrature — doubling the nodes cuts it',
+     eC / eA > 2, 'ratio ' + eC / eA);
+  /* static charge beside a wire: energy CIRCULATES — |S| finite on the whole
+     sphere yet the net flux and dU/dt both vanish. The gross is what makes
+     the printed verdict honest (fmtAgreeGross doctrine). */
+  const circ = [{ kind:'charge', q: 1.5, p:{x:-1.4,y:0,z:0} },
+                { kind:'wire', I: 2, p:{x:1.2,y:0.4,z:0} }];
+  const bc = emPoyntingBalance(circ, v3(0.2, 1.3, 0), 0.8);
+  ok('Poynting: static crossed fields circulate — net flux ≈ 0, gross finite',
+     Math.abs(bc.flux) < 1e-6 * bc.gross && Math.abs(bc.dUdt) < 1e-6 * bc.gross && bc.gross > 1e-4,
+     bc.flux + ' / ' + bc.dUdt + ' / gross ' + bc.gross);
+  /* a moving MAGNET's pair (B rigid, E = −v×B) is first order in v — the
+     balance residual is the model's O(β²), so halving v must cut it ~4×.
+     J9's rule again: measure the order, do not assert the label. */
+  const mag = v => [{ kind:'magnet', m:{x:1.5,y:0,z:0}, p:{x:-2.2,y:0.3,z:0}, v:{x:v,y:0,z:0} }];
+  const b1 = emPoyntingBalance(mag(0.4), v3(0.3, 1.1, 0), 0.8);
+  const b2 = emPoyntingBalance(mag(0.2), v3(0.3, 1.1, 0), 0.8);
+  const r1 = Math.abs(b1.flux + b1.dUdt) / Math.max(1e-300, b1.gross);
+  const r2 = Math.abs(b2.flux + b2.dUdt) / Math.max(1e-300, b2.gross);
+  ok('Poynting: the moving-magnet residual is the model\'s O(β²) — halving v cuts it ~4×',
+     r1 / r2 > 2.6 && r1 / r2 < 6, 'ratio ' + r1 / r2);
+})();
+
 /* ====== the sandbox's dynamics really are the laws of physics ============ */
 (function(){
   /* --- relativistic push: v approaches c and never reaches it --- */

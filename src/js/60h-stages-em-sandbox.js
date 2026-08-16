@@ -41,7 +41,7 @@ STAGES.emSandbox = {
     st.sel = -1;
     st.run = false;
     st.placeZ = 0;      // J11: the height of the 3D placement plane
-    st.probeP = { x: 0, y: 1.4, z: 0 };
+    st.probeP = o.probe ? { x: o.probe.x, y: o.probe.y, z: o.probe.z || 0 } : { x: 0, y: 1.4, z: 0 };
     st.show = Object.assign({ E:true, B:true, lines:true, force:true, energy:false, poynt:false },
                             o.show || {});
     st.drag = null;
@@ -319,11 +319,35 @@ STAGES.emSandbox = {
     const bL = Math.hypot(pf.B.x, pf.B.y);
     if(bL > 1e-9) emDrawArrow(ctx, px, py, px + pf.B.x / bL * 34, py - pf.B.y / bL * 34, rgbCss(TH.neg), 2.6, 10);
 
+    /* the audit sphere the Poynting-balance card integrates over */
+    if(st.show.poynt && objs.length){
+      const B = this.ballOf(st);
+      if(B.near >= 0.16){
+        ctx.strokeStyle = rgbCss(TH.grad, 0.75); ctx.lineWidth = 1.6; ctx.setLineDash([6, 5]);
+        ctx.beginPath(); ctx.arc(px, py, B.Rb * V.sc, 0, 6.2832); ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle = rgbCss(TH.grad, 0.9); ctx.font = '10px ' + FONT_UI;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+        ctx.fillText('∮S·dA is read here', px, py + B.Rb * V.sc + 4);
+      }
+    }
+
     ctx.fillStyle = rgbCss(TH.faint); ctx.font = '11px ' + FONT_UI;
     ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
     ctx.fillText(st.tool === 'probe'
       ? 'probe tool — click empty space to move the probe, or an object to select it; drag to reposition'
       : 'click anywhere to place: ' + st.tool + '  ·  drag any object to move it', W / 2, H - 8);
+  },
+  /* The audit sphere adapts to stay source-free: 3/4 of the way to the
+     nearest object, clamped. The FD step for the divergence scales the same
+     way, because the stencil must not straddle a source either. */
+  ballOf(st){
+    const p = v3(st.probeP.x, st.probeP.y, st.probeP.z || 0);
+    let near = Infinity;
+    for(const o of st.objs)
+      near = Math.min(near, Math.hypot(o.p.x - p.x, o.p.y - p.y, (o.p.z || 0) - p.z));
+    return { p, near,
+             Rb: Math.max(0.3, Math.min(1.4, 0.75 * (near === Infinity ? 2 : near))),
+             hd: 0.02 * Math.max(0.5, Math.min(2, near === Infinity ? 2 : near)) };
   },
   readout(st){
     const objs = st.objs;
@@ -382,6 +406,7 @@ STAGES.emSandbox = {
       ${loopRows}
       <p class="help">Both integrals are computed from the drawn fields alone — nothing consults the object list — so the agreement is evidence, not bookkeeping. Units have ε₀ = μ₀ = c = 1, which is why Gauss reads simply ∮E·dA = Q.</p>
     </div>
+    ${this.lawsCard(st)}
     <div class="card tight"><div class="ttl">Scene</div>
       ${kv('objects placed', String(objs.length))}
       ${kv('total charge', fmtNum(objs.reduce((a,o)=> a + (o.kind==='charge'? o.q : 0), 0), 3))}
@@ -389,6 +414,44 @@ STAGES.emSandbox = {
       ${movers}
       <p class="help">Charges are pushed by <b>dp/dt = q(E + v×B)</b> with p = γv, so speed climbs toward c and never reaches it. Magnets are rigid rotors: <b>τ = m×B</b> integrated about the torque axis, with |m| fixed and a little damping so a compass settles. Each object sees every field but its own.</p>
       <p class="help" style="color:var(--faint)">Honest limits: the fields are the exact ones for sources in <i>uniform</i> motion, so while things accelerate this is the standard quasi-static approximation — retardation and radiation reaction are not modelled, and the field momentum is not booked. Walls reflect elastically.</p>
+    </div>`;
+  },
+  /* The two measurements MASTER-PLAN §3.1 asks of any arrangement the reader
+     builds: the Laplace residual off the sources, and Poynting's theorem on a
+     source-free sphere. Everything reads emField alone. */
+  lawsCard(st){
+    const B = this.ballOf(st);
+    if(!st.objs.length)
+      return `<div class="card tight"><div class="ttl">The laws, measured on this arrangement</div>
+        <p class="help">Nothing is placed yet — the field is zero and there is nothing to measure. Place anything and this card computes ∇·E, ∇·B and the Poynting balance on a sphere around the probe.</p></div>`;
+    if(B.near < 0.16)
+      return `<div class="card tight"><div class="ttl">The laws, measured on this arrangement</div>
+        <p class="help">The probe is sitting on a source, where the divergence is a delta function rather than a number — that spike <i>is</i> Gauss's law. Move the probe into empty space and the residuals are measured there.</p></div>`;
+    const dvE = emDivAt(st.objs, B.p, B.hd, 'E');
+    const dvB = emDivAt(st.objs, B.p, B.hd, 'B');
+    const bal = emPoyntingBalance(st.objs, B.p, B.Rb);
+    const anyMagMoving = st.objs.some(o => o.kind === 'magnet' && o.v && vlen(v3(o.v.x, o.v.y, o.v.z || 0)) > 1e-4);
+    return `<div class="card tight"><div class="ttl">The laws, measured on this arrangement</div>
+      ${kv('∇·E here — the Laplace residual', dvE.fmax < 1e-12
+        ? 'E vanishes here — nothing to differentiate'
+        : fmtGap(dvE.div, dvE.gross))}
+      ${kv('∇·B here — no monopoles', dvB.fmax < 1e-12
+        ? 'B vanishes on this arrangement — zero trivially'
+        : fmtGap(dvB.div, dvB.gross))}
+      ${kv('audit sphere radius (kept clear of sources)', fmtNum(B.Rb, 3))}
+      ${kv('∮S·dA out through it', fmtNum(bal.flux, 5))}
+      ${kv('−dU/dt of the energy inside', fmtNum(-bal.dUdt, 5))}
+      ${kv('Poynting balance', fmtAgreeGross(bal.flux, -bal.dUdt, bal.gross))}
+      ${kv('∮|S|dA — energy in circulation', fmtNum(bal.gross, 5))}
+      <p class="help">Off the sources E is a gradient field of a harmonic potential, so ∇·E = −∇²V must
+      vanish — the residual above is a fourth-order finite difference against the gross Σ|∂ᵢEᵢ| it
+      cancelled out of. The balance row is Poynting's theorem: energy leaves the sphere exactly as
+      fast as the field energy inside drops, with every object translating along its own velocity.
+      A static charge beside a wire is the case worth building: S = E×B circulates — the last row
+      stays finite — while the net flux and dU/dt both vanish, which is why "energy flows in
+      circles around static crossed fields" is physics, not an artefact.${anyMagMoving
+        ? ' <b>A moving magnet breaks the balance a little, honestly</b>: its pair (B carried rigidly, E = −v×B) is the first order in v/c of the field transformation, so the residual is the model\'s O(β²) — halve the speed and it falls fourfold, which the unit suite asserts.'
+        : ''}</p>
     </div>`;
   },
   chip(st){
