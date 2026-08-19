@@ -47,6 +47,7 @@ vector-calculus.html   (5 409 933 bytes on 2026-08-14, the deployable artifact)
 ./auditdocs.ps1    # do these documents still describe the site?     (~1 min)
 ./auditdocs.ps1 -Fix   #   ... and rewrite the stale counts, then read the diff
 ./auditcontrast.ps1 # WCAG contrast + the 12px type floor              (~1 s)
+./auditkeys.ps1    # does the canvas keyboard layer actually act?      (~20 s)
 ./map.ps1          # regenerate MAP.md after adding/renaming files
 ./runapp.ps1 -Wing integral -Demo '1.0' -Tag x    # screenshot one demo
 ./runall.ps1       # full audit: every demo, every control  (~18 min)

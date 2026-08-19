@@ -199,6 +199,10 @@ button,input,select,textarea{font:inherit;color:inherit}
    STAGE
    ============================================================ */
 .stage{grid-area:stage;position:relative;overflow:hidden;background:var(--bg)}
+/* the keyboard's virtual cursor on a stage — a focus ring the arrows move */
+.kb-cursor{position:absolute;width:22px;height:22px;margin:-11px 0 0 -11px;
+  border:2px solid var(--accent);border-radius:50%;pointer-events:none;
+  display:none;box-shadow:0 0 0 1.5px var(--bg);z-index:5}
 #cv{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
 #cv.drag{cursor:grabbing}
 

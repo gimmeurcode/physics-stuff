@@ -132,7 +132,7 @@
   </header>
 
   <div class="stage">
-    <canvas id="cv" role="img" aria-label="Interactive visualization. Click or drag to move the probe point; drag to orbit in 3D; scroll to zoom. All numeric readouts appear in the panels beside the canvas."></canvas>
+    <canvas id="cv" role="img" aria-label="Interactive visualization. Click or drag to move the probe point; drag to orbit in 3D; scroll to zoom. With the canvas focused: arrow keys move the probe or a visible cursor, Enter clicks it, plus and minus zoom, and Ctrl with the arrows orbits. All numeric readouts appear in the panels beside the canvas."></canvas>
     <div class="hud">
       <div class="readout-chip" id="chip"></div>
       <div class="perf" id="perf"></div>
@@ -145,6 +145,7 @@
       <div class="hint" id="hint">
         <div><kbd>drag</kbd> orbit &nbsp; <kbd>wheel</kbd> zoom &nbsp; <kbd>shift</kbd>+drag pan</div>
         <div><kbd>click</kbd> move the probe point</div>
+        <div><kbd>tab</kbd> to the canvas, then <kbd>←↑↓→</kbd> move · <kbd>↵</kbd> click · <kbd>+</kbd>/<kbd>−</kbd> zoom</div>
       </div>
     </div>
   </div>

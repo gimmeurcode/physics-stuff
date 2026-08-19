@@ -353,4 +353,81 @@ function installControls(cv, onChange, onPick, probeScreen){
     R.cam.dist = Math.max(1.2, Math.min(40, R.cam.dist * Math.exp(e.deltaY*0.0011)));
     onChange();
   }, {passive:false});
+
+  /* ---- keyboard: the same four verbs the pointer has ----
+     The canvas is focusable (Tab reaches it) and, focused, the arrows move the
+     probe in a field view or a visible virtual cursor on a stage; Enter/Space
+     is the click at that cursor; Ctrl+arrows orbit in 3D; +/− is the dolly.
+     Everything routes through the SAME paths the pointer uses — onPick and
+     onChange — so no stage or panel can tell the two input devices apart. */
+  cv.tabIndex = 0;
+  let kx = null, ky = null, kcur = null;
+  const kbCursorAt = (x, y) => {
+    if(!kcur){
+      kcur = document.createElement('div');
+      kcur.className = 'kb-cursor';
+      kcur.setAttribute('aria-hidden', 'true');
+      cv.parentElement.appendChild(kcur);
+    }
+    kcur.style.left = x + 'px'; kcur.style.top = y + 'px';
+    kcur.style.display = 'block';
+  };
+  const kbCursorHide = () => { if(kcur) kcur.style.display = 'none'; };
+  cv.addEventListener('blur', kbCursorHide);
+  cv.addEventListener('pointerdown', kbCursorHide);
+  const kbClick = () => {
+    if(!onPick) return;
+    const rect = cv.getBoundingClientRect();
+    const ev = { clientX: rect.left + kx, clientY: rect.top + ky };
+    if(probeScreen && probeScreen() === 'drag'){ onPick(ev, 'down'); onPick(ev, 'up'); }
+    else onPick(ev);
+  };
+  cv.addEventListener('keydown', e => {
+    const k = e.key;
+    const arrow = k === 'ArrowLeft' || k === 'ArrowRight' || k === 'ArrowUp' || k === 'ArrowDown';
+    if(k === '+' || k === '='){
+      R.cam.dist = Math.max(1.2, Math.min(40, R.cam.dist * Math.exp(-0.12)));
+      onChange(); e.preventDefault(); return;
+    }
+    if(k === '-' || k === '_'){
+      R.cam.dist = Math.max(1.2, Math.min(40, R.cam.dist * Math.exp(0.12)));
+      onChange(); e.preventDefault(); return;
+    }
+    if(e.ctrlKey && arrow && !R.mode2d){
+      const d = 0.09;
+      if(k === 'ArrowLeft')  R.cam.az += d;
+      if(k === 'ArrowRight') R.cam.az -= d;
+      if(k === 'ArrowUp')    R.cam.el = Math.min(1.52, R.cam.el + d);
+      if(k === 'ArrowDown')  R.cam.el = Math.max(-1.52, R.cam.el - d);
+      onChange(); e.preventDefault(); return;
+    }
+    const stage = typeof stageActive === 'function' && stageActive();
+    if(stage){
+      if(kx === null || ky === null){ kx = R.W / 2; ky = R.H / 2; }
+      const step = e.shiftKey ? 36 : 12;
+      if(arrow){
+        if(k === 'ArrowLeft')  kx -= step;
+        if(k === 'ArrowRight') kx += step;
+        if(k === 'ArrowUp')    ky -= step;
+        if(k === 'ArrowDown')  ky += step;
+        kx = Math.max(0, Math.min(R.W, kx)); ky = Math.max(0, Math.min(R.H, ky));
+        kbCursorAt(kx, ky); e.preventDefault(); return;
+      }
+      if(k === 'Enter' || k === ' '){
+        if(kx !== null){ kbCursorAt(kx, ky); kbClick(); e.preventDefault(); }
+        return;
+      }
+      return;
+    }
+    /* field view: the arrows move the probe itself */
+    if(typeof S === 'undefined' || !S.probe || typeof onProbeMoved !== 'function') return;
+    const dp = S.extent * (e.shiftKey ? 1/6 : 1/24);
+    if(k === 'ArrowLeft'){  S.probe.x -= dp; onProbeMoved(); e.preventDefault(); return; }
+    if(k === 'ArrowRight'){ S.probe.x += dp; onProbeMoved(); e.preventDefault(); return; }
+    if(k === 'ArrowUp'){    S.probe.y += dp; onProbeMoved(); e.preventDefault(); return; }
+    if(k === 'ArrowDown'){  S.probe.y -= dp; onProbeMoved(); e.preventDefault(); return; }
+    if((k === 'PageUp' || k === 'PageDown') && S.dim !== 2){
+      S.probe.z += (k === 'PageUp' ? dp : -dp); onProbeMoved(); e.preventDefault(); return;
+    }
+  });
 }

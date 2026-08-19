@@ -367,11 +367,11 @@ no author's function to replace; the "r(θ) region" slot went instead to
 
 ## 1.6 The verification harness
 
-**29 scripts** (`Get-ChildItem *.ps1` — **that command is the authority, not this
+**30 scripts** (`Get-ChildItem *.ps1` — **that command is the authority, not this
 number**; the table below listed 23 until 2026-08-14, when `auditmarks` and
 `auditresid` turned out to have been missing from it since they were written, and
 the "nine" the line claimed before that was wrong for far longer;
-`runstagetests` joined 2026-08-15). What matters
+`runstagetests` joined 2026-08-15, `auditkeys` 2026-08-19). What matters
 is **what each one can see that the others cannot** — every one of them exists
 because something shipped through a blind spot. `./auditdocs.ps1` now fails if a
 script exists that this table does not describe.
@@ -404,6 +404,7 @@ script exists that this table does not describe.
 | `auditprose.ps1` | ~1 s | *(an inventory)* | essays that decline to justify a result; named theorems with no statement card |
 | `auditcontrast.ps1` | ~1 s | — | WCAG contrast and the 12 px type floor |
 | `auditticks.ps1` | ~1 min | `auditticks OK` | what the axis furniture and headings **actually paint** — it wraps `fillText` on the canvas prototype over every stage's live frame. Two checks nothing else can make: **duplicate tick labels** (fmtNum's decimals clamp collapsed any axis with span ≲ 0.01 into `0.002, 0.002, 0.002 …` — the statmech density axis, found only by a screenshot on 2026-08-15; `fmtTick` derives precision from the step and both owners use it), and **headings under the readout chip** (the chip floats over the canvas top-left; `ctTitleClearChip` slides plotFrame/ctFrame titles clear, and 5 stages' fixed captions were moved). Carries **three controls in every run**: the real `ctGrid` on a small-span window must be clean, the old `fmtNum(v,3)` labelling replayed on it must be flagged, and a heading drawn at the chip's centre must be flagged — a gate never seen to fail is not known to work |
+| `auditkeys.ps1` | ~20 s | `bad=0` / `auditkeys OK` | whether the **canvas keyboard layer actually acts** — it dispatches real `KeyboardEvent`s at `#cv` and asserts the state each one promises to change changed: arrows move the probe by extent/24 (Shift ×4), Ctrl+arrows orbit, +/− dolly and undo each other, arrows on a stage raise the visible `.kb-cursor`, and Enter clicks it through the same `onPick` path the pointer uses (down+up on a drag stage). Every other gate drives controls or the pointer, so a keyboard regression is invisible to all of them and to a sighted tester with a mouse. Corrupt-checked on 2026-08-19: with `tabIndex` wiring disabled it fails |
 | `runapp.ps1` | ~20 s | — | one demo, screenshotted, for a human to look at. Uses `cprof-app`; **it used to share `cprof` with `runall` and that collision is now fixed** — every script has its own profile |
 | `map.ps1` | ~2 s | *(a count)* | regenerates `MAP.md`, the index of every module, stage and wing. Run it after adding or renaming a file, **or after adding a top-level function** — the index lists what each module defines |
 | `clean.ps1` | ~2 s | — | deletes everything the above regenerate |
@@ -2207,6 +2208,7 @@ Then, matched to what you touched:
 | any visible text | `./audittext.ps1` then `./auditscan.ps1` |
 | an essay | `./auditprose.ps1` (after `audittext`) |
 | a colour, a type size, a contrast pair | `./auditcontrast.ps1` |
+| **`installControls`, the canvas focus/keyboard path, or the `.kb-cursor`** | `./auditkeys.ps1` — the only gate that dispatches a `KeyboardEvent` at the canvas |
 | **a tick label, an axis, `fmtTick`, `ctGrid`, `pvDrawAxes` — or any heading/caption drawn on the canvas** | `./auditticks.ps1` — the only gate that reads the strings the canvas actually paints; fails on duplicate tick labels in one row or column and on a heading under the readout chip |
 | added or renamed a file | `./map.ps1`, then `./auditdocs.ps1` |
 | needing a headline count for any of the above | `./measure.ps1` — never a grep, never a figure quoted from prose |
