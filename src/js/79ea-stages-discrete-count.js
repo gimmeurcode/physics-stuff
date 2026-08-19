@@ -222,7 +222,17 @@ STAGES.dcBirth = {
        32-bit space needs 77 000 draws per trial and the stage says so instead
        of running for a minute and returning a number */
     const canSim = B.N <= 100000 && k <= 2000;
-    const S = canSim ? dcBirthdaySim(k, B.N, st.trials, 20250819) : null;
+    /* the seed is fixed, so this number cannot change between frames with the
+       same inputs — and uncached it was 20 000 trials per cur() call, which
+       frame(), the readout and the chip each make. Measured 2026-08-19: the
+       stage spent 153 ms per frame, the worst on the site by a factor of 8. */
+    const sKey = canSim ? st.bkey + '|' + k + '|' + st.trials : null;
+    let S = null;
+    if(canSim){
+      if(!st._sCache || st._sCache.key !== sKey)
+        st._sCache = { key:sKey, S:dcBirthdaySim(k, B.N, st.trials, 20250819) };
+      S = st._sCache.S;
+    }
     /* the half-way point, found by bisection on the exact product */
     let lo = 1, hi = Math.min(B.N + 1, 200000);
     while(hi - lo > 1){
@@ -266,11 +276,20 @@ STAGES.dcBirth = {
     ctPath(ctx, P, [{ x:0, y:0.5 }, { x:kmax, y:0.5 }], rgbCss(TH.faint), 1.2, [5, 4]);
     plotCurve(ctx, P, k => dcBirthday(Math.max(0, k), N.B.N).pSome, 160, rgbCss(TH.pos), 2.4);
     if(N.canSim){
-      const pts = [];
-      const step = Math.max(1, Math.round(kmax / 26));
-      for(let k = 1; k <= kmax; k += step){
-        pts.push({ x:k, y:dcBirthdaySim(k, N.B.N, Math.min(4000, st.trials), 20250819 + k).p });
+      /* every point of this sweep is seeded, so the whole dashed curve is a
+         pure function of (domain, trials, kmax) — recompute it only when one
+         of those moves, never per frame (the 2026-08-19 frame-cost sweep
+         found this loop redrawing ~26 × 4000 seeded trials every frame) */
+      const cKey = st.bkey + '|' + st.trials + '|' + kmax;
+      if(!st._curveCache || st._curveCache.key !== cKey){
+        const pts = [];
+        const step = Math.max(1, Math.round(kmax / 26));
+        for(let k = 1; k <= kmax; k += step){
+          pts.push({ x:k, y:dcBirthdaySim(k, N.B.N, Math.min(4000, st.trials), 20250819 + k).p });
+        }
+        st._curveCache = { key:cKey, pts };
       }
+      const pts = st._curveCache.pts;
       ctPath(ctx, P, pts, rgbCss(TH.warn), 1.8, [6, 4]);
       pts.forEach(p => ctDot(ctx, P, p.x, p.y, 3, rgbCss(TH.warn), rgbCss(TH.bg)));
     }

@@ -252,13 +252,33 @@ STAGES.mvCrit = {
     const f = (x, y) => F.f(x, y), E = st.ext;
     const P = ctBox(W, H, 0, 0, E);
     st.P = P;
-    const rg = ctRange(f, P, 44);
-    ctHeat(ctx, P, f, rg.lo, rg.hi, 60, 0.66);
-    for(const L of ctLevels(rg.lo, rg.hi, 20)) ctContour(ctx, P, f, L, rgbCss(TH.text, 0.3), 1, 140);
-    if(st.show.zero){
-      ctContour(ctx, P, (x, y) => F.fx(x, y), 0, rgbCss(TH.curl, 0.9), 2, 170);
-      ctContour(ctx, P, (x, y) => F.fy(x, y), 0, rgbCss(TH.pos, 0.9), 2, 170);
+    /* The heat map and its twenty-two marched contours are a pure function of
+       (expression, window, flags, theme, canvas) and cost ~400 000 function
+       evaluations — 19 ms/frame, redrawn identically every frame (the
+       2026-08-19 frame-cost sweep). Render them once into an offscreen canvas
+       and blit; the dots, frame and labels below stay live. The window coords
+       are in the key, so pan/zoom rebuilds it. */
+    const bgKey = [st.src, st.show.zero, rgbCss(TH.bg), rgbCss(TH.text),
+                   ctx.canvas.width, ctx.canvas.height,
+                   P.px, P.py, P.pw, P.ph, P.x0, P.x1, P.y0, P.y1].join('|');
+    if(!st._bg || st._bg.key !== bgKey){
+      const oc = document.createElement('canvas');
+      oc.width = ctx.canvas.width; oc.height = ctx.canvas.height;
+      const octx = oc.getContext('2d');
+      octx.setTransform(ctx.getTransform());
+      const rg = ctRange(f, P, 44);
+      ctHeat(octx, P, f, rg.lo, rg.hi, 60, 0.66);
+      for(const L of ctLevels(rg.lo, rg.hi, 20)) ctContour(octx, P, f, L, rgbCss(TH.text, 0.3), 1, 140);
+      if(st.show.zero){
+        ctContour(octx, P, (x, y) => F.fx(x, y), 0, rgbCss(TH.curl, 0.9), 2, 170);
+        ctContour(octx, P, (x, y) => F.fy(x, y), 0, rgbCss(TH.pos, 0.9), 2, 170);
+      }
+      st._bg = { key:bgKey, cv:oc };
     }
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(st._bg.cv, 0, 0);
+    ctx.restore();
     ctFrame(ctx, P, mvName(st) + '  —  critical points, found by search');
     const cols = { 'local minimum':TH.pos, 'local maximum':TH.neg, saddle:TH.warn, degenerate:TH.faint, undefined:TH.faint };
     (st.cps || []).forEach((c, i) => {
