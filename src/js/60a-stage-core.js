@@ -304,7 +304,22 @@ function plotFrame(ctx, P, xlabel, ylabel, title){
   ctx.fillStyle = rgbCss(TH.faint); ctx.font = '12px ' + FONT_UI;
   ctx.textAlign = 'center'; ctx.textBaseline = 'top';
   const B = ctBounds(ctx);
-  if(xlabel) ctx.fillText(uniSup(xlabel), P.px + P.pw / 2, Math.min(P.py + P.ph + 18, B.h - 14));
+  if(xlabel){
+    /* the legend floats over the canvas bottom-left; a bottom-left pane's
+       x-label ran under it (qmPauli's "x₁ — particle 1", 2026-08-19 sweep).
+       Same dodge stageNote makes: centre in the span clear of the box. */
+    let xcx = P.px + P.pw / 2, xy = Math.min(P.py + P.ph + 18, B.h - 14);
+    let xbase = 'top';
+    const xlz = ctLegendZone(ctx), xw = ctx.measureText(uniSup(xlabel)).width;
+    if(xlz && xy > xlz.top - 2 && xcx - xw / 2 < xlz.right + 8){
+      const lo = Math.max(P.px, xlz.right + 8), hi = P.px + P.pw;
+      if(hi - lo >= xw) xcx = lo + (hi - lo) / 2;
+      else { xy = xlz.top - 4; xbase = 'bottom'; }   /* no room beside — go above */
+    }
+    ctx.textBaseline = xbase;
+    ctx.fillText(uniSup(xlabel), xcx, xy);
+    ctx.textBaseline = 'top';
+  }
   if(title){
     ctx.textAlign = 'center'; ctx.fillStyle = rgbCss(TH.dim);
     ctx.font = '600 12.5px ' + FONT_UI;
@@ -325,8 +340,22 @@ function plotFrame(ctx, P, xlabel, ylabel, title){
     for(let yt = Math.ceil(Math.min(P.y0, P.y1) / syT) * syT; yt <= Math.max(P.y0, P.y1); yt += syT)
       if(Math.abs(yt) > 1e-9) wmax = Math.max(wmax, ctx.measureText(fmtTick(yt, syT)).width);
     ctx.restore();
-    const tx = Math.max(Math.min(P.px - 34, P.px - 12 - wmax - 6), 12);
-    ctx.save(); ctx.translate(tx, P.py + P.ph / 2); ctx.rotate(-Math.PI / 2);
+    let tx = Math.max(Math.min(P.px - 34, P.px - 12 - wmax - 6), 12);
+    /* the chip floats over the canvas top-left, and a TOP pane's rotated
+       y-label centred on the pane sat under its lower corner on eleven
+       stacked-pane stages at 1280 wide (2026-08-19 sweep). Slide the label's
+       centre down until it clears the visible chip; when the chip covers the
+       pane's whole height, step the label right of the chip into the pane
+       instead — over the grid but readable, where under the box it is not. */
+    ctx.save(); ctx.font = '11px ' + FONT_UI;
+    let ycy = P.py + P.ph / 2;
+    const ycz = ctChipZone(ctx), yw = ctx.measureText(String(ylabel)).width;
+    if(ycz.h > 0 && tx < ycz.w + 8 && ycy - yw / 2 < ycz.h + 4){
+      const down = ycz.h + 4 + yw / 2;
+      if(down <= P.py + P.ph - yw / 2) ycy = down;
+      else tx = Math.min(ycz.w + 14, P.px + P.pw - 14);
+    }
+    ctx.translate(tx, ycy); ctx.rotate(-Math.PI / 2);
     ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
     ctx.fillStyle = rgbCss(TH.faint); ctx.font = '11px ' + FONT_UI;
     ctx.fillText(ylabel, 0, 0); ctx.restore();

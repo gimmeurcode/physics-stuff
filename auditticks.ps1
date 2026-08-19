@@ -91,29 +91,45 @@ setTimeout(function(){
     return out;
   }
 
-  // J6: the readout chip floats over the canvas top-left, and a stage heading
-  // drawn under it is illegible -- the rule in src/js/CLAUDE.md ("centre it,
-  // or start below it") had no gate. Any recorded text whose anchor falls
-  // inside the visible chip's rectangle (in canvas coordinates) is a finding.
-  function underChip(rec){
-    var chip = document.getElementById('chip');
+  // J6, generalised 2026-08-19: THREE DOM boxes float over the canvas -- the
+  // chip (top-left), the legend (bottom-left) and the perf strip (top-right)
+  // -- and a stage heading or caption drawn under any of them is illegible.
+  // The chip had a gate; the other two did not, and the screenshot sweep
+  // found ten stages' captions starting under the legend and three headings
+  // under the perf strip. Any recorded text (>= 11px -- the 10px tick layer
+  // brushes these zones on a third of the site by design) whose anchor falls
+  // inside a visible box's rectangle, in canvas coordinates, is a finding.
+  function overlayBoxes(){
     var cv = document.getElementById('cv');
-    if (!chip || !cv || !chip.offsetParent || !(chip.textContent || '').trim()) return [];
-    var cr = chip.getBoundingClientRect(), vr = cv.getBoundingClientRect();
+    if (!cv) return [];
+    var vr = cv.getBoundingClientRect();
     var scale = cv.width / vr.width;   // canvas backing pixels per CSS pixel
-    var L = (cr.left - vr.left) * scale, T = (cr.top - vr.top) * scale;
-    var R = (cr.right - vr.left) * scale, B = (cr.bottom - vr.top) * scale;
-    // Headings and captions only (>= 11px): the 10px tick/annotation layer
-    // brushes the chip zone on a third of the site and always has -- the rule
-    // in src/js/CLAUDE.md governs HEADINGS ("centre it, or start below it").
+    var boxes = [];
+    ['chip', 'legend', 'perf'].forEach(function(id){
+      var el = document.getElementById(id);
+      if (!el || !el.offsetParent || !(el.textContent || '').trim()) return;
+      var cr = el.getBoundingClientRect();
+      if (cr.right < vr.left || cr.left > vr.right || cr.bottom < vr.top || cr.top > vr.bottom) return;
+      boxes.push({ id:id,
+        L:(cr.left - vr.left) * scale, T:(cr.top - vr.top) * scale,
+        R:(cr.right - vr.left) * scale, B:(cr.bottom - vr.top) * scale });
+    });
+    return boxes;
+  }
+  function underChip(rec){
+    var boxes = overlayBoxes();
+    if (!boxes.length) return [];
     var out = [], seen = {};
     for (var i = 0; i < rec.length; i++) {
       var r = rec[i];
       if (/^(9|10)(\.\d+)?px/.test(r.f.replace(/^\d+ /, ''))) continue;
-      if (r.x > L + 4 && r.x < R - 4 && r.y > T + 4 && r.y < B - 4) {
-        if (seen[r.t]) continue;
-        seen[r.t] = 1;
-        out.push('under chip: "' + r.t.slice(0, 40) + '"');
+      for (var b = 0; b < boxes.length; b++) {
+        var z = boxes[b];
+        if (r.x > z.L + 4 && r.x < z.R - 4 && r.y > z.T + 4 && r.y < z.B - 4) {
+          if (seen[z.id + r.t]) continue;
+          seen[z.id + r.t] = 1;
+          out.push('under ' + z.id + ': "' + r.t.slice(0, 40) + '"');
+        }
       }
     }
     return out;
@@ -126,11 +142,13 @@ setTimeout(function(){
     try {
       stageEnter(id);
       // steady state first: one unrecorded frame computes the stage's numbers,
-      // the chip refresh writes them, and only then are frames recorded --
-      // recording against the pre-compute chip flagged titles that self-correct
-      // within one live chip refresh.
+      // the chip AND legend refreshes write them, and only then are frames
+      // recorded -- recording against the pre-compute overlays flagged labels
+      // that self-correct within one live refresh (the axis-label dodges read
+      // the overlay boxes, so the boxes must hold their real content first).
       stageFrame(0.016);
       try { updateStageChip(); } catch (e3) {}
+      try { updateStageLegend(); } catch (e8) {}
       REC = [];
       stageFrame(0.016); stageFrame(0.016);
       var f = dupes(REC).concat(underChip(REC));
@@ -167,20 +185,22 @@ setTimeout(function(){
   var ctlBad = dupes(REC).length;
   REC = null;
 
-  // control for the chip half: a heading drawn dead centre of the visible
-  // chip must be flagged, or that check is blind too.
-  var ctlChip = 0;
+  // control for the overlay half: a heading drawn dead centre of EACH visible
+  // box (chip, legend, perf) must be flagged, or that box's check is blind.
+  var ctlChip = 0, ctlBoxes = 0;
   try {
     stageEnter(ids[0]);
     stageFrame(0.016);
     try { updateStageChip(); } catch (e4) {}
-    var chip = document.getElementById('chip'), vr = cv.getBoundingClientRect();
-    if (chip && chip.offsetParent) {
-      var cr = chip.getBoundingClientRect(), sc = cv.width / vr.width;
+    try { updateStageLegend(); } catch (e7) {}
+    var zones = overlayBoxes();
+    ctlBoxes = zones.length;
+    if (zones.length) {
       REC = [];
       ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.font = '600 12.5px x';
-      ctx.fillText('control heading', ((cr.left + cr.right) / 2 - vr.left) * sc,
-                                      ((cr.top + cr.bottom) / 2 - vr.top) * sc);
+      for (var zb = 0; zb < zones.length; zb++)
+        ctx.fillText('control heading ' + zones[zb].id,
+                     (zones[zb].L + zones[zb].R) / 2, (zones[zb].T + zones[zb].B) / 2);
       ctx.restore();
       ctlChip = underChip(REC).length;
       REC = null;
@@ -193,10 +213,11 @@ setTimeout(function(){
   t.textContent = rows.join('\n') +
     '\nCTL\treal ctGrid on a 0..0.0025 window: duplicates=' + ctlGood + ' (want 0)' +
     '\nCTL\told fmtNum(v,3) labels on the same window: duplicates=' + ctlBad + ' (must be >0 or the gate is blind)' +
-    '\nCTL\ta heading drawn at the chip centre: flagged=' + ctlChip + ' (must be >0 or the chip check is blind)' +
+    '\nCTL\ta heading drawn at the centre of each visible overlay box (' + ctlBoxes +
+    ' of chip/legend/perf): flagged=' + ctlChip + ' (must equal the box count or a box check is blind)' +
     '\n#stages=' + ids.length + ' ticklabels=' + labels + ' findings=' + findings +
     ' stagesbad=' + stagesBad + ' ctlgood=' + ctlGood + ' ctlbad=' + ctlBad +
-    ' ctlchip=' + ctlChip + ' errs=' + window.__errs.length;
+    ' ctlchip=' + ctlChip + ' ctlboxes=' + ctlBoxes + ' errs=' + window.__errs.length;
   document.body.appendChild(t);
 }, 1200);
 </script></body></html>
@@ -207,8 +228,12 @@ Set-Content -Path $out -Value ($head + $body + $probe) -Encoding utf8
 $url = 'file:///' + ($out -replace '\\','/')
 # Chrome writes to stderr for reasons that are not failures; see MASTER-PLAN 3.4.
 $ErrorActionPreference = 'Continue'
+# 1280x900, not 1680x1000: the under-legend caption class this gate now
+# checks only MANIFESTS on a canvas narrow enough that the centred caption's
+# left edge reaches the legend box -- ten stages had it at this size on
+# 2026-08-19 and none at 1680x1000. The tick checks pass at both.
 & 'C:\Program Files\Google\Chrome\Application\chrome.exe' --headless --disable-gpu --no-sandbox `
-  --window-size=1680,1000 --virtual-time-budget=600000 `
+  --window-size=1280,900 --virtual-time-budget=600000 `
   --user-data-dir="$(Join-Path $dir 'cprof-ticks')" --dump-dom $url |
   Out-File (Join-Path $dir 'dom-ticks.txt') -Encoding utf8
 $ErrorActionPreference = 'Stop'
@@ -230,11 +255,12 @@ foreach ($line in ($rep -split "`n")) {
   Write-Output ('  ' + ($line -replace "`t", '  '))
 }
 
-if ($summary -match 'findings=(\d+).*ctlgood=(\d+).*ctlbad=(\d+).*ctlchip=(\d+)') {
-  $f = [int]$Matches[1]; $cg = [int]$Matches[2]; $cb = [int]$Matches[3]; $cc = [int]$Matches[4]
-  if ($f -eq 0 -and $cg -eq 0 -and $cb -gt 0 -and $cc -gt 0) { Write-Output 'auditticks OK'; exit 0 }
+if ($summary -match 'findings=(\d+).*ctlgood=(\d+).*ctlbad=(\d+).*ctlchip=(\d+).*ctlboxes=(\d+)') {
+  $f = [int]$Matches[1]; $cg = [int]$Matches[2]; $cb = [int]$Matches[3]; $cc = [int]$Matches[4]; $cn = [int]$Matches[5]
+  if ($f -eq 0 -and $cg -eq 0 -and $cb -gt 0 -and $cn -ge 2 -and $cc -eq $cn) { Write-Output 'auditticks OK'; exit 0 }
   if ($cb -eq 0) { Write-Output 'auditticks FAILED: the duplicate-label control was not flagged - that check is blind' }
-  elseif ($cc -eq 0) { Write-Output 'auditticks FAILED: the under-chip control was not flagged - that check is blind' }
+  elseif ($cc -lt $cn) { Write-Output ('auditticks FAILED: only ' + $cc + ' of ' + $cn + ' overlay-box controls were flagged - a box check is blind') }
+  elseif ($cn -lt 2) { Write-Output 'auditticks FAILED: fewer than two overlay boxes were visible for the control' }
   else { Write-Output 'auditticks FAILED' }
   exit 1
 }

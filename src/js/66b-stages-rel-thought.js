@@ -452,7 +452,15 @@ STAGES.rlClock = {
       const py = yb + (yt - yb) * frac;
       rlSegment(ctx, cx, yb, cx, yt, rgbCss(TH.warn, 0.3), 1, [3, 4]);
       rlDot(ctx, cx, py, 4.5, rgbCss(TH.warn));
-      rlText(ctx, cx, (yt + yb) / 2, ' h', rgbCss(TH.faint), '11px ' + FONT_MONO, 'left');
+      {
+        /* the chip can cover this arm's whole band on a short canvas — step
+           the h label right of the chip's edge (2026-08-19 sweep) */
+        const hz = ctChipZone(ctx);
+        let hx = cx;
+        const hy = (yt + yb) / 2;
+        if(hz.h > 0 && hx < hz.w + 8 && hy < hz.h + 6) hx = hz.w + 10;
+        rlText(ctx, hx, hy, ' h', rgbCss(TH.faint), '11px ' + FONT_MONO, 'left');
+      }
       rlSegment(ctx, cx - 46, yt, cx - 46, yb, rgbCss(TH.faint, 0.5), 1);
       rlText(ctx, cx + 70, S1.y + S1.h / 2 - 10,
         'ticks: ' + st.ticksRest, rgbCss(TH.grad), '600 15px ' + FONT_MONO, 'left');

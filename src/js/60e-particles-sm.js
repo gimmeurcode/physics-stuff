@@ -234,9 +234,13 @@ STAGES.atomSM = {
   },
   tile(st, W, H, p){
     const [row, col] = p;
-    const cw = Math.min(168, (W - 80) / 5.4), ch = Math.min(124, (H - 120) / 4.35);
+    /* st._tileTop is set each frame: 74, or below the chip when the chip
+       would cover the first column's top row (2026-08-19 sweep — the u-quark
+       tile's label sat under the chip on a short canvas) */
+    const top = st._tileTop || 74;
+    const cw = Math.min(168, (W - 80) / 5.4), ch = Math.min(124, (H - 46 - top) / 4.35);
     const x0 = (W - cw * 5.35) / 2 + col * cw * 1.07;
-    const y0 = 74 + row * ch * 1.09;
+    const y0 = top + row * ch * 1.09;
     return { x: x0, y: y0, w: cw, h: ch };
   },
   kindCol(kind){
@@ -320,6 +324,14 @@ STAGES.atomSM = {
     }
     ctx.font = '10.5px ' + FONT_UI; ctx.fillStyle = rgbCss(TH.faint);
     ctx.fillText('generation:   1              2              3', (W - 150) / 2 - 60, 44);
+    {
+      /* drop the grid below the chip when the chip would cover the first
+         column's top tile (short canvas, 2026-08-19 sweep) */
+      const cz = ctChipZone(ctx);
+      const cw0 = Math.min(168, (W - 80) / 5.4);
+      const x00 = (W - cw0 * 5.35) / 2;
+      st._tileTop = (cz.h > 0 && x00 < cz.w + 8 && 74 < cz.h + 6) ? cz.h + 10 : 74;
+    }
     st.tiles = [];
     SM_PARTICLES.forEach((p, i) => {
       const T = this.tile(st, W, H, p);
