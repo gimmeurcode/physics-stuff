@@ -86,7 +86,10 @@ STAGES.cnRoots = {
     roots.forEach((z, k) => {
       ctPath(ctx, P, [{ x:0, y:0 }, { x:z.re, y:z.im }], rgbCss(TH.pos, 0.55), 1.4);
       ctDot(ctx, P, z.re, z.im, 5, rgbCss(TH.pos), rgbCss(TH.bg));
-      if(k === 0) ctText(ctx, P.X(z.re) + 9, P.Y(z.im) - 8, 'the principal one',
+      /* below the dot, not above-right: the check arrow's own label ("that
+         root, to the n") sits just past the head at the same point, and the
+         two printed through each other — 2026-08-19 screenshot sweep */
+      if(k === 0) ctText(ctx, P.X(z.re) + 9, P.Y(z.im) + 12, 'the principal one',
                          rgbCss(TH.pos), '600 11px ' + FONT_UI);
     });
     /* The window is sized to the ROOTS, and the number itself is usually much
@@ -96,7 +99,13 @@ STAGES.cnRoots = {
     if(st.show.checkArrow && roots.length){
       if(cxAbs(T.z) <= half){
         const back = cnPowerTwo(roots[0], st.n).repeated;
-        ctArrow(ctx, P, 0, 0, back.re, back.im, rgbCss(TH.warn), 2.2, 'that root, to the n');
+        /* label the SHAFT, not the tip: the tip is the principal root's own
+           dot, usually near the window edge, so a past-the-tip label got
+           pinned back onto the dot by ctFitText (2026-08-19 sweep) */
+        ctArrow(ctx, P, 0, 0, back.re, back.im, rgbCss(TH.warn), 2.2);
+        ctx.font = '600 11.5px ' + FONT_UI; ctx.fillStyle = rgbCss(TH.warn);
+        ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+        ctx.fillText('that root, to the n', P.X(back.re * 0.5), P.Y(back.im * 0.5) + 10);
         ctDot(ctx, P, T.z.re, T.z.im, 6, rgbCss(TH.warn), rgbCss(TH.bg));
       } else {
         ctText(ctx, 70, H - 52,

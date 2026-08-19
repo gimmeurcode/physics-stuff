@@ -667,8 +667,11 @@ STAGES.emFaraday = {
     ctx.beginPath(); ctx.ellipse(lx, (ly1 + ly2) / 2, 10, Math.abs(ly2 - ly1) / 2, 0, 0, 6.2832); ctx.stroke();
     if(Math.abs(emf) > 1e-4){
       ctx.fillStyle = rgbCss(TH.grad); ctx.font = '600 11px ' + FONT_UI;
-      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-      ctx.fillText('induced current ' + (emf > 0 ? '↺' : '↻') + '  (Lenz: it opposes the change)', lx + 22, (ly1 + ly2) / 2);
+      /* below the coil, not beside its middle — the middle is the axis the
+         magnet travels along, and the magnet printed through the label
+         (2026-08-19 screenshot sweep) */
+      ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+      ctx.fillText('induced current ' + (emf > 0 ? '↺' : '↻') + '  (Lenz: it opposes the change)', lx + 22, Math.max(ly1, ly2) + 10);
     }
     const mo = objs[0];
     const [mx, my] = toS(mo.p.x, mo.p.y);

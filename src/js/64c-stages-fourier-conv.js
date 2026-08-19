@@ -238,7 +238,10 @@ STAGES.ftConv = {
        a typed signal or a typed filter has no reason to fit somebody else's axes */
     const span = a => { let m = 1e-9; for(const v of a) if(Number.isFinite(v)) m = Math.max(m, Math.abs(v)); return m; };
     const sMax = span(d.sig), hMax = span(d.imp), yMax = Math.max(span(d.conv), span(d.viaF));
-    const rowH = (H - 120) / 2, colW = (W - 150) / 2;
+    /* H − 158, not H − 120: reserve the caption band, or the bottom row's
+       "sample n" labels and the stageNote print through each other on a short
+       canvas (2026-08-19 sweep) — same reserve dspPanes carries */
+    const rowH = (H - 158) / 2, colW = (W - 150) / 2;
     const mk = (cx, cy, cw, ch, y0, y1) => mkPlot(cx, cy, cw, ch, 0, d.N - 1, y0, y1);
     const cur = ftConvCur(st);
     const A = mk(66, 34, colW, rowH, -sMax * 1.35, sMax * 1.35);
@@ -295,8 +298,11 @@ STAGES.ftConv = {
     </div>`;
   },
   chip(st){ const d = st.last;
+    /* the TIGHT form: the prose verdict made this chip ~490 px wide, covering
+       half the canvas top and shoving both pane titles into each other
+       (2026-08-19 sweep). The full verdict is in the readout below. */
     return `<div class="k">cutoff at bin ${st.cut}</div>
-      ${d ? `<div style="color:var(--c-grad)">routes differ by ${fmtGap(d.worst, d.scale)}</div>` : ''}`; },
+      ${d ? `<div style="color:var(--c-grad)">routes differ by ${fmtGapTight(d.worst, d.scale)}</div>` : ''}`; },
   legend(){ return [['var(--c-grad)', 'the signal, and the frequency-domain result'],
                     ['var(--c-curl)', 'the filter\'s impulse response'],
                     ['var(--c-pos)', 'the time-domain convolution']]; }

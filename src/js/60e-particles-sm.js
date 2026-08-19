@@ -311,7 +311,13 @@ STAGES.atomSM = {
     if(st.scene === 'own'){ this.frameOwn(st, ctx, W, H); return; }
     ctx.fillStyle = rgbCss(TH.dim); ctx.font = '600 13px ' + FONT_UI; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
     ctx.fillText('FERMIONS - matter (spin 1/2, obey Pauli)', (W - 150) / 2 - 60, 22);
-    ctx.fillText('BOSONS - forces', W / 2 + Math.min(150, (W - 80) / 5.4) * 1.7, 22);
+    {
+      /* keep the heading clear of the fps strip floating over the top-right —
+         at 1280 wide it printed straight through it (2026-08-19 sweep) */
+      const bx = W / 2 + Math.min(150, (W - 80) / 5.4) * 1.7;
+      const pz = ctPerfZone(ctx), bw = ctx.measureText('BOSONS - forces').width;
+      ctx.fillText('BOSONS - forces', pz.h > 0 ? Math.min(bx, pz.x - 8 - bw / 2) : bx, 22);
+    }
     ctx.font = '10.5px ' + FONT_UI; ctx.fillStyle = rgbCss(TH.faint);
     ctx.fillText('generation:   1              2              3', (W - 150) / 2 - 60, 44);
     st.tiles = [];

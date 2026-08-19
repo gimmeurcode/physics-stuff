@@ -285,8 +285,12 @@ STAGES.emSandbox = {
           const L = Math.min(70, 22 + 40 * Math.min(1, m / 0.5));
           emDrawArrow(ctx, sx, sy, sx + F.x / m * L, sy - F.y / m * L, rgbCss(TH.curl), 2.4, 10);
           ctx.fillStyle = rgbCss(TH.curl); ctx.font = '600 10px ' + FONT_MONO;
-          ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-          ctx.fillText('F=' + fmtNum(m, 3), sx + F.x / m * L + 5, sy - F.y / m * L);
+          /* beside the shaft's midpoint, not past the tip — two attracting
+             charges point their arrows at each other, so a tip label printed
+             straight onto the other charge's glyph (2026-08-19 sweep) */
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          const ux = F.x / m, uy = -F.y / m;
+          ctx.fillText('F=' + fmtNum(m, 3), sx + ux * L * 0.5 - uy * 12, sy + uy * L * 0.5 + ux * 12);
         }
       }
       if(o.kind === 'loop'){

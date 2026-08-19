@@ -279,8 +279,10 @@ STAGES.agIdent = {
   },
   chip(st){
     const rows = agIdentities(st.a, st.b);
+    /* tight form on a chip — the prose verdict made the chip wide enough to
+       cover the plot title (same class as ftConv, 2026-08-19 sweep) */
     return `<div class="k">identities</div><div>${rows.length} checked</div>
-      <div style="color:var(--c-grad)">${fmtGap(Math.max(...rows.map(o => o.diff)),
+      <div style="color:var(--c-grad)">${fmtGapTight(Math.max(...rows.map(o => o.diff)),
         Math.max(1e-300, ...rows.map(o => Math.abs(o.lhs))))}</div>`;
   },
   legend(){ return [['var(--c-pos)', 'angle a'], ['var(--c-neg)', 'the further turn b'],

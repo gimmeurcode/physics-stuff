@@ -376,10 +376,14 @@ STAGES.qmSG = {
     const tot = st.counts[0] + st.counts[1] || 1;
     const exp2 = st.third ? pUp2 * pUp3 : pUp2;
     ctx.fillStyle = rgbCss(TH.text); ctx.font = '12px ' + FONT_MONO; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-    ctx.fillText('kept:    ' + st.counts[0] + '  (' + (100 * st.counts[0] / tot).toFixed(1) + '%)', 60, H - 66);
-    ctx.fillText('blocked: ' + st.counts[1], 60, H - 48);
+    /* the legend floats over the canvas bottom-left; start the counters clear
+       of it — "= 75.0%" lost its own label under it (2026-08-19 sweep) */
+    const lz = ctLegendZone(ctx);
+    const cx0 = (lz && H - 66 > lz.top - 2) ? Math.max(60, lz.right + 12) : 60;
+    ctx.fillText('kept:    ' + st.counts[0] + '  (' + (100 * st.counts[0] / tot).toFixed(1) + '%)', cx0, H - 66);
+    ctx.fillText('blocked: ' + st.counts[1], cx0, H - 48);
     ctx.fillStyle = rgbCss(TH.pos);
-    ctx.fillText('prediction: ' + (st.third ? 'cos²(θ/2)·cos²(θ/2)' : 'cos²(θ/2)') + ' = ' + (exp2 * 100).toFixed(1) + '%', 60, H - 30);
+    ctx.fillText('prediction: ' + (st.third ? 'cos²(θ/2)·cos²(θ/2)' : 'cos²(θ/2)') + ' = ' + (exp2 * 100).toFixed(1) + '%', cx0, H - 30);
   },
   readout(st){
     const thR = st.theta * Math.PI / 180, p = sgProbUp(thR);

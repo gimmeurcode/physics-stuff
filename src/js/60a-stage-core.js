@@ -270,12 +270,32 @@ function ctChipZone(ctx){
   }
   return { w: w, h: h };
 }
+/* The perf counter is the chip's mirror image: a DOM strip floating over the
+   canvas top-RIGHT, and a wide title can run under it just as one ran under
+   the chip (qmSlit's "counts vs exact I(y)" did, found by the 2026-08-19
+   screenshot sweep). Same contract as ctChipZone: left edge and bottom of the
+   covered zone, in canvas pixels, zero when absent or empty. */
+function ctPerfZone(ctx){
+  let x = Infinity, h = 0;
+  const perf = document.getElementById('perf');
+  if(perf && perf.offsetParent && (perf.textContent || '').trim()){
+    const pr = perf.getBoundingClientRect(), vr = ctx.canvas.getBoundingClientRect();
+    if(pr.width && vr.width && pr.left < vr.right && pr.bottom > vr.top){
+      const s = ctx.canvas.width / vr.width;
+      x = (pr.left - vr.left) * s; h = (pr.bottom - vr.top) * s;
+    }
+  }
+  return { x: x, h: h };
+}
 function ctTitleClearChip(ctx, cx, y, title){
   const z = ctChipZone(ctx);
-  if(!(z.h > 0) || y > z.h + 4) return cx;
   const w = ctx.measureText(title).width;
-  if(cx - w / 2 >= z.w + 8) return cx;
-  return Math.min(z.w + 8 + w / 2, ctBounds(ctx).w - w / 2 - 4);
+  if(z.h > 0 && y <= z.h + 4 && cx - w / 2 < z.w + 8)
+    cx = Math.min(z.w + 8 + w / 2, ctBounds(ctx).w - w / 2 - 4);
+  const p = ctPerfZone(ctx);
+  if(p.h > 0 && y <= p.h + 4 && cx + w / 2 > p.x - 8)
+    cx = Math.max(w / 2 + 4, p.x - 8 - w / 2);
+  return cx;
 }
 
 function plotFrame(ctx, P, xlabel, ylabel, title){
@@ -436,14 +456,43 @@ function probeLine(ctx, P, x, label){
   ctx.fillStyle = rgbCss(TH.text);
   ctx.beginPath(); ctx.arc(sx, P.py + P.ph, 4, 0, 6.2832); ctx.fill();
   if(label){
-    ctx.font = '600 10px ' + FONT_MONO; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-    ctx.fillText(label, sx, P.py - 2);
+    /* INSIDE the frame, beside the line — never above it. Above the frame is
+       the band every plotFrame title occupies, and "probe" printed through
+       three qm titles before the 2026-08-19 screenshot sweep saw it. */
+    ctx.font = '600 10px ' + FONT_MONO; ctx.textBaseline = 'top';
+    const lw = ctx.measureText(label).width;
+    const left = sx + 6 + lw > P.px + P.pw - 2;
+    ctx.textAlign = left ? 'right' : 'left';
+    ctx.fillText(label, left ? sx - 6 : sx + 6, P.py + 3);
   }
+}
+/* The legend is a DOM box floating over the canvas bottom-left, exactly as the
+   chip floats over the top-left — and the caption stageNote centres on the
+   canvas floor ran under it on ten stages across four wings (2026-08-19
+   screenshot sweep: atomBeta, atomBinding, emAmpere, emGauss, emGaussB,
+   emSandbox, qmBloch, qmCollapse, qmPacket, relBoost). Same contract as
+   ctChipZone: the covered zone in canvas pixels, null when absent, empty, or
+   docked away from the canvas. */
+function ctLegendZone(ctx){
+  const lg = document.getElementById('legend');
+  if(!(lg && lg.offsetParent && (lg.textContent || '').trim())) return null;
+  const lr = lg.getBoundingClientRect(), vr = ctx.canvas.getBoundingClientRect();
+  if(!(lr.width && vr.width) || lr.left > vr.right || lr.top > vr.bottom) return null;
+  const s = ctx.canvas.width / vr.width;
+  return { right: (lr.right - vr.left) * s, top: (lr.top - vr.top) * s };
 }
 function stageNote(ctx, txt, W, H){
   ctx.fillStyle = rgbCss(TH.faint); ctx.font = '12px ' + FONT_UI;
   ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-  ctx.fillText(uniSup(txt), W / 2, H - 8);
+  const s = uniSup(txt), tw = ctx.measureText(s).width;
+  let cx = W / 2, y = H - 8;
+  const z = ctLegendZone(ctx);
+  if(z && y > z.top - 2 && cx - tw / 2 < z.right + 8){
+    const free = W - 8 - (z.right + 8);
+    if(tw <= free) cx = z.right + 8 + free / 2;   /* centre in the clear span */
+    else y = Math.max(14, z.top - 4);             /* will not fit beside — go above */
+  }
+  ctx.fillText(s, cx, y);
 }
 /* small DOM helpers for stage control panels */
 /* A row holding a slider is allowed to wrap, because that row now carries three

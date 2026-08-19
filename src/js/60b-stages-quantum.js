@@ -88,7 +88,13 @@ STAGES.qmPacket = {
       ctx.beginPath(); ctx.moveTo(pl.X(stats.mean + s * stats.dx), my - 5); ctx.lineTo(pl.X(stats.mean + s * stats.dx), my + 5); ctx.stroke();
     }
     ctx.fillStyle = rgbCss(TH.pos); ctx.font = '600 10.5px ' + FONT_MONO; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-    ctx.fillText('⟨x⟩ ± Δx = ' + fmtNum(stats.mean, 3) + ' ± ' + fmtNum(stats.dx, 3), mx, my - 7);
+    {
+      /* a packet drifting toward the window edge took its own label off the
+         canvas — pin it back on (2026-08-19 sweep) */
+      const lbl = '⟨x⟩ ± Δx = ' + fmtNum(stats.mean, 3) + ' ± ' + fmtNum(stats.dx, 3);
+      const p = ctFitText(ctx, mx, my - 7, lbl);
+      ctx.fillText(lbl, p.x, p.y);
+    }
     probeLine(ctx, pl, st.probe, 'probe');
     stageNote(ctx, 'blue |ψ|² · green Re ψ · violet Im ψ — the short waves at the front are the fast momentum components arriving first', W, H);
   },

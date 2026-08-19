@@ -5,12 +5,19 @@
    those are two descriptions of one object.
    ============================================================================ */
 
-/* two stacked plot rectangles: time above, frequency below */
+/* two stacked plot rectangles: time above, frequency below.
+   The bottom band is RESERVED (same arithmetic as dspPanes in 64d): the old
+   shape ran the lower plot to within ten pixels of the canvas floor, so its
+   x-label and the stageNote caption printed through each other on any canvas
+   short enough — which the 2026-08-19 screenshot sweep caught on every stage
+   of this wing at 1280×900. */
 function ftPanes(W, H, split){
   const s = split === undefined ? 0.5 : split;
-  const top = { x:66, y:34, w:W - 110, h:(H - 96) * s };
-  const bot = { x:66, y:34 + top.h + 52, w:W - 110, h:(H - 96) * (1 - s) };
-  return { top, bot };
+  const TOP = 34, MID = 52, BOT = 48;
+  const avail = Math.max(80, H - TOP - MID - BOT);
+  const th = avail * s;
+  return { top:{ x:66, y:TOP, w:W - 110, h:th },
+           bot:{ x:66, y:TOP + th + MID, w:W - 110, h:avail - th } };
 }
 function ftFrame(ctx, P, xl, yl, title){ plotFrame(ctx, P, xl, yl, title); plotZeroY(ctx, P); }
 function ftLine(ctx, P, xs, ys, col, w){

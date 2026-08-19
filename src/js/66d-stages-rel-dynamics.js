@@ -327,8 +327,15 @@ STAGES.rlDopp = {
     ctx.setLineDash([4, 4]);
     ctx.beginPath(); ctx.arc(cx, cy, R * thB / Math.PI, 0, 6.2832); ctx.stroke();
     ctx.setLineDash([]);
-    rlText(ctx, cx, cy - R - 18, 'The sky ahead of you  ·  centre = dead ahead, rim = dead astern',
-           rgbCss(TH.dim), '600 11.5px ' + FONT_UI, 'center');
+    {
+      /* the chip floats over the top-left; slide the heading clear of it the
+         way plotFrame titles do — it printed through the chip at 1280 wide
+         (2026-08-19 sweep) */
+      const tt = 'The sky ahead of you  ·  centre = dead ahead, rim = dead astern';
+      ctx.font = '600 11.5px ' + FONT_UI;
+      rlText(ctx, ctTitleClearChip(ctx, cx, cy - R - 18, tt), cy - R - 18, tt,
+             rgbCss(TH.dim), '600 11.5px ' + FONT_UI, 'center');
+    }
     rlText(ctx, cx, cy + R + 18,
       'half of all the sky\'s light now arrives inside the dashed circle',
       rgbCss(TH.warn), '10.5px ' + FONT_UI, 'center');
