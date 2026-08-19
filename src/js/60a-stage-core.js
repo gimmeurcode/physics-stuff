@@ -159,7 +159,15 @@ function ctFitText(ctx, sx, sy, txt){
    direction that is ever right: a cramped window should give a small plot, never
    an inverted or off-screen one. At any size the margins were designed for, none
    of these bounds bind and the box is exactly what was asked for. */
-function mkPlot(px, py, pw, ph, x0, x1, y0, y1){
+/* The box a plot will actually get, after being kept on the canvas. Extracted
+   from mkPlot so that a caller which needs to CHOOSE its box from the room
+   available — an equal-scale pane, where the two axes must end up at the same
+   number of pixels per unit — can ask first instead of discovering the clamp
+   afterwards. csRectPane fitted its scale to the box it wanted, mkPlot then
+   trimmed the height to the canvas, and the two scales came out 1.3% apart on a
+   tall window: an equal-scale pane that is not equal is worse than one that
+   never claimed to be. One clamp, two callers, so they cannot drift. */
+function ctFitBox(px, py, pw, ph){
   if(typeof R !== 'undefined' && R && R.W > 0 && R.H > 0){
     px = Math.max(0, Math.min(px, R.W - 24));
     py = Math.max(0, Math.min(py, R.H - 24));
@@ -168,6 +176,10 @@ function mkPlot(px, py, pw, ph, x0, x1, y0, y1){
   } else {
     pw = Math.max(20, pw); ph = Math.max(20, ph);
   }
+  return { px, py, pw, ph };
+}
+function mkPlot(px, py, pw, ph, x0, x1, y0, y1){
+  { const F = ctFitBox(px, py, pw, ph); px = F.px; py = F.py; pw = F.pw; ph = F.ph; }
   /* The reader's viewport, if they have moved one on this plot. `b` keeps the
      window the STAGE asked for: every pan and zoom is stored relative to it, so
      a slider that changes the natural window carries the reader's framing with
@@ -469,17 +481,11 @@ function ctlSlider(id, min, max, step, val){
    NaN/undefined) and to the unit suite (which never sees the DOM). Formatters
    are number-driven, so treating their output as HTML is safe. */
 function ctlLabel(id, s){ const e = $(id); if(e) e.innerHTML = supify(String(s)); }
-/* What counts as a number the reader may type. Number() first — it is the common
-   case and stricter about trailing junk — then the laboratory's own expression
-   engine, so π/4, 2^10, 1/3, sqrt(2) and 3e-4 are all legal ways to say one. */
-function ctlParse(s){
-  const t = String(s).replace(/−/g, '-').replace(/[×·]/g, '*').trim();
-  if(!t) return NaN;
-  const plain = Number(t);
-  if(Number.isFinite(plain)) return plain;
-  try { const v = compile(parse(t))(0, 0, 0); return Number.isFinite(v) ? v : NaN; }
-  catch(err){ return NaN; }
-}
+/* What counts as a number the reader may type: π/4, 2^10, 1/3, sqrt(2), 3e-4.
+   The implementation is `mathNum` in 10-math.js, because engine modules parse
+   typed scenarios too and `runtests` cannot see anything down here. This name
+   stays as the panel layer's alias for its hundred call sites. */
+const ctlParse = s => mathNum(s);
 /* Why a typed value was refused. A clamp that silently moves the number teaches
    the reader nothing, so the box is marked and the reason is stated in full in
    the panel's status line — and only the control that raised it may clear it. */

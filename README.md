@@ -1,6 +1,6 @@
-﻿# Calculus, Fields & the Atom — an interactive mathematics and physics laboratory
+# Calculus, Fields & the Atom — an interactive mathematics and physics laboratory
 
-One self-contained web app, forty wings covering AP Calculus AB and BC, linear algebra, differential equations, complex analysis, AP
+One self-contained web app, forty-six wings covering AP Calculus AB and BC, linear algebra, differential equations, complex analysis, AP
 Physics 1 and 2, AP Physics C (Mechanics and E&M), and the whole of multivariable
 calculus and vector calculus beyond them. Every
 control panel sits in a resizable dock beneath the canvas; drag the border
@@ -35,7 +35,11 @@ between them (or focus it and use the arrow keys) to trade picture for panel.
   logarithmic divergence hide inside the quadrature's truncation, and Σ1/n comes
   back "convergent" (a real bug here, caught by a test asserting the naive route
   is wrong).
-- **ÿ Differential Equations** — slope fields, Euler against Heun against RK4 with
+- **ÿ Differential Equations** — first the prior question: does a solution exist,
+  and is it the only one? Picard's iteration building the solution out of nothing
+  but integration, the rectangle that decides how far the promise reaches, and
+  two different solutions through one point once the Lipschitz condition goes.
+  Then slope fields, Euler against Heun against RK4 with
   each observed order measured by halving h, separable equations, exponential and
   logistic growth; then second order: characteristic roots colliding as damping
   crosses critical, the stray *t* in the repeated-root case, the Wronskian against
@@ -105,7 +109,16 @@ between them (or focus it and use the arrow keys) to trade picture for panel.
   builder (charges, masses, wires, dipoles, antenna arrays) and Newton's-law test
   particles.
 - **ÿ Differential Equations** — every closed form is drawn on top of an RK4
-  integration of the same equation, and the largest gap is printed. The
+  integration of the same equation, and the largest gap is printed. Existence
+  and uniqueness first, because the rest of the wing assumes them: Picard's
+  iterates drawn one per pass with the measured gap printed beside the classical
+  bound M·Lⁿh^(n+1)/(n+1)!; the Lipschitz constant scanned at five separations,
+  because at one separation y′ = 3∛(y²) returns a perfectly respectable 21 and
+  only its refusal to settle gives it away; Euler's polygons converging, which is
+  Peano's proof; uncountably many solutions through one point, each substituted
+  back and its residual printed; and a solution that stops existing at π/2 from
+  an equation that never misbehaves, its escape time measured both by marching in
+  x and by integrating dx/dy = 1/F in y. Then the
   characteristic roots colliding on the real axis as damping crosses critical; the
   stray `t` in the repeated-root case; the Wronskian checked against Abel's
   formula; undetermined coefficients with the residual from substituting y_p back
@@ -117,6 +130,20 @@ between them (or focus it and use the arrow keys) to trade picture for panel.
   be quantisation.
 
 ## Classical physics — AP Physics 1, 2 & C
+
+- **± Units, Dimensions & Uncertainty** — the page missing in front of every other
+  physics wing. A dimension is a vector of seven rational exponents, computed twice:
+  once by adding exponents down the expression, once by giving the base units the
+  numbers 2, 3, 5, 7, 11, 13, 17 and reading the exponents out of a 7 × 7 system in
+  the logarithms. Homogeneity run against two equations that are wrong on purpose.
+  Buckingham's theorem as rank–nullity on the dimension matrix — the pendulum's mass
+  ruled out by counting, the Bohr radius obtained to every digit CODATA publishes
+  with no quantum mechanics at all, and Trinity's yield read off G. I. Taylor's
+  published fireball radii (slope 0.4 predicted, measured from the photographs).
+  Then significant figures as a statement about ratio, the condition number that a
+  single subtraction multiplies it by, and a first-order error bar checked against a
+  seeded Monte Carlo — with the gap reported in units of the Monte Carlo's own
+  sampling error, so a real disagreement can be told from the sample size.
 
 - **⇉ Mechanics** — three kinematic graphs that are one motion, with the
   displacement computed both from the closed form and by integrating the area under
@@ -214,6 +241,19 @@ between them (or focus it and use the arrow keys) to trade picture for panel.
   windows; the FFT timed against the definition it replaces, in the browser, with
   both results compared; the inverse transform and lossy compression; and the
   convolution theorem computed by two independent routes that agree to 10⁻¹⁶.
+- **Ш Signal Processing** — what the Fourier wing implies once the signal is a list of
+  numbers. The folding map is drawn rather than described, so a 19 Hz tone sampled at
+  32 is watched landing on 13; the reconstruction residual is measured and then
+  DIAGNOSED, because one that halves when the record doubles is a truncated sinc sum
+  and one that does not move is information that is gone. Seven windows, every number
+  of which is computed twice — the coherent gain and noise bandwidth against closed
+  forms in the cosine coefficients, and the whole leakage pattern against a sum of
+  Dirichlet kernels that never forms the window at all. Filters as two lists of
+  numbers, with |H| evaluated from the coefficients *and* measured by driving
+  e^(2πifn) through the recursion; the group delay three ways, including the one place
+  it does not exist; and stability answered by the complex wing's root finder,
+  unmodified. Then the spectrogram, where the resolution cell changes shape and keeps
+  its area — Δt·Δf = ENBW, whatever you set.
 - **ψ Quantum Mechanics** — exact closed-form solutions animated live: a dispersing
   free wave packet, Heisenberg's Δx·Δp = ħ/2 as a dual position/momentum plot, the
   particle in a box with beats, the double slit built one particle at a time with a
@@ -257,10 +297,10 @@ Published copy: https://claude.ai/code/artifact/289811c9-07a8-4419-87cc-b4b55e04
 
 ## Layout
 
-- `src/` — the source modules. There are 235 of them, one concern each, and
+- `src/` — the source modules. There are 295 of them, one concern each, and
   `build.ps1` concatenates them in ordinal filename order into a single script
   scope. **The generated `MAP.md` is the authoritative index**: it lists every
-  module with its size, what it defines, which of the 182 canvas stages it holds,
+  module with its size, what it defines, which of the 216 canvas stages it holds,
   and which file carries each wing's demos, stages and prose. Regenerate it with
   `./map.ps1` after adding or renaming anything. `AI-GUIDE.md` explains how to
   make changes; `CLAUDE.md` carries the rules that must not be broken.
@@ -287,7 +327,15 @@ Published copy: https://claude.ai/code/artifact/289811c9-07a8-4419-87cc-b4b55e04
 - `js/49-fourier.js` — Fourier engine (naive DFT and radix-2 FFT sharing one
   inverse flag, series coefficients, analytic transform pairs, the winding
   integral, windows, convolution, aliasing and spread) — pure, unit-tested.
-- `tests.js` — 4375 unit tests: parser, symbolic differentiation, the operators,
+- `js/49a-signal.js` — what a window and a sample rate DO to a signal: cosine-sum
+  windows with closed-form gain and noise bandwidth, the Dirichlet kernel and the
+  analytic leakage pattern, a sub-bin peak estimator, Whittaker–Shannon
+  reconstruction error and its order, an anti-alias guard, and the short-time
+  transform — pure, unit-tested.
+- `js/49b-signal-filter.js` — and what it takes to CHANGE one: difference-equation
+  filters with two routes to their response, FIR design by windowed sinc, group delay
+  three ways, and stability from the roots of the denominator — pure, unit-tested.
+- `tests.js` — 6682 unit tests: parser, symbolic differentiation, the operators,
   physics writers, RK4 mechanics, quantum eigen-relations, the Schrödinger equation
   checked numerically against the plotted packet, barrier unitarity/continuity,
   SEMF landmarks, field-tensor invariants, and all four Maxwell equations verified
@@ -339,7 +387,7 @@ Published copy: https://claude.ai/code/artifact/289811c9-07a8-4419-87cc-b4b55e04
   A final group pins every published
   constant (CODATA 2022, PDG 2024) so a stale value cannot creep back in.
 - `map.ps1` — regenerates `MAP.md`, the index of modules, stages and wings.
-- `auditperf.ps1` — where a frame actually goes. For all 182 stages it counts
+- `auditperf.ps1` — where a frame actually goes. For all 216 stages it counts
   rasterising calls, path operations, 3D primitives sorted and the bytes of HTML
   the panel regenerates four times a second. Nothing else measures cost, and the
   one guess made without it — that the 3D stages were the expensive ones — was
@@ -364,7 +412,7 @@ Published copy: https://claude.ai/code/artifact/289811c9-07a8-4419-87cc-b4b55e04
   came back empty and `runall.ps1` still reported `caught=0`** — it visits each
   demo once and never returns to one, so the second visit, the only thing that
   can show this, never happened.
-- `runall.ps1` — the exhaustive harness: every demo in all forty wings (field and
+- `runall.ps1` — the exhaustive harness: every demo in all forty-six wings (field and
   stage), every physics preset, a full control audit, and functional physics checks.
   The circuit wing gets its own pass: every instrument, every placement tool, the
   editor paths (place, wire, rotate, drag, delete, clear) and the field overlay.

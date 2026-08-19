@@ -132,6 +132,65 @@ setTimeout(function(){
        the key would silently never match (MASTER-PLAN 1.6, bitten twice). */
     'cxMap|readout||∂f/∂x − (−i)∂f/∂y|':
       'the conj preset is f = z-bar, THE canonical non-holomorphic function: its Wirtinger derivative is 1, so the row reads exactly 2. Cauchy-Riemann failing is what the preset exists to show; every holomorphic preset gives ~0',
+    /* Attributed 2026-08-18, Programme A relativity item 1. The other two rows
+       this stage raised on its first run were a REAL defect (the wrong pair of
+       turning points on a metric with four of them) and were fixed, not
+       whitelisted -- which is what makes this entry believable. */
+    'rlMetric|readout|worst A·B against 1':
+      'A*B = 1 is equivalent to the radial pressure equalling minus the energy density, so it holds for every vacuum and electrovacuum preset here and is FALSE by construction for "only time curved", which keeps A = 1-2/r and flattens B to 1. The row exists to measure that, and reads 2/r at the innermost sample; the reciprocal caption this stage printed for two years is what it replaced',
+    /* Attributed 2026-08-18, Programme A relativity item 4. The SAME claim as
+       the row above, on the same five metrics, raised by the lensing stage
+       because it carries the same picker -- and it is the same physics, not a
+       second excuse. It is not a two-route residual at all: it is a measurement
+       of a property, and "only time curved" is the preset built to lack it.
+       That preset is also why the row belongs here rather than only in rlMetric,
+       since A*B is exactly what the deflection's missing half turns out to be. */
+    'rlLens|readout|worst |A·B − 1| over the band':
+      'the same property as rlMetric above, on the same picker: A*B = 1 holds for every vacuum and electrovacuum preset and is false by construction for "only time curved", where it reads 2/r at the innermost sample. In this stage it is the diagnosis rather than an aside -- the metric whose A*B is not 1 is exactly the one whose light deflection is halved, and the card below measures that as gamma',
+    /* Attributed 2026-08-19, Programme A relativity item 8. `rlTensor` ships a
+       preset called "broken" whose sixteen numbers are deliberately NOT
+       antisymmetric, and both rows below are the measurement that says so. The
+       stage's own prose explains the second one at length: E·B = −F F̃/4 is an
+       identity about antisymmetric arrays, so on that array the two definitions
+       come apart, and the panel says "that disagreement is not a second fault —
+       it is the same fault seen from a second direction". Every other preset
+       reads exact. Removing the preset would remove the lesson. */
+    'rlTensor|readout|worst |F^μν + F^νμ|':
+      'the "broken" preset is a symmetric-part-carrying array by construction, and this row is the measurement of exactly that. It reads 2 there and 0 on every field tensor. The stage prints "NO — this is not a field tensor" beside it',
+    'rlTensor|readout|difference':
+      'the same preset, one identity further on: E·B from the vectors against E·B from F F̃/(−4) agree for every antisymmetric F and cannot for one that is not. The panel says so in prose rather than hiding it',
+    /* Attributed 2026-08-19, Programme C wing C2. This row is NOT a two-route
+       residual and the gate's heuristic cannot know that: it is the truncation
+       error of a partial sum, against a slider labelled "terms kept". Six terms
+       of e^(iθ) at θ = 2.2 fall 0.048 short and twenty-four at θ = π land on the
+       answer, so the row is "exact on one preset and poor on another" by
+       construction — being poor at small n is the entire subject of the stage,
+       and a version of it that agreed at every setting would have nothing to
+       teach. The readout carries the next term beside it, which is the standard
+       alternating-series bound on exactly this quantity. The stage's genuine
+       two-route rows — sixty terms against cos θ + i sin θ, and |e^(iθ)| against
+       1 — are separate and are exact everywhere. */
+    'cnEuler|readout|how far short':
+      'the truncation error of an n-term partial sum, where n is a slider from 0 to 24. It is large at small n on purpose: the stage is about watching a series converge, and the panel prints the first omitted term next to it as the error bound. The convergence rows beside it are the two-route checks and they are exact on every preset',
+    /* Attributed 2026-08-19, Programme C wing C4. Two rows, both of which the
+       gate is right to notice and neither of which is a defect.
+
+       The first is a TRUNCATION error the stage exists to display: the area of
+       a finite cell over h², against |J|. A quadrilateral through four points
+       on a curved boundary misses the curvature, so the gap is O(h) — exactly
+       zero for an affine map like the shear and 0.077 for polar at the default
+       cell size. The row beneath it reports the measured ORDER, which is the
+       claim being made; shrinking the cell with the slider drives this to zero.
+
+       The second is the counterexample the wing is built around. `fold` covers
+       its image twice, so ∬|J| = 2 while Green's theorem round the boundary
+       returns 0 — and the panel says in three places that the theorem does not
+       apply here. A version of this stage on which the two agreed everywhere
+       would have removed its own subject. */
+    'csGrid|readout|against |J|':
+      'the first-order error of a finite cell against the pointwise Jacobian. Exact for an affine map, O(h) otherwise, and the row below it reports the measured order — which is the claim. The cell-size slider drives it to zero',
+    'csArea|readout|A against B':
+      'the fold preset covers its image twice, so the change-of-variables theorem does not apply and its two sides are not equal — by exactly the covering number, which the panel measures and prints. Every one-to-one preset here agrees to round-off',
     'vcConserv|readout|difference':
       'the rot preset is a rotational field, and the difference between the two path integrals IS its non-conservativity -- curl does not vanish, no potential exists, and the demo is the counterexample the conservative presets are contrasted against',
     'igDoubleRect|readout|error at m':
@@ -145,7 +204,27 @@ setTimeout(function(){
     'mvTangent|readout|difference':
       'Delta-f against the differential at fixed dx = dy = 0.01: the gap IS the second-order remainder (f_xx + 2f_xy + f_yy)/2 . 1e-4 that the card above it measures falling as h^2 -- a first-order approximation owing its second-order debt is the lesson, and the panel now names it. The saddle preset reads exact only because dx = dy annihilates the quadratic form of x^2 - y^2',
     'agInverse|readout|difference from x':
-      'the custom default x^3 - 2x is the canonical NON-one-to-one cubic: f(1.2) = -0.672 is also hit at x = 0.359 and x = -1.559, bisection returns the leftmost branch, and |−1.559 − 1.2| = 2.76 is the measured gap. The readout prose teaches exactly this ("the inverse has sent you to the other branch"). The preset inverses cannot hide behind this entry: tests.js pins every AG_FUNCS round trip at x = 1.2'
+      'the custom default x^3 - 2x is the canonical NON-one-to-one cubic: f(1.2) = -0.672 is also hit at x = 0.359 and x = -1.559, bisection returns the leftmost branch, and |−1.559 − 1.2| = 2.76 is the measured gap. The readout prose teaches exactly this ("the inverse has sent you to the other branch"). The preset inverses cannot hide behind this entry: tests.js pins every AG_FUNCS round trip at x = 1.2',
+    /* Attributed 2026-08-19, Programme C wing C5. This is the one row in the
+       laboratory where the second route is a MEASUREMENT rather than a second
+       calculation, and the gate's heuristic cannot know that: fmtAgree is built
+       for two deterministic routes and has no notion of an error bar.
+
+       On the `small` preset twelve boxes and twelve rolls give a probability of
+       1, every trial clashes, the simulation is deterministic, and the row reads
+       exact. On `days` the probability is 0.5073 and a 40 000-trial simulation
+       carries a genuine standard error of 0.0035; the observed gap is 0.00315,
+       which is 0.89 of it. A Monte Carlo cannot agree more closely than its own
+       sampling error, and a gate demanding that it should is demanding the wrong
+       thing of the wrong kind of number.
+
+       The row this entry excuses is therefore not the check -- the check is the
+       row beneath it, which divides the gap BY the standard error and is pinned
+       at four sigma in tests-stages.js and in auditclaims.ps1 over every preset.
+       Raise the trial slider and this gap falls as 1/sqrt(N) while a real
+       disagreement would not move, which is the wing's own diagnostic. */
+    'dcBirth|readout|the two, compared':
+      'an exact product against a seeded 40 000-trial simulation. The gap of 0.00315 on the default is 0.89 of the simulation’s OWN standard error of 0.0035, and the `small` preset reads exact only because its probability is 1 and every trial clashes. The honest comparison is the row beneath it -- the gap in units of that standard error -- which tests-stages.js and auditclaims.ps1 both pin at four sigma across every preset'
   };
 
   /* ---- collection --------------------------------------------------------- */

@@ -17,26 +17,63 @@
 /* A first-order equation y′ = F(x, y) assigns a slope to every point of the
    plane. The solution curves are the ones that follow those slopes, and the
    slope field is that assignment drawn — which is why you can sketch a solution
-   without solving anything. */
+   without solving anything.
+
+   Each entry carries the initial point (x0, y0) and the rectangle
+   R = {|x−x0| ≤ a, |y−y0| ≤ b} that the existence theorem is applied on, plus
+   ONE declared property: `lip` — is F Lipschitz in y on that rectangle? It is
+   the hypothesis Picard–Lindelöf turns on, and it is not decoration: odLipScan
+   recomputes it by scanning difference quotients at five neighbourhood sizes,
+   and ./auditclaims.ps1 fails the build on a disagreement. `exact` is A
+   solution through (x0, y0); where `lip` is false it is not the only one, and
+   `family` gives the others. */
 const OD_FIELDS = {
   simple:  { name:"y′ = x", F:(x, y) => x, exact:(x, x0, y0) => y0 + (x * x - x0 * x0) / 2,
-    note:'The slope depends on x alone, so every solution is a vertical translate of every other — the family of parabolas y = x²/2 + C. Whenever y is absent from the right-hand side the equation is really just an integral.' },
+    x0:0, y0:1, a:1, b:1, lip:true,
+    note:'The slope depends on x alone, so every solution is a vertical translate of every other — the family of parabolas y = x²/2 + C. Whenever y is absent from the right-hand side the equation is really just an integral — and Picard\'s iteration finishes in a single step, because the integrand never depended on the iterate.' },
   linear:  { name:"y′ = y", F:(x, y) => y, exact:(x, x0, y0) => y0 * Math.exp(x - x0),
-    note:'The rate of change is proportional to the amount present, which is the definition of exponential growth. Solutions never cross the x-axis: y = 0 is itself a solution, and uniqueness forbids any other curve from touching it.' },
+    x0:0, y0:1, a:1, b:1, lip:true,
+    note:'The rate of change is proportional to the amount present, which is the definition of exponential growth. Solutions never cross the x-axis: y = 0 is itself a solution, and uniqueness forbids any other curve from touching it. Picard\'s iterates here are the partial sums of e^x, arriving one term per iteration.' },
   decay:   { name:"y′ = −0.5 y", F:(x, y) => -0.5 * y, exact:(x, x0, y0) => y0 * Math.exp(-0.5 * (x - x0)),
+    x0:0, y0:2, a:1.5, b:1.5, lip:true,
     note:'Radioactive decay, cooling, capacitor discharge, drug clearance — all the same equation. The half-life ln2/k is independent of how much you started with, which is the fingerprint of exponential decay.' },
   sep:     { name:"y′ = x·y", F:(x, y) => x * y, exact:(x, x0, y0) => y0 * Math.exp((x * x - x0 * x0) / 2),
+    x0:0, y0:1, a:1, b:1, lip:true,
     note:'Separable: gather the y\'s on one side and the x\'s on the other, then integrate both. The solution is a Gaussian in disguise, and it is the reason ∫x e^(x²/2) dx keeps appearing.' },
   logistic:{ name:"y′ = 0.8 y (1 − y/6)", F:(x, y) => 0.8 * y * (1 - y / 6), K:6, r:0.8,
     exact:(x, x0, y0) => { const A = (6 - y0) / y0; return 6 / (1 + A * Math.exp(-0.8 * (x - x0))); },
+    x0:0, y0:1, a:2, b:2, lip:true,
     note:'Growth that runs out of room. Near zero it is exponential; near the carrying capacity K the bracket closes and growth stops. The inflection is at exactly <b>K/2</b>, where the population grows fastest — which is the whole basis of maximum sustainable yield.' },
   newton:  { name:"y′ = −0.4(y − 20)   (cooling)", F:(x, y) => -0.4 * (y - 20),
     exact:(x, x0, y0) => 20 + (y0 - 20) * Math.exp(-0.4 * (x - x0)),
+    x0:0, y0:80, a:2, b:30, lip:true,
     note:"Newton's law of cooling: the rate is proportional to the <i>excess</i> temperature over the surroundings. The equilibrium at y = 20 is stable — start above it or below it and you approach it, which is what a negative coefficient on the deviation means." },
   nonlin:  { name:"y′ = x + y", F:(x, y) => x + y, exact:(x, x0, y0) => (y0 + x0 + 1) * Math.exp(x - x0) - x - 1,
+    x0:0, y0:1, a:1, b:1, lip:true,
     note:'Linear but not separable — it needs an integrating factor, e^(−x). The solution has an exponential racing away from a straight line, and for one special initial condition the exponential coefficient is zero and the solution <i>is</i> the line y = −x − 1.' },
   circle:  { name:"y′ = −x/y", F:(x, y) => -x / y, exact:(x, x0, y0) => Math.sqrt(Math.max(0, x0 * x0 + y0 * y0 - x * x)),
-    note:'Separating gives y dy = −x dx and hence x² + y² = C: the solution curves are circles. Notice the equation says nothing at y = 0, and that is exactly where the circles have vertical tangents — the failure of the formula is geometry, not algebra.' }
+    x0:0, y0:2, a:1, b:1, lip:true,
+    note:'Separating gives y dy = −x dx and hence x² + y² = C: the solution curves are circles. Notice the equation says nothing at y = 0, and that is exactly where the circles have vertical tangents — the failure of the formula is geometry, not algebra. The rectangle here keeps well clear of that line, which is why F <i>is</i> Lipschitz on it.' },
+  /* The two counterexamples. They are entries of this table rather than a
+     second one because every measurement the wing makes — the slope field, the
+     Lipschitz scan, Picard's iterates, the polygons — applies to them
+     unchanged, and that is the point: nothing special is done to make them
+     fail. */
+  cuberoot:{ name:"y′ = 3∛(y²)", F:(x, y) => 3 * Math.cbrt(y * y),
+    /* ONE solution through (x0, y0), not the only one — `lip` is false and
+       `family` supplies the rest. cbrt is odd, so this is valid for either
+       sign: y = (x − x0 + ∛y0)³ gives y′ = 3(x − x0 + ∛y0)² = 3∛(y²). */
+    exact:(x, x0, y0) => Math.pow(x - x0 + Math.cbrt(y0), 3),
+    /* the whole family through the ORIGIN: leave the axis at −c on the left and
+       at +c on the right, for any c ≥ 0. c = 0 is the cubic, c ≥ a is y ≡ 0,
+       and every value between is a different solution of the same problem. */
+    family:c => x => (x < -c ? Math.pow(x + c, 3) : (x > c ? Math.pow(x - c, 3) : 0)),
+    x0:0, y0:0, a:1.5, b:1.5, lip:false,
+    note:'The standard counterexample to uniqueness, and it is not contrived — it is what a puddle draining through a hole does, and time-reversed it says the puddle could have started emptying at any moment in the past. F is continuous everywhere, so a solution exists (Peano); but ∂F/∂y = 2/∛y is unbounded at y = 0, so nothing forbids a second one, and there are uncountably many.' },
+  blowup:  { name:"y′ = 1 + y²", F:(x, y) => 1 + y * y,
+    exact:(x, x0, y0) => Math.tan(x - x0 + Math.atan(y0)),
+    x0:0, y0:0, a:1.6, b:3, lip:true, esc:Math.PI / 2,
+    note:'A polynomial in x and y, smooth on the whole plane, infinitely differentiable, Lipschitz on every bounded rectangle — and its solution through the origin is tan x, which ceases to exist at x = π/2. Existence is <i>local</i>, and this is why: nothing global was ever promised, because the theorem\'s interval min(a, b/M) shrinks exactly as fast as the field grows.' }
 };
 /* Euler's method: step along the tangent line and repeat. The whole of
    numerical analysis is the observation that this is not good enough. */

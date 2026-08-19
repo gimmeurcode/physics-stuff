@@ -403,6 +403,48 @@ function numericPartial(f, axis){
   return (x,y,z)=>(f(x,y,z+h)-f(x,y,z-h))*i2h;
 }
 
+/* ---- a number the reader typed, or an expression for one ----
+   Number() first — it is the common case and stricter about trailing junk —
+   then the laboratory's own expression engine, so pi/4, 2^10, 1/3, sqrt(2) and
+   3e-4 are all legal ways to say one number. NaN means "that is not a number",
+   and every caller must treat it as a refusal rather than as a value.
+
+   It lives here, in the engine, rather than in the panel layer where it began
+   as ctlParse: a scenario the reader supplies as TEXT — a chain of boosts, a
+   stack of layers, a netlist — is parsed by an engine module, and runtests only
+   extracts modules above the state banner, so an engine calling ctlParse would
+   work in the app and be undefined under test. One implementation, two callers;
+   ctlParse (60a) is now a one-line alias kept for its hundred call sites. */
+function mathNum(s){
+  const t = String(s).replace(/−/g, '-').replace(/[×·]/g, '*').trim();
+  if(!t) return NaN;
+  const plain = Number(t);
+  if(Number.isFinite(plain)) return plain;
+  try {
+    const g = compile(parse(t));
+    const v = g(0, 0, 0);
+    if(!Number.isFinite(v)) return NaN;
+    /* AND IT MUST BE A CONSTANT. The engine's own variables parse perfectly
+       well, so `x`, `y`, `r` and `rho` all evaluated at the origin and came
+       back as a confident 0 — a numeric box that silently reads a variable
+       name as zero is the same defect as one that reads its own display
+       formatting back as NaN, and it reached every `ctlParse` site. Evaluating
+       at a second, unrelated point costs one call and settles it. (Two probes
+       cannot rule out an expression that happens to agree at both and vary
+       elsewhere; nothing short of symbolic differentiation can, and a
+       contrived `x*(x-1.234567)` is not the failure this exists to stop.) */
+    const w = g(1.234567, -2.345678, 3.456789);
+    if(v !== w) return NaN;
+    /* `t` is the fourth variable and it is bound to the animation CLOCK rather
+       than to an argument, so no choice of x, y, z separates it — it would
+       come back as whatever second the reader happened to type in. It is the
+       one variable that has to be refused by name. */
+    if(/(?<![A-Za-z])t(?![A-Za-z])/.test(t)) return NaN;
+    return v;
+  }
+  catch(err){ return NaN; }
+}
+
 /* ---- number formatting ----
    Output goes to both HTML panels and canvas fillText, so the exponent is real
    Unicode superscript rather than markup or an ASCII caret: 2.5×10⁻⁶, never
@@ -617,7 +659,14 @@ function supify(s){
   /* what may appear in an unbracketed exponent or index — digits, letters, a
      decimal point, the signs, and the Greek and maths letters these equations
      actually use (μν on the field tensor, ∞ on an integral limit) */
-  const EXP = /[0-9A-Za-z.\/′∞αβγδεζηθικλμνξπρστυφχψωΓΔΘΛΞΠΣΦΨΩ]/;
+  /* …and the vulgar fractions, added 2026-08-18. `A^⅔` in the SEMF prose left
+     its caret on screen in five places because ⅔ was not in this class, and
+     `auditscan` reported it as a HIGH notation leak — the exponent is converted
+     only when EVERY character of it qualifies, so one unlisted character
+     silently disables the whole conversion rather than half of it. The five
+     sites now read `A^(2/3)`, which typesets better; this line is so that the
+     next author who writes the fraction directly does not reintroduce it. */
+  const EXP = /[0-9A-Za-z.\/′∞½⅓⅔¼¾⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞αβγδεζηθικλμνξπρστυφχψωΓΔΘΛΞΠΣΦΨΩ]/;
 
   let out = '', i = 0;
   while(i < n){

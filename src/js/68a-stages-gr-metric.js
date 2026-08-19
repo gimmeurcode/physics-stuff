@@ -22,508 +22,556 @@ const GR_BODIES = {
   sgra:   { nm:'Sgr A*',               GM: GM_SUN * 4.297e6,     R: 0,        unit:'Gm', u:1e9 }
 };
 
-/* ---- 16 · the Schwarzschild metric -----------------------------------------
-   One line of algebra, found by Schwarzschild in a trench on the Russian front
+/* A 1–2–5 step covering a span in five or so intervals. The metric stages'
+   r axis is set by whichever metric is loaded — 24 units for Schwarzschild and
+   120 when there is a cosmological horizon to fit in — so a fixed tick list is
+   either crowded or empty, and a step chosen by dividing the span gives ticks
+   like 4.7333. The step is also what fmtTick needs to know how many decimals to
+   print, which is the rule auditticks enforces. */
+function rlTickStep(span, want){
+  const raw = Math.abs(span) / Math.max(1, want || 5);
+  if(!(raw > 0)) return 1;
+  const p = Math.pow(10, Math.floor(Math.log10(raw))), m = raw / p;
+  return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p;
+}
+
+/* ---- 16 · the metric, and what can be located in one ------------------------
+   Schwarzschild's line of algebra, found in a trench on the Russian front
    within weeks of Einstein publishing the field equations, and containing every
-   classical test plus the black hole nobody wanted. */
+   classical test plus the black hole nobody wanted.
+
+   Programme A item 1. Until 2026-08-18 this stage knew in advance that it was
+   looking at Schwarzschild and wrote down what followed: the horizon at 2GM/c²,
+   the photon sphere at 1.5 rs, the ISCO at 3 rs, the caption "the two factors —
+   and they are reciprocals". Those are the four things the presets were allowed
+   to assume, so by §2.9 they are the four the reader's own metric has to test.
+   Every one of them is now located from whatever A and B are in the boxes, and
+   the geodesic is integrated from the Christoffel symbols of those boxes with
+   E and L never imposed — so their drift is a measurement of the integration
+   rather than a restatement of the conservation law. */
 STAGES.rlMetric = {
   title: 'The metric',
-  derive(st){
-    return {
-      title:'Gravity as the shape of spacetime, written in one line',
-      steps:[
-        drvSay('what a metric is for',
-          'A metric is a rule for measuring intervals between nearby events. Flat spacetime has the Minkowski one. Curved spacetime has a different rule at each point, and general relativity says gravity *is* that difference — there is no force in the theory at all.'),
-        drvStep('the Schwarzschild metric outside a spherical mass',
-          `d${dv('s')}² ${dop('=')} ${dop('−')}(1 ${dop('−')} ${dfrac(dv('r') + 's', dv('r'))})${dv('c')}²d${dv('t')}² ${dop('+')} ${dfrac('d' + dv('r') + '²', '1 − ' + dv('r') + 's/' + dv('r'))} ${dop('+')} ${dv('r')}²dΩ²`,
-          `for the ${st.body}, the panel prints the Schwarzschild radius and the factors at the probe`),
-        drvStep('the Schwarzschild radius',
-          `${dv('r')}ₛ ${dop('=')} ${dfrac('2' + dv('GM'), dv('c') + '²')}`,
-          'about 3 km for the Sun and 9 mm for the Earth — far inside both, so the interior metric differs'),
-        drvSay('read the time coefficient first',
-          'The factor multiplying dt² shrinks as r falls. A clock at fixed r ticks at √(1 − rs/r) times the rate of one far away. Gravitational time dilation is not an add-on — it is the first term of the metric.'),
-        drvStep('so clocks run slow near mass',
-          `${dfrac('dτ', 'd' + dv('t'))} ${dop('=')} √(1 ${dop('−')} ${dv('r')}ₛ/${dv('r')})`,
-          `at the probe radius the panel prints the ratio — and for GPS satellites it is 45 µs per day`),
-        drvStep('and the radial coefficient stretches distances',
-          `d${dv('ℓ')} ${dop('=')} ${dfrac('d' + dv('r'), '√(1 − ' + dv('r') + 'ₛ/' + dv('r') + ')')}`,
-          'so the measured distance between two shells exceeds the difference of their circumferential radii'),
-        drvSay('which is why r is not "the distance to the centre"',
-          'r is defined so that the circumference is 2πr. In curved space that is not the same as the radial distance you would measure with rulers, which is larger. Getting this wrong is the commonest error in reading the metric.'),
-        drvStep('and free fall follows the straightest available path',
-          `${dfrac('d²' + dv('x') + '^μ', 'dτ²')} ${dop('+')} Γ^μ_αβ${dfrac('d' + dv('x') + '^α', 'dτ')}${dfrac('d' + dv('x') + '^β', 'dτ')} ${dop('=')} 0`,
-          'the geodesic equation — no force term anywhere in it'),
-        drvSay('and the Newtonian limit is recoverable, as it must be',
-          'Expand the time coefficient for weak fields and the geodesic equation reduces to Newton\'s law with the potential −GM/r. Einstein\'s theory contains Newton\'s as the leading term, which is why centuries of successful predictions were not overturned.')
-      ],
-      note:'Every factor is evaluated at the probe radius for a real body, so the numbers are the actual dilations and stretches rather than illustrative ones. At the Earth\'s surface the time factor differs from 1 by about 7 × 10⁻¹⁰.'
-    };
-  },
   dockLegend: true,
+
+  /* the accessor: a typed metric is shaped exactly like an RL_METRICS row, so
+     everything downstream reads cur(st) and never asks which it has */
+  curOf(st){
+    if(st.key === 'custom')
+      return { nm:'your own metric', sub:'two functions of r',
+        A:st.srcA, B:st.srcB, exA:pkPretty(st.srcA), exB:pkPretty(st.srcB),
+        rh:null, ph:null, isco:null, vac:null, rMax:120, rPlot:24, own:true,
+        note:'Your own metric. Nothing about it is assumed: the horizons are the sign changes of A, the photon sphere is where A′r = 2A, the ISCO is the innermost minimum of the circular-orbit L², and the orbit below is integrated from the Christoffel symbols these two functions give.' };
+    return RL_METRICS[st.key] || RL_METRICS.schwarzschild;
+  },
+
   enter(st, o){
+    st.key  = o.key || 'schwarzschild';
+    st.srcA = o.srcA || '1 - 2/r + 0.3/r^2';
+    st.srcB = o.srcB || '1/(1 - 2/r + 0.3/r^2)';
     st.body = o.body || 'sun';
-    st.rr = o.rr === undefined ? 3 : o.rr;     // probe radius, in units of rs (log-ish)
+    st.rr   = o.rr === undefined ? 6 : o.rr;     // probe radius, in GM/c²
+    st.p1   = o.p1 === undefined ? 20 : o.p1;    // pericentre of the test orbit
+    st.p2   = o.p2 === undefined ? 40 : o.p2;    // apocentre
+    st.err  = '';
+    this.recompute(st);
   },
-  controls(){
-    const st = ST;
-    return rlSeg('rlMeB', st.body, Object.keys(GR_BODIES).map(k => [k, GR_BODIES[k].nm])) +
-      ctlRow('probe r / rs', ctlSlider('rlMeR', 1.001, 60, 0.001, st.rr)) +
-      `<p class="help">The whole of the Schwarzschild solution is
-      <b>ds² = −(1−rs/r)c²dt² + dr²/(1−rs/r) + r²dΩ²</b>, with <b>rs = 2GM/c²</b>. Two factors do all the
-      work and they are reciprocals: <b>time</b> runs slow by <b>√(1−rs/r)</b>, and <b>radial distance</b>
-      is stretched by the same factor. The surface on the left is <b>Flamm's paraboloid</b> — a genuine
-      embedding of the equatorial plane, so that distances measured across the drawn surface are the real
-      ones. It is the honest version of the rubber-sheet picture, and note what it does <i>not</i>
-      contain: any time. Almost all of everyday gravity is the time part of the metric, not the space
-      part, which is why the rubber sheet explains nothing on its own.</p>`;
-  },
-  wire(){
-    rlWireSeg('rlMeB', v => { ST.body = v; });
-    wireSlider('rlMeR', () => ST.rr, v => { ST.rr = v; }, v => fmtNum(+v, 4) + ' rs');
-  },
-  frame(st, dt, ctx, W, H){
-    const B = GR_BODIES[st.body], rs = grRs(B.GM);
-    const rMax = 30;
 
-    /* --- Flamm's paraboloid, in oblique projection --- */
-    const cx = W * 0.25, cy = H * 0.44, sc = Math.min(W * 0.17, H * 0.22) / 5;
-    const zs = 0.42;   // vertical scale of the funnel, purely for legibility
-    const proj = (r, th) => ({
-      x: cx + r * Math.cos(th) * sc,
-      y: cy - r * Math.sin(th) * sc * 0.42 + grFlammZ(r * rs, rs) / rs * sc * zs
-    });
-    rlText(ctx, cx, 34, "Flamm's paraboloid — the equatorial plane, embedded",
-           rgbCss(TH.dim), '600 11.5px ' + FONT_UI, 'center');
-    /* rings of constant r */
-    for(let i = 1; i <= 14; i++){
-      const r = 1 + (rMax - 1) * Math.pow(i / 14, 1.7);
-      ctx.strokeStyle = rgbCss(TH.curl, 0.20 + 0.4 * (1 - i / 14)); ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      for(let k = 0; k <= 90; k++){
-        const p = proj(r, k / 90 * 2 * Math.PI);
-        k ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y);
-      }
-      ctx.closePath(); ctx.stroke();
-    }
-    /* radial ribs */
-    for(let k = 0; k < 16; k++){
-      const th = k / 16 * 2 * Math.PI;
-      ctx.strokeStyle = rgbCss(TH.curl, 0.18); ctx.lineWidth = 1;
-      ctx.beginPath();
-      for(let i = 0; i <= 60; i++){
-        const r = 1 + (rMax - 1) * Math.pow(i / 60, 1.7);
-        const p = proj(r, th);
-        i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y);
-      }
-      ctx.stroke();
-    }
-    /* the horizon (or the body's surface, if it has one) */
-    ctx.strokeStyle = rgbCss(TH.warn); ctx.lineWidth = 2.2;
-    ctx.beginPath();
-    for(let k = 0; k <= 90; k++){
-      const p = proj(1, k / 90 * 2 * Math.PI);
-      k ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y);
-    }
-    ctx.closePath(); ctx.stroke();
-    rlText(ctx, cx, cy + 6, B.R > 0 ? '' : 'horizon', rgbCss(TH.warn), '10px ' + FONT_MONO, 'center');
-    if(B.R > rs){
-      const rSurf = B.R / rs;
-      if(rSurf < rMax){
-        ctx.strokeStyle = rgbCss(TH.grad); ctx.lineWidth = 2.2;
-        ctx.beginPath();
-        for(let k = 0; k <= 90; k++){
-          const p = proj(rSurf, k / 90 * 2 * Math.PI);
-          k ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y);
-        }
-        ctx.closePath(); ctx.stroke();
-        rlText(ctx, cx, proj(rSurf, Math.PI / 2).y - 10, 'the surface',
-               rgbCss(TH.grad), '10px ' + FONT_MONO, 'center');
-      } else {
-        rlText(ctx, cx, cy + 60,
-          'the surface is at ' + fmtNum(rSurf, 4) + ' rs — far off this picture',
-          rgbCss(TH.grad), '10px ' + FONT_MONO, 'center');
-      }
-    }
-    /* the probe ring */
-    if(st.rr < rMax){
-      ctx.strokeStyle = rgbCss(TH.pos); ctx.lineWidth = 2;
-      ctx.setLineDash([5, 4]);
-      ctx.beginPath();
-      for(let k = 0; k <= 90; k++){
-        const p = proj(st.rr, k / 90 * 2 * Math.PI);
-        k ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y);
-      }
-      ctx.closePath(); ctx.stroke();
-      ctx.setLineDash([]);
-    }
-    for(const [rr, col, nm] of [[1.5, TH.neg, 'photon sphere'], [3, TH.accent, 'ISCO']]){
-      if(B.R > rr * rs) continue;         // buried inside an ordinary body
-      ctx.strokeStyle = rgbCss(col, 0.7); ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      for(let k = 0; k <= 90; k++){
-        const p = proj(rr, k / 90 * 2 * Math.PI);
-        k ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y);
-      }
-      ctx.closePath(); ctx.stroke();
-      rlText(ctx, cx + rr * sc + 6, proj(rr, 0).y, nm, rgbCss(col), '9.5px ' + FONT_MONO);
-    }
-
-    /* --- the two metric factors, plotted --- */
-    const P = mkPlot(W * 0.52, 52, W * 0.42, H - 128, 1, 20, 0, 2.6);
-    plotFrame(ctx, P, 'r / rs', '', 'The two factors in the metric — and they are reciprocals');
-    plotTicksX(ctx, P, [1, 5, 10, 15, 20], v => String(v));
-    rlYTicks(ctx, P, [0, 0.5, 1, 1.5, 2, 2.5]);
-    const N = 400, rsv = new Float64Array(N), tt = new Float64Array(N), sp = new Float64Array(N);
-    for(let i = 0; i < N; i++){
-      const r = 1 + 19 * (i + 0.5) / N;
-      rsv[i] = r; tt[i] = Math.sqrt(1 - 1 / r); sp[i] = 1 / Math.sqrt(1 - 1 / r);
-    }
-    rlLine(ctx, P, rsv, tt, rgbCss(TH.neg), 2.4);
-    rlLine(ctx, P, rsv, sp, rgbCss(TH.curl), 2.4);
-    rlSegment(ctx, P.px, P.Y(1), P.px + P.pw, P.Y(1), rgbCss(TH.faint, 0.5), 1, [4, 4]);
-    rlText(ctx, P.px + P.pw - 6, P.Y(1) - 9, 'flat space', rgbCss(TH.faint), '10px ' + FONT_UI, 'right');
-    if(st.rr <= 20){
-      rlSegment(ctx, P.X(st.rr), P.py, P.X(st.rr), P.py + P.ph, rgbCss(TH.pos, 0.7), 1.3, [4, 4]);
-      rlDot(ctx, P.X(st.rr), P.Y(Math.sqrt(1 - 1 / st.rr)), 5, rgbCss(TH.pos));
-    }
-    rlSegment(ctx, P.X(1.5), P.py, P.X(1.5), P.py + P.ph, rgbCss(TH.neg, 0.35), 1);
-    rlSegment(ctx, P.X(3), P.py, P.X(3), P.py + P.ph, rgbCss(TH.accent, 0.35), 1);
-    stageNote(ctx, 'ds² = −(1−rs/r)c²dt² + dr²/(1−rs/r) + r²dΩ²', W, H);
-  },
-  readout(st){
-    const B = GR_BODIES[st.body], rs = grRs(B.GM);
-    const r = st.rr * rs;
-    const rate = grTimeDilation(r, rs);
-    const surfRate = B.R > rs ? grTimeDilation(B.R, rs) : 0;
-    const gps = grGPSRates();
-    const esc = Math.sqrt(2 * B.GM / r) / C_SI;
-    return `<div class="card tight"><div class="ttl">${B.nm}</div>
-      ${kv('GM', fmtNum(B.GM, 5) + ' m³/s²')}
-      ${kv('Schwarzschild radius 2GM/c²', rs > 1000 ? fmtNum(rs / 1000, 5) + ' km' : fmtNum(rs, 5) + ' m')}
-      ${B.R > 0 ? kv('actual radius', fmtNum(B.R / B.u, 5) + ' ' + B.unit) : kv('actual radius', 'none — it is a horizon')}
-      ${B.R > 0 ? kv('R / rs', fmtNum(B.R / rs, 5)) : ''}
-      ${kv('photon sphere 1.5 rs', fmtNum(grPhotonSphere(rs) / B.u, 5) + ' ' + B.unit)}
-      ${kv('ISCO 3 rs', fmtNum(grISCO(rs) / B.u, 5) + ' ' + B.unit)}
-      ${B.R > rs ? kv('clock rate at the surface', fmtNum(surfRate, 12)) : ''}
-      ${B.R > rs ? kv('seconds gained per year, up here', fmtNum((1 - surfRate) * 3.15576e7, 5) + ' s') : ''}
-    </div>
-    <div class="card tight"><div class="ttl">At your probe, r = ${fmtNum(st.rr, 4)} rs</div>
-      ${kv('r', fmtNum(r / B.u, 5) + ' ' + B.unit)}
-      ${kv('dτ/dt = √(1 − rs/r)', fmtNum(rate, 10))}
-      ${kv('a clock here loses, per day', fmtNum((1 - rate) * 86400, 5) + ' s')}
-      ${kv('light climbing to infinity is redshifted to', '×' + fmtNum(rate, 8))}
-      ${kv('redshift z', fmtNum(1 / Math.max(1e-12, rate) - 1, 6))}
-      ${kv('escape velocity', fmtNum(esc, 6) + ' c')}
-      ${kv('proper distance from here down to 1.01 rs',
-           fmtNum(grProperRadial(1.01 * rs, r, rs) / B.u, 5) + ' ' + B.unit)}
-      ${kv('the coordinate difference', fmtNum((r - 1.01 * rs) / B.u, 5) + ' ' + B.unit)}
-      <p class="help">Those last two rows are what curvature <i>is</i>, measured: a ruler laid radially
-      covers more proper distance than the difference of the two r values, because r is defined by the
-      circumference of a ring (<b>r = C/2π</b>) and not by any radial measurement. There is more room
-      down there than there is space to put it in.</p>
-    </div>
-    <div class="card tight"><div class="ttl">And it is not academic — GPS</div>
-      ${kv('orbit radius', fmtNum(gps.r / 1000, 6) + ' km')}
-      ${kv('orbital speed', fmtNum(gps.v, 5) + ' m/s')}
-      ${kv('gravity runs the satellite clock fast by', '+' + fmtNum(gps.gravUsPerDay, 4) + ' μs/day')}
-      ${kv('motion runs it slow by', fmtNum(gps.kinUsPerDay, 4) + ' μs/day')}
-      ${kv('net', '+' + fmtNum(gps.netUsPerDay, 4) + ' μs/day')}
-      ${kv('as a positioning error', fmtNum(gps.metresPerDay / 1000, 4) + ' km/day')}
-      <p class="help">Two effects of opposite sign that do not cancel, computed here from the metric and
-      the orbit rather than looked up. Left uncorrected the system would be useless within an hour and
-      absurd within a day. The satellites' oscillators are deliberately offset before launch to run at
-      10.22999999543 MHz so that they tick at 10.23 MHz once in orbit.</p>
-    </div>`;
-  },
-  chip(st){
-    const B = GR_BODIES[st.body], rs = grRs(B.GM);
-    return `<div class="k">${B.nm}</div>
-      <div style="color:var(--c-warn)">rs = ${rs > 1000 ? fmtNum(rs / 1000, 4) + ' km' : fmtNum(rs, 4) + ' m'}</div>
-      <div style="color:var(--c-neg)">dτ/dt = ${fmtNum(grTimeDilation(st.rr * rs, rs), 7)}</div>`;
-  },
-  legend(){ return [['var(--c-curl)', "Flamm's paraboloid, and the stretch factor 1/√(1−rs/r)"],
-                    ['var(--c-neg)', 'the clock rate √(1−rs/r), and the photon sphere'],
-                    ['var(--c-warn)', 'the horizon at rs'],
-                    ['var(--c-grad)', "the body's actual surface"],
-                    ['var(--accent)', 'the ISCO at 3 rs'],
-                    ['var(--c-pos)', 'your probe radius']]; }
-};
-
-/* ---- 17 · orbits and the perihelion of Mercury -----------------------------
-   Newton's orbits close. Einstein's do not, because the effective potential
-   gains one extra term — and that term, evaluated for Mercury, is the 43
-   arcseconds per century that had been sitting unexplained since 1859. */
-STAGES.rlOrbit = {
-  title: 'Precessing orbits',
-  derive(st){
-    return {
-      title:'The 43 arcseconds that confirmed the theory',
-      steps:[
-        drvSay('the anomaly that was waiting',
-          'Mercury\'s perihelion advances by about 574 arcseconds per century. Newtonian perturbations from the other planets account for 531 of them. The remaining 43 resisted every explanation for sixty years, including a hypothetical planet Vulcan that was searched for and never found.'),
-        drvStep('the Newtonian effective potential',
-          `${dv('V')} ${dop('=')} ${dop('−')}${dfrac(dv('GM'), dv('r'))} ${dop('+')} ${dfrac(dv('L') + '²', '2' + dv('r') + '²')}`,
-          'gravity plus the centrifugal barrier — this gives a closed ellipse exactly'),
-        drvSay('closure is a peculiarity of the inverse square, not a general rule',
-          'Only the inverse-square and harmonic force laws produce orbits that close after one revolution. Any other power gives a rosette. So the closure of Newtonian orbits is a delicate coincidence, and the smallest correction destroys it.'),
-        drvStep('general relativity adds one more term',
-          `${dop('−')}${dfrac(dv('GML') + '²', dv('c') + '²' + dv('r') + '³')}`,
-          'falling as 1/r³, so it matters only close in — the panel exaggerates it to make the effect visible'),
-        drvStep('and that breaks the closure',
-          `Δφ ${dop('=')} ${dfrac('6π' + dv('GM'), dv('c') + '²' + dv('a') + '(1 − ' + dv('e') + '²)')}`,
-          `for Mercury this gives 43.0 arcseconds per century — the panel computes it from the constants`),
-        drvSay('and it was a genuine prediction of an already-known number',
-          'Einstein did not fit anything. The 43 arcseconds fell out of a theory built for entirely different reasons, and he later wrote that the discovery gave him palpitations. It is one of the cleanest confirmations in the history of physics.'),
-        drvStep('the orbit is integrated, not drawn',
-          `geodesic motion in the Schwarzschild metric`,
-          `${st.orbits} orbits at eccentricity ${fmtNum(st.e, 3)} — the panel measures the precession from the trace`),
-        drvSay('and the same effect is now seen in far stronger fields',
-          'The star S2 orbiting the Milky Way\'s central black hole precesses by about 12 arcminutes per orbit — measured in 2020 and matching general relativity. Binary pulsars show it thousands of times larger still. What was a 43-arcsecond discrepancy is now a precision test.')
-      ],
-      note:'The precession shown is measured from the integrated trajectory by locating successive perihelia, not applied as a formula. The exaggeration slider scales the relativistic term so the effect is visible; at exaggeration 1 the measured value matches the closed form.'
-    };
-  },
-  dockLegend: true,
-  enter(st, o){
-    st.sys = o.sys || 'mercury';
-    st.e = o.e === undefined ? 0.2 : o.e;
-    st.exag = o.exag === undefined ? 1 : o.exag;
-    st.orbits = o.orbits === undefined ? 3 : o.orbits;
-  },
-  controls(){
-    const st = ST;
-    return rlSeg('rlOrS', st.sys, [['mercury','Mercury, to scale'],['strong','close to a black hole'],
-                                    ['isco','just outside the ISCO']]) +
-      ctlRow('eccentricity', ctlSlider('rlOrE', 0, 0.6, 0.005, st.e)) +
-      ctlRow('orbits drawn', ctlSlider('rlOrN', 1, 12, 1, st.orbits)) +
-      (st.sys === 'mercury' ? ctlRow('exaggerate ×', ctlSlider('rlOrX', 1, 200000, 1000, st.exag)) : '') +
-      `<p class="help">The orbit equation in <b>u = 1/r</b> is <b>d²u/dφ² + u = GM/L² + (3GM/c²)u²</b>.
-      Delete the last term and you have Newton, whose solution is a conic section that closes exactly.
-      Keep it and the ellipse turns slowly, by <b>6πGM/(c²a(1−e²))</b> per orbit. Both curves here are
-      <i>integrated</i>, not drawn from a formula, so the precession in the picture is a computed result.
-      For Mercury it is 0.104″ per orbit — far too small to see, which is why there is an exaggeration
-      slider; the readout always reports the true number, and the plot of perihelion angle against orbit
-      count is honest at any setting.</p>`;
-  },
-  wire(){
-    rlWireSeg('rlOrS', v => { ST.sys = v; ST.exag = 1; });
-    wireSlider('rlOrE', () => ST.e, v => { ST.e = v; }, v => fmtNum(+v, 3));
-    wireSlider('rlOrN', () => ST.orbits, v => { ST.orbits = Math.round(v); }, v => Math.round(v) + ' orbits');
-    if($('rlOrX')) wireSlider('rlOrX', () => ST.exag, v => { ST.exag = Math.round(v); },
-                              v => '×' + fmtNum(Math.round(v), 6) + ' (drawing only)');
-  },
-  setup(st){
-    /* a is in metres. L comes from grLFromTurning — the demand that a(1−e) and
-       a(1+e) be turning points of the FULL u-equation — not from the Newtonian
-       vis-viva. For Mercury the two agree to a part in 10⁷; at 6.5 rs the
-       Newtonian seed put the pericentre inside the centrifugal barrier and the
-       "orbit" spiralled in, which is not what "just outside the ISCO" promised. */
-    const mk = (GM, a, P, nm) => {
-      const L = grLFromTurning(GM, a * (1 - st.e), a * (1 + st.e));
-      return { GM, a, e: st.e, P, nm, L };
-    };
-    if(st.sys === 'mercury') return mk(GM_SUN, 5.7909050e10, 87.9691, 'Mercury round the Sun');
-    const GM = GM_SUN * 10, rs = grRs(GM);
-    const a = (st.sys === 'strong' ? 20 : 6.5) * rs;
-    return mk(GM, a, 0, st.sys === 'strong' ? 'a star at 20 rs' : 'a star just outside the ISCO');
-  },
-  frame(st, dt, ctx, W, H){
-    const S = this.setup(st);
-    const L = S.L;
-    if(!Number.isFinite(L)){
-      rlText(ctx, W / 2, H / 2, 'no bound orbit has these apsides — the star spirals in', rgbCss(TH.warn),
-             '600 13px ' + FONT_UI, 'center');
-      rlText(ctx, W / 2, H / 2 + 22, 'lower the eccentricity, or move it further out', rgbCss(TH.dim),
-             '11.5px ' + FONT_UI, 'center');
+  /* Everything expensive happens here and is cached against every input that
+     can change it. A bad formula returns WITHOUT touching st.M, so the picture
+     that was on the screen stays there and the panel says what went wrong. */
+  recompute(st){
+    const E = this.curOf(st);
+    const key = [st.key, E.A, E.B, st.p1, st.p2].join('|');
+    /* clearing the message on the way out matters: a reader who breaks a
+       formula and then types it back gets the SAME key, so this early return
+       is the path taken — and leaving st.err set left "the g_tt box is not a
+       formula" standing over a panel that was working again. */
+    if(st.cacheKey === key && st.M){ st.err = ''; return; }
+    const A = rlFnR(E.A), B = rlFnR(E.B);
+    if(!A || !B){
+      st.err = (!A ? 'The g<sub>tt</sub> box' : 'The g<sub>rr</sub> box') +
+               ' is not a formula in r that evaluates to a number — the previous metric is still shown.';
       return;
     }
-    const steps = 3000 * st.orbits;
-    const dphi = 2 * Math.PI * st.orbits / steps;
-    const u0 = 1 / (S.a * (1 + S.e));
-    const gr = grOrbitIntegrate(S.GM, L, u0, 0, dphi, steps, true);
-    const nw = grOrbitIntegrate(S.GM, L, u0, 0, dphi, steps, false);
-    const trueAdv = grPeriapsisAngle(gr) - 2 * Math.PI;
+    st.err = ''; st.cacheKey = key;
+    const rMax = E.rMax || 60;
+    /* the band a static observer can stand in. NOT "outside the outermost
+       horizon" — for a metric with a cosmological horizon that is the one place
+       nobody can stand, and every quantity below would come back NaN. */
+    const band = rlStaticBand(A, 0.05, rMax);
+    const H = band.horizons;
+    const lo = Number.isFinite(band.lo) ? band.lo : 0.05;
+    const hi = Number.isFinite(band.hi) ? band.hi : rMax;
+    const inLo = lo * 1.02, inHi = Math.min(rMax, hi * 0.98);
+    const M = { A, B, H, band, lo, hi, rMax,
+                ph: rlPhotonR(A, 0.05, rMax).outer,
+                isco: rlIscoR(A, inLo, inHi),
+                ab: rlABGap(A, B, inLo, inHi) };
+    /* the funnel. It starts at the horizon where there is one, because that is
+       where the shape is, and the substitution inside rlEmbedZ is what makes
+       starting exactly there possible at all. */
+    /* The funnel's own radial extent, which is NOT the coefficient plot's. A
+       metric with a cosmological horizon wants 120 units on the plot to show
+       both horizons, and drawing the funnel that wide shrinks the throat — the
+       only part of it with any shape — to two per cent of the picture. It
+       reaches far enough to hold the orbit and no further. */
+    M.rDisc = Math.min(Math.max(26, Math.max(st.p1, st.p2) * 1.1), hi * 0.995, rMax);
+    M.emb = rlEmbedZ(B, Number.isFinite(band.lo) ? band.lo : Math.max(0.05, lo), M.rDisc, 240);
+    M.zMax = M.emb.z[M.emb.z.length - 1] || 1;
 
-    /* --- the orbit --- */
-    const cx = W * 0.26, cy = H * 0.47;
-    const rMax = S.a * (1 + S.e) * 1.12;
-    const sc = Math.min(W * 0.20, H * 0.36) / rMax;
-    rlText(ctx, cx, 32, S.nm + (st.exag > 1 ? '  ·  precession drawn ×' + fmtNum(st.exag, 6) : ''),
-           rgbCss(TH.dim), '600 11.5px ' + FONT_UI, 'center');
-    /* the central mass, its horizon and its landmarks */
-    const rs = grRs(S.GM);
-    if(rs * sc > 1.5){
-      ctx.fillStyle = rgbCss(TH.warn, 0.85);
-      ctx.beginPath(); ctx.arc(cx, cy, rs * sc, 0, 6.2832); ctx.fill();
-      for(const [k, col] of [[1.5, TH.neg], [3, TH.accent]]){
-        ctx.strokeStyle = rgbCss(col, 0.55); ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.arc(cx, cy, k * rs * sc, 0, 6.2832); ctx.stroke();
+    /* THE ORBIT. Its apsides come from the two sliders; E and L come from the
+       potential; the track comes from the geodesic equation, which is told
+       neither. */
+    const p1 = Math.min(st.p1, st.p2), p2 = Math.max(st.p1, st.p2);
+    const el = rlApsidesEL(A, p1, p2, 1);
+    M.el = el; M.p1 = p1; M.p2 = p2;
+    if(Number.isFinite(el.E) && Number.isFinite(el.L)){
+      /* ten orbits, at about 1200 steps each — through rlOrbitPlan, which is
+         the shared step rule and NOT the Newtonian radial period this stage
+         used to compute here. The period alone is right for a wide orbit and
+         wrong for a tight one: a relativistic orbit spends most of its angle
+         whirling at pericentre, and sizing h by the radial period sampled that
+         whirl a handful of times. rlOrbit found it (2026-08-18) when four
+         presets' tracks dropped through a horizon while the quadrature
+         reported a perfectly good precession — the same rule was here, so the
+         same defect was here, whether or not a screenshot had shown it yet. */
+      const plan = rlOrbitPlan(p1, p2, el.L, 10, 1200);
+      M.geo = rlGeoRun(A, B, rlGeoInit(A, B, p2, el.E, el.L, 1, -1), plan.h, plan.steps,
+                       { rStop: Number.isFinite(band.lo) ? band.lo * 1.001 : 0.02, rEsc: Math.min(rMax, p2 * 4) });
+      M.per = rlPeriShift(M.geo);
+      /* ROUTE B on the same orbit: the turning points read off the potential,
+         with no integration anywhere in them */
+      M.turns = rlTurnPoints(A, el.E, el.L, 1, inLo, Math.min(rMax, p2 * 2.5));
+      /* WHICH pair of roots is the orbit's? Taking the outermost two is wrong,
+         and auditsides caught it: Schwarzschild has exactly three roots (the
+         plunge branch, then the two apsides) so the last two are right by
+         accident, while Schwarzschild–de Sitter has FOUR — beyond the outer
+         apsis the potential falls back under E² again and the region past the
+         barrier is allowed, which is how a particle escapes to the
+         cosmological horizon. The last two there are the apocentre and the
+         escape point, and the panel reported a pericentre 4 units out.
+
+         The orbit was launched from p2, which is an INPUT rather than anything
+         route A computed, so identifying the root nearest it and taking the
+         band immediately inside costs the check none of its independence: the
+         pericentre below is still route B's own answer, reached from E and L
+         through the potential with no integration in it. */
+      let j = -1, best = Infinity;
+      for(let i = 0; i < M.turns.length; i++){
+        const d = Math.abs(M.turns[i] - p2);
+        if(d < best){ best = d; j = i; }
       }
-    } else rlDot(ctx, cx, cy, 5, rgbCss(TH.warn));
-    const drawOrbit = (res, col, wd, exag) => {
-      ctx.strokeStyle = col; ctx.lineWidth = wd;
+      M.outer = j >= 0 ? M.turns[j] : NaN;
+      M.inner = j >= 1 ? M.turns[j - 1] : NaN;
+      M.bands = M.turns.length;
+    } else {
+      M.geo = null; M.per = null; M.turns = [];
+      /* WHY there is no orbit, which is a different sentence in each case and
+         is the whole value of the flat and de Sitter presets. Saying only "no
+         bound orbit" would leave the reader unable to tell a control that is
+         behaving correctly from one that has broken. */
+      const a1 = A(p1), a2 = A(p2);
+      M.why = !(a1 > 0) || !(a2 > 0)
+        ? 'one of those radii is inside a horizon, where nothing can be in a bound orbit because nothing can be at rest.'
+        : Math.abs(a2 - a1) < 1e-14
+        ? 'A(r) has the same value at both radii, so the angular momentum that would hold an orbit between them is zero — which describes a particle sitting still, not an orbit. Flat spacetime does this everywhere.'
+        : el.why === 'barrier'
+        ? 'those two radii bracket a <b>barrier</b> rather than a well. There is an energy for which both are turning points, but the effective potential rises above it in between, so the region between them is forbidden and a particle released at either one moves away from the other.'
+        : a2 < a1
+        ? 'A(r) DECREASES outward between those two radii, so there is no orbit with turning points at both. This metric has a maximum of A at finite r, and an orbit cannot straddle it: outside that radius the pull is outward, not inward.'
+        : 'the two apsides do not admit a real angular momentum in this metric.';
+    }
+    st.M = M;
+  },
+
+  /* ------------------------------------------------------------- derive --- */
+  derive(st){
+    const E = this.curOf(st), M = st.M;
+    const hz = M && M.H.count ? fmtNum(M.H.outer, 6) : 'none in range';
+    return {
+      title:'Gravity as the shape of spacetime, and what a shape can be asked',
+      steps:[
+        drvSay('what a metric is for',
+          'A metric is a rule for measuring intervals between nearby events. Flat spacetime has the Minkowski one. Curved spacetime has a different rule at each point, and general relativity says gravity <i>is</i> that difference — there is no force anywhere in the theory.'),
+        drvStep('the static, spherically symmetric form',
+          `d${dv('s')}² ${dop('=')} ${dop('−')}${dv('A')}(${dv('r')})${dv('c')}²d${dv('t')}² ${dop('+')} ${dv('B')}(${dv('r')})d${dv('r')}² ${dop('+')} ${dv('r')}²dΩ²`,
+          `the two boxes are those coefficients; ${E.nm} supplies ${E.exA} and ${E.exB}`),
+        drvSay('and the horizon is not put in by hand',
+          'It is wherever the first coefficient changes sign. Above it a clock can be held still; below it the labels t and r have swapped roles and nothing can. So the panel scans for sign changes rather than quoting a radius — which is why it finds two for a charged hole, two of quite different kinds when there is a cosmological constant, and none at all inside a star.'),
+        drvStep('so a clock at rest ticks at',
+          `${dfrac('dτ', 'd' + dv('t'))} ${dop('=')} √${dv('A')}(${dv('r')})`,
+          `at the probe the panel prints the ratio; the located horizon is at r = ${hz}`),
+        drvStep('and a radial ruler is stretched by',
+          `${dfrac('d' + dv('ℓ'), 'd' + dv('r'))} ${dop('=')} √${dv('B')}(${dv('r')})`,
+          'so measured distance between two shells exceeds the difference of their r values'),
+        drvSay('which is why r is not the distance to the centre',
+          'It is defined so that a ring has circumference 2πr. In a curved space that is not what a ruler laid along the radius would report, and the second number is larger. Misreading the label this way is the commonest error in the subject.'),
+        drvStep('free fall takes the straightest available line',
+          `${dfrac('d²' + dv('x') + '^μ', 'dτ²')} ${dop('+')} Γ^μ_αβ${dfrac('d' + dv('x') + '^α', 'dτ')}${dfrac('d' + dv('x') + '^β', 'dτ')} ${dop('=')} 0`,
+          'no force term anywhere in it — the connection is built from A and B alone'),
+        drvSay('and two quantities along that line are constants of the motion',
+          'Because nothing in the coefficients depends on t or on the angle, the combinations A·dt/dτ and r²·dφ/dτ cannot change. The integrator below is never told this. It marches the second-order equation and the panel reads those two off the state afterwards, so how far they wander is a measurement of the arithmetic rather than a repetition of the theorem.'),
+        drvSay('and the reciprocal caption is a claim, not a fact',
+          'This stage used to print that the coefficients are reciprocals of one another. They are, for every vacuum solution and for a charged one — but the moment you invent a metric, or stand inside a star, the product stops being one. It is measured now, and what it measures is whether the radial pressure equals minus the energy density.'),
+        drvSay('and the Newtonian limit is recoverable, as it must be',
+          'Expand the time coefficient for a weak field and the geodesic equation collapses to an inverse-square law with potential −GM/r. Einstein contains Newton as a leading term, which is why centuries of successful prediction were not overturned by it.')
+      ],
+      note:'Every number in the panel is located from the two coefficients rather than read off a formula: the horizons are sign changes, the photon sphere is a root of A′r = 2A, the ISCO is the innermost minimum of the circular-orbit L², and the orbit is integrated from the Christoffel symbols. The one deliberate exception is the funnel, which is a quadrature of √(B−1) and can be checked against Flamm\'s closed form when B is Schwarzschild\'s.'
+    };
+  },
+
+  /* ----------------------------------------------------------- controls --- */
+  controls(){
+    const st = ST, E = STAGES.rlMetric.curOf(st);
+    const opts = Object.keys(RL_METRICS).map(k => [k, RL_METRICS[k].nm]).concat([['custom', 'type your own']]);
+    return rlSeg('rlMeM', st.key, opts) +
+      (st.key === 'custom'
+        ? fnHtml('rlMeFA', '−g<sub>tt</sub>/c² = A(r) =', st.srcA, 'r') +
+          fnHtml('rlMeFB', 'g<sub>rr</sub> = B(r) =', st.srcB, 'r')
+        : `<p class="help" style="margin:6px 0 2px">${supify(E.note)}</p>`) +
+      (st.err ? `<p class="help" style="color:var(--c-warn)">${st.err}</p>` : '') +
+      rlSeg('rlMeB', st.body, Object.keys(GR_BODIES).map(k => [k, GR_BODIES[k].nm])) +
+      ctlRow('probe r', ctlSlider('rlMeR', 0.5, 120, 0.001, st.rr)) +
+      ctlRow('orbit pericentre', ctlSlider('rlMeP1', 4, 90, 0.1, st.p1)) +
+      ctlRow('orbit apocentre', ctlSlider('rlMeP2', 5, 110, 0.1, st.p2)) +
+      `<p class="help">Lengths are in units of <b>GM/c²</b>, so Schwarzschild reads <b>A = 1 − 2/r</b> and
+      its horizon sits at <b>r = 2</b> — that is <b>rs = 2GM/c²</b>, and the body picker only sets what
+      one unit is worth in kilometres. The funnel on the left is the equatorial plane <i>embedded</i>,
+      so distances measured across the drawn surface are the real ones; it is the honest version of the
+      rubber sheet, and note what it does not contain: any time. Almost all of everyday gravity is the
+      time coefficient, which is why the sheet on its own explains nothing. The orbit drawn on it is a
+      geodesic of <b>spacetime</b> projected into the plane, not a geodesic of that surface.</p>`;
+  },
+  wire(){
+    const S = STAGES.rlMetric;
+    rlWireSeg('rlMeM', v => { ST.key = v; S.recompute(ST); buildStagePanel(); });
+    rlWireSeg('rlMeB', v => { ST.body = v; });
+    fnWire('rlMeFA', (made, src) => { ST.srcA = src; ST.cacheKey = ''; S.recompute(ST); buildStagePanel(); },
+           s => { if(!rlFnR(s)) throw new Error('that is not a formula in r that returns a number'); return rlFnR(s); });
+    fnWire('rlMeFB', (made, src) => { ST.srcB = src; ST.cacheKey = ''; S.recompute(ST); buildStagePanel(); },
+           s => { if(!rlFnR(s)) throw new Error('that is not a formula in r that returns a number'); return rlFnR(s); });
+    wireSlider('rlMeR', () => ST.rr, v => { ST.rr = v; }, v => fmtNum(+v, 4) + ' GM/c²');
+    wireSlider('rlMeP1', () => ST.p1, v => { ST.p1 = v; S.recompute(ST); }, v => fmtNum(+v, 4) + ' GM/c²');
+    wireSlider('rlMeP2', () => ST.p2, v => { ST.p2 = v; S.recompute(ST); }, v => fmtNum(+v, 4) + ' GM/c²');
+  },
+
+  /* -------------------------------------------------------------- frame --- */
+  frame(st, dt, ctx, W, H){
+    this.recompute(st);
+    const M = st.M;
+    if(!M){ rlText(ctx, W / 2, H / 2, 'no metric to draw yet', rgbCss(TH.faint), '13px ' + FONT_UI, 'center'); return; }
+    const E = this.curOf(st);
+
+    /* ================= left: the embedded equatorial plane ================= */
+    const cx = W * 0.245, cy = H * 0.47;
+    const sc = Math.min(W * 0.20, H * 0.30) / M.rDisc;
+    const zs = Math.min(W * 0.20, H * 0.30) / Math.max(1e-9, M.zMax) * 0.55;
+    /* z(r) by interpolation into the quadrature, so the drawn height is the
+       integral of √(B−1) and not a formula for somebody else's metric */
+    const zAt = r => {
+      const R = M.emb.r, Z = M.emb.z;
+      if(r <= R[0]) return 0;
+      if(r >= R[R.length - 1]) return Z[Z.length - 1];
+      let a = 0, b = R.length - 1;
+      while(b - a > 1) { const m = (a + b) >> 1; if(R[m] <= r) a = m; else b = m; }
+      const f = (r - R[a]) / Math.max(1e-30, R[b] - R[a]);
+      return Z[a] + f * (Z[b] - Z[a]);
+    };
+    /* z is a HEIGHT and the screen's y grows downward, so it is subtracted.
+       Adding it — which is what this stage did until 2026-08-18 — puts the rim
+       below the throat and draws the rubber sheet as a dome, which is the one
+       shape it must never be. */
+    const proj = (r, th) => ({ x: cx + r * Math.cos(th) * sc,
+                               y: cy - r * Math.sin(th) * sc * 0.42 - zAt(r) * zs });
+    const ring = (r, col, w, dash) => {
+      ctx.strokeStyle = col; ctx.lineWidth = w || 1.2;
+      if(dash) ctx.setLineDash(dash);
       ctx.beginPath();
-      for(let i = 0; i < res.u.length; i++){
-        const r = 1 / res.u[i];
-        if(!Number.isFinite(r) || r <= 0 || r > rMax * 1.6) continue;
-        /* the exaggeration rotates the drawing by (exag−1)× the accrued advance,
-           which is a picture of the same physics with the effect amplified */
-        const ph = res.phi[i] + (exag - 1) * (trueAdv / (2 * Math.PI)) * res.phi[i];
-        const X = cx + r * Math.cos(ph) * sc, Y = cy + r * Math.sin(ph) * sc;
-        i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y);
+      for(let k = 0; k <= 90; k++){ const p = proj(r, k / 90 * 2 * Math.PI); k ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y); }
+      ctx.closePath(); ctx.stroke();
+      if(dash) ctx.setLineDash([]);
+    };
+    ctx.font = '600 11.5px ' + FONT_UI;
+    const ttl = M.emb.imag > 0 ? 'the equatorial plane — partly not embeddable'
+                               : 'the equatorial plane, embedded';
+    rlText(ctx, ctTitleClearChip(ctx, cx, 32, ttl), 32, ttl, rgbCss(TH.dim), '600 11.5px ' + FONT_UI, 'center');
+    const r0 = M.emb.r[0];
+    for(let i = 1; i <= 13; i++){
+      const r = r0 + (M.rDisc - r0) * Math.pow(i / 13, 1.6);
+      ring(r, rgbCss(TH.curl, 0.18 + 0.36 * (1 - i / 13)));
+    }
+    for(let k = 0; k < 16; k++){
+      const th = k / 16 * 2 * Math.PI;
+      ctx.strokeStyle = rgbCss(TH.curl, 0.16); ctx.lineWidth = 1;
+      ctx.beginPath();
+      for(let i = 0; i <= 60; i++){
+        const r = r0 + (M.rDisc - r0) * Math.pow(i / 60, 1.6);
+        const p = proj(r, th); i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y);
       }
       ctx.stroke();
-    };
-    drawOrbit(nw, rgbCss(TH.faint, 0.75), 1.5, 1);
-    drawOrbit(gr, rgbCss(TH.grad), 2.2, st.exag);
-    /* the perihelion direction, then and now */
-    const advDrawn = trueAdv * st.exag;
-    rlSegment(ctx, cx, cy, cx + rMax * sc * 0.98, cy, rgbCss(TH.pos, 0.55), 1.3, [4, 4]);
-    rlSegment(ctx, cx, cy,
-      cx + rMax * sc * 0.98 * Math.cos(advDrawn * st.orbits),
-      cy + rMax * sc * 0.98 * Math.sin(advDrawn * st.orbits), rgbCss(TH.pos), 1.8);
-    /* the moving planet */
-    const idx = Math.min(gr.u.length - 1, Math.floor((st.t * 0.25 % st.orbits) / st.orbits * gr.u.length));
-    const rp = 1 / gr.u[idx];
-    const php = gr.phi[idx] * (1 + (st.exag - 1) * trueAdv / (2 * Math.PI));
-    rlDot(ctx, cx + rp * Math.cos(php) * sc, cy + rp * Math.sin(php) * sc, 5, rgbCss(TH.curl));
-
-    /* --- the effective potential --- */
-    const P = mkPlot(W * 0.53, 48, W * 0.42, (H - 130) * 0.52, 0, 1, 0, 1);
-    const rLo = Math.max(rs * 1.02, S.a * (1 - S.e) * 0.45), rHi = S.a * (1 + S.e) * 2.2;
-    const NV = 340, rv = new Float64Array(NV), vg = new Float64Array(NV), vn = new Float64Array(NV);
-    let lo = 1e30, hi = -1e30;
-    for(let i = 0; i < NV; i++){
-      const r = rLo + (rHi - rLo) * (i + 0.5) / NV;
-      rv[i] = r; vg[i] = grVeff(r, S.GM, L); vn[i] = grVeffNewton(r, S.GM, L);
-      lo = Math.min(lo, vg[i], vn[i]); hi = Math.max(hi, vn[i]);
     }
-    const pad = (hi - lo) * 0.18;
-    const V = mkPlot(P.px, P.py, P.pw, P.ph, rLo, rHi, lo - pad, hi + pad);
-    plotFrame(ctx, V, 'r  (m)', 'V_eff per unit mass',
-      'The effective potential — and the one term general relativity adds');
-    plotTicksX(ctx, V, [rLo, (rLo + rHi) / 2, rHi], v => fmtNum(v, 3));
-    rlLine(ctx, V, rv, vn, rgbCss(TH.faint, 0.9), 1.8, [4, 4]);
-    rlLine(ctx, V, rv, vg, rgbCss(TH.grad), 2.4);
-    /* the orbit's energy, and the turning points it implies */
-    const Eorb = grVeffNewton(S.a * (1 + S.e), S.GM, L);
-    rlSegment(ctx, V.px, V.Y(Eorb), V.px + V.pw, V.Y(Eorb), rgbCss(TH.pos, 0.8), 1.4, [5, 4]);
-    rlText(ctx, V.px + 6, V.Y(Eorb) - 9, 'the orbit\'s energy', rgbCss(TH.pos), '10px ' + FONT_MONO);
-    if(grISCO(rs) > rLo && grISCO(rs) < rHi){
-      rlSegment(ctx, V.X(grISCO(rs)), V.py, V.X(grISCO(rs)), V.py + V.ph, rgbCss(TH.accent, 0.6), 1.2, [3, 3]);
-      rlText(ctx, V.X(grISCO(rs)) + 5, V.py + 12, 'ISCO', rgbCss(TH.accent), '10px ' + FONT_MONO);
+    /* every horizon, not "the" horizon */
+    const shown = M.H.roots.filter(h => h <= M.rDisc);
+    for(const h of shown) ring(h, rgbCss(TH.warn), 2.2);
+    /* label the outermost horizon THAT IS DRAWN. Labelling M.H.outer put the
+       caption for a cosmological horizon at r = 99 on top of a funnel that
+       stops at 26, which is to say on top of the throat. */
+    if(shown.length) rlText(ctx, cx, proj(shown[shown.length - 1], Math.PI / 2).y - 9,
+        M.H.count > 1 ? shown.length + ' of ' + M.H.count + ' horizons' : 'horizon',
+        rgbCss(TH.warn), '10px ' + FONT_MONO, 'center');
+    if(Number.isFinite(M.ph) && M.ph <= M.rDisc) ring(M.ph, rgbCss(TH.neg, 0.75), 1.3);
+    if(Number.isFinite(M.isco.r) && M.isco.r <= M.rDisc) ring(M.isco.r, rgbCss(TH.accent, 0.7), 1.3);
+    if(st.rr <= M.rDisc) ring(st.rr, rgbCss(TH.pos), 2, [5, 4]);
+
+    /* the orbit, projected into the plane and laid on the surface */
+    if(M.geo && M.geo.n > 2){
+      ctx.strokeStyle = rgbCss(TH.grad, 0.92); ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      let on = false;
+      for(let i = 0; i <= M.geo.n; i += 2){
+        const r = M.geo.r[i];
+        if(r > M.rDisc){ on = false; continue; }
+        const p = proj(r, M.geo.ph[i]);
+        on ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y);
+        on = true;
+      }
+      ctx.stroke();
+      if(M.geo.rMax > M.rDisc)
+        rlText(ctx, cx, cy + Math.min(W * 0.20, H * 0.30) * 0.42 + 26,
+               'the orbit runs outside this disc', rgbCss(TH.grad), '9.5px ' + FONT_MONO, 'center');
     }
 
-    /* --- perihelion angle against orbit number: honest at any exaggeration --- */
-    const Q = mkPlot(W * 0.53, 48 + (H - 130) * 0.52 + 54, W * 0.42, (H - 130) * 0.48 - 20,
-                     0, Math.max(2, st.orbits), 0, Math.max(1e-9, trueAdv * ARCSEC * Math.max(2, st.orbits) * 1.15));
-    plotFrame(ctx, Q, 'orbit number', 'perihelion advance  (arcsec)',
-      'Measured off the integrated orbit, not quoted from a formula');
-    plotTicksX(ctx, Q, [0, Math.max(2, st.orbits) / 2, Math.max(2, st.orbits)], v => fmtNum(v, 3));
-    rlYTicks(ctx, Q, [0, Q.y1 / 2, Q.y1], v => fmtNum(v, 3));
-    ctx.strokeStyle = rgbCss(TH.curl); ctx.lineWidth = 2.4;
-    ctx.beginPath();
-    ctx.moveTo(Q.X(0), Q.Y(0));
-    ctx.lineTo(Q.X(Math.max(2, st.orbits)), Q.Y(trueAdv * ARCSEC * Math.max(2, st.orbits)));
-    ctx.stroke();
-    /* the closed-form prediction, dashed on top — they should coincide */
-    ctx.strokeStyle = rgbCss(TH.pos, 0.9); ctx.lineWidth = 1.6;
-    ctx.setLineDash([5, 4]);
-    ctx.beginPath();
-    ctx.moveTo(Q.X(0), Q.Y(0));
-    ctx.lineTo(Q.X(Math.max(2, st.orbits)),
-               Q.Y(grPrecessionPerOrbit(S.GM, S.a, S.e) * ARCSEC * Math.max(2, st.orbits)));
-    ctx.stroke(); ctx.setLineDash([]);
-    stageNote(ctx, 'the extra term is −GML²/c²r³ — an inward pull that beats the centrifugal barrier close in', W, H);
+    /* ================= right top: the two coefficients ===================== */
+    const px = W * 0.53, pw = W * 0.41, ph = (H - 150) / 2;
+    const rP = Math.min(M.rMax, E.rPlot || 24);
+    const xLo = Math.max(0.05, (M.H.count ? M.H.roots[0] : 1) * 0.55);
+    const P = mkPlot(px, 48, pw, ph, xLo, rP, 0, 2.6);
+    plotFrame(ctx, P, 'r  (GM/c²)', '', 'The two coefficients — reciprocals only when it is a vacuum');
+    const tk = rlTickStep(rP - xLo), ticks = [];
+    for(let v = Math.ceil(xLo / tk) * tk; v <= rP + 1e-9; v += tk) ticks.push(v);
+    plotTicksX(ctx, P, ticks, v => fmtTick(v, tk));
+    rlYTicks(ctx, P, [0, 0.5, 1, 1.5, 2, 2.5]);
+    const N = 300, xs = new Float64Array(N), ya = new Float64Array(N), yb = new Float64Array(N);
+    for(let i = 0; i < N; i++){
+      const r = xLo + (rP - xLo) * (i + 0.5) / N;
+      const a = M.A(r), b = M.B(r);
+      xs[i] = r;
+      ya[i] = a > 0 ? Math.sqrt(a) : NaN;
+      yb[i] = b > 0 ? Math.sqrt(b) : NaN;
+    }
+    rlLine(ctx, P, xs, ya, rgbCss(TH.neg), 2.4);
+    rlLine(ctx, P, xs, yb, rgbCss(TH.curl), 2.4);
+    rlSegment(ctx, P.px, P.Y(1), P.px + P.pw, P.Y(1), rgbCss(TH.faint, 0.5), 1, [4, 4]);
+    rlText(ctx, P.px + P.pw - 6, P.Y(1) - 9, 'flat', rgbCss(TH.faint), '10px ' + FONT_UI, 'right');
+    for(const h of M.H.roots) if(h > xLo && h < rP)
+      rlSegment(ctx, P.X(h), P.py, P.X(h), P.py + P.ph, rgbCss(TH.warn, 0.55), 1.4);
+    if(Number.isFinite(M.ph) && M.ph > xLo && M.ph < rP)
+      rlSegment(ctx, P.X(M.ph), P.py, P.X(M.ph), P.py + P.ph, rgbCss(TH.neg, 0.30), 1);
+    if(Number.isFinite(M.isco.r) && M.isco.r > xLo && M.isco.r < rP)
+      rlSegment(ctx, P.X(M.isco.r), P.py, P.X(M.isco.r), P.py + P.ph, rgbCss(TH.accent, 0.35), 1);
+    if(st.rr > xLo && st.rr < rP){
+      rlSegment(ctx, P.X(st.rr), P.py, P.X(st.rr), P.py + P.ph, rgbCss(TH.pos, 0.7), 1.3, [4, 4]);
+      const a = M.A(st.rr);
+      if(a > 0) rlDot(ctx, P.X(st.rr), P.Y(Math.sqrt(a)), 5, rgbCss(TH.pos));
+    }
+
+    /* ================= right bottom: the orbit, and its constants ========== */
+    const Q = mkPlot(px, 48 + ph + 54, pw, ph - 6, -1, 1, -1, 1);
+    plotFrame(ctx, Q, '', '', 'The geodesic — E and L are read off it, never imposed');
+    const qx = Q.px + Q.pw / 2, qy = Q.py + Q.ph / 2;
+    if(M.geo && M.geo.n > 2){
+      /* the window is set by the ORBIT. Fitting it over the horizons too made a
+         cosmological horizon at r = 99 set the scale for an orbit at r = 10, so
+         the track collapsed to a dot inside one enormous translucent disc —
+         §4.3a's rule about fitting a window over the same list you draw from,
+         and the same defect odSpring had. Landmarks outside the window are
+         simply not drawn; the readout has their radii. */
+      const span = M.geo.rMax * 1.12;
+      const s = Math.min(Q.pw, Q.ph) / 2 / span;
+      for(const h of M.H.roots){
+        if(h > span) continue;
+        ctx.fillStyle = rgbCss(TH.warn, 0.20);
+        ctx.beginPath(); ctx.arc(qx, qy, h * s, 0, 6.2832); ctx.fill();
+      }
+      for(const [rv, col] of [[M.ph, TH.neg], [M.isco.r, TH.accent]]){
+        if(!Number.isFinite(rv) || rv > span) continue;
+        ctx.strokeStyle = rgbCss(col, 0.45); ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(qx, qy, rv * s, 0, 6.2832); ctx.stroke();
+      }
+      ctx.strokeStyle = rgbCss(TH.grad); ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      for(let i = 0; i <= M.geo.n; i++){
+        const x = qx + M.geo.r[i] * Math.cos(M.geo.ph[i]) * s;
+        const y = qy - M.geo.r[i] * Math.sin(M.geo.ph[i]) * s;
+        i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+      }
+      ctx.stroke();
+      rlDot(ctx, qx, qy, 3, rgbCss(TH.warn));
+      const dr = M.per && Number.isFinite(M.per.precession)
+        ? (Math.abs(M.per.precession) < 1e-9 ? 'the orbit closes'
+           : 'each orbit advances by ' + fmtSig(M.per.precession, 3) + ' rad')
+        : 'no second perihelion in range';
+      rlText(ctx, qx, Q.py + Q.ph - 12, dr, rgbCss(TH.grad), '10px ' + FONT_MONO, 'center');
+    } else {
+      rlText(ctx, qx, qy, 'no bound orbit exists in this metric', rgbCss(TH.faint), '11.5px ' + FONT_UI, 'center');
+      rlText(ctx, qx, qy + 18, 'between those two radii', rgbCss(TH.faint), '11.5px ' + FONT_UI, 'center');
+    }
+    stageNote(ctx, 'ds² = −A(r)c²dt² + B(r)dr² + r²dΩ²   ·   A = ' + E.exA + '   ·   B = ' + E.exB, W, H);
   },
+
+  /* ------------------------------------------------------------ readout --- */
   readout(st){
-    const S = this.setup(st);
-    const L = S.L;
-    const rs = grRs(S.GM);
-    /* the span must be generous: near the ISCO the apsidal angle grows without
-       bound as the orbit approaches the separatrix, and a span of 4π missed
-       the second perihelion at the ISCO preset — which then read as a plunge.
-       16π finds it for everything the presets reach; past that the honest
-       message is "whirl", not "unbound". */
-    const res = Number.isFinite(L)
-      ? grOrbitIntegrate(S.GM, L, 1 / (S.a * (1 + S.e)), 0, 2 * Math.PI / 4000, 32000, true)
-      : null;
-    const measured = res ? grPeriapsisAngle(res) - 2 * Math.PI : NaN;
-    const whirl = res && !Number.isFinite(measured);
-    const formula = grPrecessionPerOrbit(S.GM, S.a, S.e);
-    const rp = S.a * (1 - S.e);
-    /* Two different claims share this card and must not share a verdict row.
-       In the weak field the first-order formula IS the prediction and the two
-       routes agree to many figures. This close to the horizon the formula is
-       the FIRST TERM of an expansion in GM/c²r evaluated far outside its
-       radius of usefulness — the gap is the demonstration, and the row says so
-       in its own label rather than posing as a failed agreement. */
-    const strongField = !S.P;
-    const diffRow = !Number.isFinite(measured)
-      ? kv('difference', whirl ? 'no single number — the orbit whirls (see below)'
-                               : 'no perihelion to measure — see below')
-      : strongField
-      ? kv('difference — beyond first order', fmtAgree(measured, formula, 'rad/orbit'))
-      : kv('difference', fmtAgree(measured, formula, 'rad/orbit'));
-    return `<div class="card tight"><div class="ttl">${S.nm}</div>
-      ${kv('GM', fmtNum(S.GM, 5) + ' m³/s²')}
-      ${kv('semi-major axis a', fmtNum(S.a, 5) + ' m' + (rs > 0 ? '  =  ' + fmtNum(S.a / rs, 4) + ' rs' : ''))}
-      ${kv('eccentricity e', fmtNum(S.e, 4))}
-      ${kv('perihelion a(1−e)', fmtNum(rp, 5) + ' m  =  ' + fmtNum(rp / rs, 4) + ' rs')}
-      ${kv('specific angular momentum L', Number.isFinite(L)
-        ? fmtNum(L, 5) + ' m²/s'
-        : 'none exists — no L makes both apsides turning points')}
-      ${kv('GM/(c²·perihelion)', fmtNum(S.GM / (C2 * rp), 4) + '  — the size of the correction')}
-    </div>
-    <div class="card tight"><div class="ttl">How much it turns</div>
-      ${kv('integrated from the geodesic', Number.isFinite(measured)
-        ? fmtNum(measured, 6) + ' rad/orbit'
-        : whirl ? 'more than 8 revolutions between perihelia'
-                : 'no bound orbit — the star spirals in')}
-      ${kv('6πGM/(c²a(1−e²))', fmtNum(formula, 6) + ' rad/orbit')}
-      ${diffRow}
-      ${Number.isFinite(measured) ? kv('in arcseconds per orbit', fmtNum(measured * ARCSEC, 6) + '″') : ''}
-      ${S.P ? kv('orbits per century', fmtNum(36525 / S.P, 6)) : ''}
-      ${S.P ? kv('arcseconds per century', fmtNum(measured * ARCSEC * 36525 / S.P, 5) + '″') : ''}
-      ${S.P ? kv('what Le Verrier could not explain', '43″ per century') : ''}
-      <p class="help">${S.P
-        ? 'The closed-form prediction and the integrated orbit agree to a fraction of a percent, which is the correct behaviour: the formula is the first term of an expansion in GM/c²r, and here that ratio is ' + fmtNum(S.GM / (C2 * rp), 3) + '. Le Verrier found the 43″ discrepancy in 1859 and proposed a planet, Vulcan, to account for it; people reported seeing it. Einstein computed this number in November 1915 and wrote that it gave him palpitations. It is the only classical test that was a <i>retrodiction</i> — the measurement was already on the table, with no free parameters left to adjust.'
-        : !Number.isFinite(measured)
-        ? (whirl
-          ? 'The orbit is bound, but between one perihelion and the next it circles the hole more than eight times: this close to the separatrix the apsidal angle grows without bound, which is the zoom–whirl regime gravitational-wave modellers have to resum. A "precession per orbit" stops being a useful number before it stops being finite. Move the star out or lower the eccentricity and the rosette becomes countable again.'
-          : 'There is no bound orbit with these apsides: this close to the horizon, no angular momentum makes both a(1−e) and a(1+e) turning points — the centrifugal barrier the pericentre needed does not exist, and the star spirals in. That is not a failure of the integrator; it is the physics that gives the ISCO its name. Lower the eccentricity, or move the star further out, and the orbit closes into a rosette again.')
-        : 'This close in, the "correction" is not a correction: the orbit is a rosette, the closed-form first-order formula is well outside its range of validity, and the difference between the integrated answer and the formula is large and honest — it is the next orders of the expansion in GM/c²r, which at this pericentre is ' + fmtNum(S.GM / (C2 * rp), 3) + '. Below the ISCO at 3 rs there are no bound circular orbits at all — the effective potential loses its minimum, and anything that drifts inside falls in.'}</p>
-    </div>
-    <div class="card tight"><div class="ttl">Why it precesses at all</div>
-      ${kv('Newtonian V_eff', '−GM/r + L²/2r²')}
-      ${kv('general-relativistic V_eff', '−GM/r + L²/2r² − GML²/c²r³')}
-      ${kv('the extra term at perihelion', fmtNum(-S.GM * L * L / (C2 * rp * rp * rp), 5) + ' J/kg')}
-      ${kv('as a fraction of the Newtonian barrier', fmtNum(2 * S.GM / (C2 * rp), 5))}
-      ${kv('ISCO, where the minimum disappears', fmtNum(grISCO(rs), 5) + ' m  = 3 rs')}
-      ${kv('photon sphere', fmtNum(grPhotonSphere(rs), 5) + ' m  = 1.5 rs')}
-      <p class="help">A <b>1/r²</b> force is special: it is one of only two central forces whose bound
-      orbits close (the other is the harmonic oscillator), and the closure is fragile. Any extra term at
-      all makes the ellipse turn. General relativity supplies a <b>1/r⁴</b> force — the gradient of that
-      <b>1/r³</b> potential term — which grows faster than the centrifugal barrier and eventually beats
-      it entirely. That is the origin of the innermost stable circular orbit, a feature Newtonian gravity
-      simply does not have, and the reason accretion discs have an inner edge that radiates.</p>
-    </div>`;
-  },
-  chip(st){
-    const S = this.setup(st);
-    const adv = grPrecessionPerOrbit(S.GM, S.a, S.e);
-    return `<div class="k">Precession</div>
-      <div style="color:var(--c-grad)">${fmtNum(adv * ARCSEC, 5)}″ per orbit</div>
-      ${S.P ? `<div style="color:var(--c-curl)">${fmtNum(adv * ARCSEC * 36525 / S.P, 4)}″ per century</div>` : ''}`;
-  },
-  legend(){ return [['var(--c-grad)', 'the general-relativistic orbit, integrated'],
-                    ['var(--faint)', 'the Newtonian ellipse, which closes'],
-                    ['var(--c-pos)', 'the perihelion direction, before and after'],
-                    ['var(--c-curl)', 'the accumulated advance, and the planet'],
-                    ['var(--c-warn)', 'the horizon'], ['var(--accent)', 'the ISCO']]; }
-};
+    this.recompute(st);
+    const E = this.curOf(st), M = st.M;
+    if(!M) return `<div class="card tight"><div class="ttl">No metric yet</div>
+      <p class="help">${st.err || 'Type two functions of r.'}</p></div>`;
+    const Bd = GR_BODIES[st.body], mg = Bd.GM / C2;      // one length unit, in metres
+    const len = r => r * mg > 1e6 ? fmtNum(r * mg / 1e3, 5) + ' km' : fmtNum(r * mg, 5) + ' m';
+    /* the scale a residual in A is read against: how big A gets in the band the
+       reader can actually stand in. |A(rh)| = 3e-17 means nothing until it is
+       set beside the ~1 that A reaches out there. */
+    let scaleA = 1e-12;
+    for(let i = 0; i <= 8; i++){
+      const v = Math.abs(M.A(M.lo + (Math.min(M.hi, M.rMax) - M.lo) * i / 8));
+      if(Number.isFinite(v)) scaleA = Math.max(scaleA, v);
+    }
 
-/* ---- 18 · light bending, lensing and the Shapiro delay ---------------------
-   Newton's corpuscular light bends too, by half as much. The factor of two is
-   the curvature of space, and measuring it in 1919 turned a physicist into a
-   household name inside a week. */
+    /* --- 1 · what was typed, and the one property the caption assumed --- */
+    let out = `<div class="card tight"><div class="ttl">${E.nm}${E.sub ? ' — ' + E.sub : ''}</div>
+      ${kv('A(r) = −g<sub>tt</sub>/c²', supify(E.exA))}
+      ${kv('B(r) = g<sub>rr</sub>', supify(E.exB))}
+      ${kv('worst A·B against 1', fmtAgree(M.ab.prod, 1))}
+      ${kv('at r', Number.isFinite(M.ab.r) ? fmtNum(M.ab.r, 5) : '—')}
+      <p class="help">A·B = 1 holds for every vacuum solution and for a charged one — it is the same
+      statement as radial pressure equalling minus the energy density. It is <b>${M.ab.gap < 1e-9
+        ? 'holding here' : 'broken here'}</b>, which is a fact about the metric and not about the arithmetic.
+      ${st.err ? '<b style="color:var(--c-warn)">' + st.err + '</b>' : ''}</p>
+    </div>`;
+
+    /* --- 2 · the three radii, located --- */
+    const rows = [];
+    if(M.H.count === 0) rows.push(kv('horizons', M.H.touch.length && M.H.touch[0].val < 1e-9
+      ? 'one degenerate horizon at r = ' + fmtNum(M.H.touch[0].r, 6) + ' — a double root, so A never changes sign'
+      : 'none — A(r) never changes sign in range'));
+    M.H.roots.forEach((h, i) => {
+      rows.push(kv('horizon ' + (M.H.count > 1 ? (i + 1) : '') + ' — A(r) = 0',
+        fmtNum(h, 9) + ' GM/c² &nbsp;=&nbsp; ' + len(h)));
+      rows.push(kv('and A there is', fmtGap(Math.abs(M.A(h)), scaleA)));
+    });
+    if(st.key === 'schwarzschild' || st.key === 'newton')
+      rows.push(kv('against the closed form 2GM/c²', fmtAgree(M.H.outer, 2)));
+    rows.push(kv('photon sphere — A′r = 2A', Number.isFinite(M.ph)
+      ? fmtNum(M.ph, 8) + ' GM/c²' : 'none — no circular null orbit'));
+    rows.push(kv('ISCO — the innermost minimum of L²', Number.isFinite(M.isco.r)
+      ? fmtNum(M.isco.r, 8) + ' GM/c²' : 'none — no stable circular orbit'));
+    if(Number.isFinite(M.isco.rOut))
+      rows.push(kv('and an OUTERMOST stable orbit at', fmtNum(M.isco.rOut, 8) + ' GM/c²'));
+    if(E.ph !== null && E.ph !== undefined && Number.isFinite(M.ph))
+      rows.push(kv('photon sphere against the table', fmtAgree(M.ph, E.ph)));
+    out += `<div class="card tight"><div class="ttl">Located, not quoted</div>${rows.join('')}
+      <p class="help">Nothing here is read off a formula for Schwarzschild. The horizons are the sign
+      changes of A, found by bisection to the last bit; the photon sphere is a root of A′r = 2A; the
+      ISCO is where the circular-orbit L² turns round. ${Number.isFinite(M.isco.rOut)
+        ? 'This metric has an <b>outer</b> stability edge as well — far enough out the cosmological term wins and orbits stop being stable again.'
+        : ''}</p></div>`;
+
+    /* --- 3 · the geodesic, and the constants nobody imposed --- */
+    if(M.geo){
+      const g = M.geo, aE = g.driftE * Math.abs(g.E0), aL = g.driftL * Math.abs(g.L0);
+      out += `<div class="card tight"><div class="ttl">The geodesic, integrated</div>
+        ${kv('apsides asked for', fmtNum(M.p1, 5) + ' … ' + fmtNum(M.p2, 5) + ' GM/c²')}
+        ${kv('E = A·dt/dτ, from the potential', fmtNum(g.E0, 9))}
+        ${kv('L = r²·dφ/dτ', fmtNum(g.L0, 9))}
+        ${kv('radial periods completed', M.per ? String(M.per.orbits) : '0')}
+        ${kv('E drift over them', fmtGap(aE, Math.abs(g.E0)))}
+        ${kv('L drift', fmtGap(aL, Math.abs(g.L0)))}
+        ${kv('and the norm, also never imposed', fmtGap(g.driftNorm * Math.abs(g.norm0), Math.abs(g.norm0)))}
+        ${Number.isFinite(M.inner) ? kv('pericentre the potential predicts', fmtAgree(M.inner, M.p1)) : ''}
+        ${Number.isFinite(M.outer) ? kv('apocentre the potential predicts', fmtAgree(M.outer, M.p2)) : ''}
+        ${kv('and the track itself turned at', fmtNum(g.rMin, 7) + ' … ' + fmtNum(g.rMax, 7))}
+        ${M.per && Number.isFinite(M.per.precession)
+          ? kv('perihelion advance per orbit', fmtSig(M.per.precession, 6) + ' rad') : ''}
+        ${g.stop ? kv('the run stopped early', g.stop) : ''}
+        <p class="help">The integrator marches the second-order geodesic equation and is told nothing
+        about E, L or the normalisation. Those three are read off the state afterwards, so the drift is
+        an error measurement. It is <b>truncation</b>, not round-off: halve the step and it falls
+        sixteen-fold, which is RK4's order. The last two rows are the same orbit by a route with no
+        integration in it — the turning points are roots of A(r)(1 + L²/r²) = E².</p></div>`;
+    } else {
+      out += `<div class="card tight"><div class="ttl">The geodesic — there is not one</div>
+        ${kv('apsides asked for', fmtNum(M.p1, 5) + ' … ' + fmtNum(M.p2, 5) + ' GM/c²')}
+        ${kv('A there', fmtNum(M.A(M.p1), 8) + ' … ' + fmtNum(M.A(M.p2), 8))}
+        <p class="help">No bound orbit exists between those two radii, and that is a result rather than
+        a failure: ${M.why} Move the apsides and the panel will find one wherever there is one.</p></div>`;
+    }
+
+    /* --- 4 · at the probe, in real units --- */
+    const a = M.A(st.rr), b = M.B(st.rr);
+    const inside = !(a > 0);
+    out += `<div class="card tight"><div class="ttl">At your probe, r = ${fmtNum(st.rr, 4)} GM/c²</div>
+      ${kv('one length unit GM/c² is', len(1) + ' for ' + Bd.nm)}
+      ${kv('r', len(st.rr))}
+      ${kv('dτ/dt = √A', inside ? 'not defined there — no static observer exists inside a horizon' : fmtNum(Math.sqrt(a), 10))}
+      ${inside ? '' : kv('a clock here loses, per day', fmtNum((1 - Math.sqrt(a)) * 86400, 5) + ' s')}
+      ${inside ? '' : kv('redshift z climbing to infinity', fmtNum(1 / Math.max(1e-12, Math.sqrt(a)) - 1, 6))}
+      ${kv('radial stretch √B', b > 0 ? fmtNum(Math.sqrt(b), 8) : 'not defined there')}
+      ${kv('proper depth from the disc edge down to here', Number.isFinite(zAtDepth(M, st.rr)) ? len(zAtDepth(M, st.rr)) : '—')}
+    </div>`;
+
+    /* --- 5 · GPS, which only means anything for the real thing --- */
+    if(st.key === 'schwarzschild'){
+      const gps = grGPSRates();
+      out += `<div class="card tight"><div class="ttl">And it is not academic — GPS</div>
+        ${kv('orbit radius', fmtNum(gps.r / 1000, 6) + ' km')}
+        ${kv('gravity runs the satellite clock fast by', '+' + fmtNum(gps.gravUsPerDay, 4) + ' μs/day')}
+        ${kv('motion runs it slow by', fmtNum(gps.kinUsPerDay, 4) + ' μs/day')}
+        ${kv('net', '+' + fmtNum(gps.netUsPerDay, 4) + ' μs/day')}
+        ${kv('as a positioning error', fmtNum(gps.metresPerDay / 1000, 4) + ' km/day')}
+        <p class="help">Two effects of opposite sign that do not cancel, computed from this metric and
+        the orbit rather than looked up. Left uncorrected the system is useless within an hour. The
+        satellites' oscillators are offset before launch to 10.22999999543 MHz so that they tick at
+        10.23 MHz once up there.</p></div>`;
+    }
+    return out;
+  },
+
+  chip(st){
+    this.recompute(st);
+    const E = this.curOf(st), M = st.M;
+    if(!M) return `<div class="k">no metric</div>`;
+    const a = M.A(st.rr);
+    return `<div class="k">${E.nm}</div>
+      <div style="color:var(--c-warn)">${M.H.count
+        ? (M.H.count > 1 ? M.H.count + ' horizons, outer ' : 'horizon ') + fmtNum(M.H.outer, 5)
+        : 'no horizon'}</div>
+      <div style="color:var(--c-neg)">dτ/dt = ${a > 0 ? fmtNum(Math.sqrt(a), 7) : '—'}</div>
+      ${M.geo ? `<div style="color:var(--c-grad)">E, L drift ${fmtSig(Math.max(M.geo.driftE, M.geo.driftL), 2)}</div>` : ''}`;
+  },
+
+  legend(st){
+    const M = st && st.M;
+    return [['var(--c-curl)', 'the embedded plane, and the radial stretch √B'],
+            ['var(--c-neg)', 'the clock rate √A, and the photon sphere'],
+            ['var(--c-warn)', M && M.H.count > 1 ? 'the horizons, where A changes sign' : 'the horizon, where A changes sign'],
+            ['var(--accent)', 'the ISCO — the innermost stable circular orbit'],
+            ['var(--c-grad)', 'the integrated geodesic'],
+            ['var(--c-pos)', 'your probe radius']];
+  }
+};
+/* proper radial depth from the outer edge of the drawn disc down to r, by the
+   same quadrature the funnel is drawn from — ∫√B dr, which is what a ruler
+   measures and what r is not. Returns NaN where the metric squeezes. */
+function zAtDepth(M, r){
+  const lo = Math.max(M.emb.r[0], Math.min(r, M.rDisc)), hi = M.rDisc;
+  if(!(hi > lo)) return 0;
+  const n = 200, h = (hi - lo) / n;
+  let s = 0;
+  for(let i = 0; i < n; i++){
+    const g = x => { const b = M.B(x); return b > 0 ? Math.sqrt(b) : NaN; };
+    const x0 = lo + i * h;
+    const v = g(x0) + 4 * g(x0 + h / 2) + g(x0 + h);
+    if(!Number.isFinite(v)) return NaN;
+    s += h / 6 * v;
+  }
+  return s;
+}

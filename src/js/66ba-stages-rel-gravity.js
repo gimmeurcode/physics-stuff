@@ -45,10 +45,16 @@ STAGES.rlBarn = {
     st.beta = o.beta === undefined ? 0.8 : o.beta;
     st.L0 = 2.4;                 // ladder proper length
     st.D  = 1.8;                 // barn proper length
+    st.bmode = o.bmode === 'events' ? 'events' : 'scene';
+    st.bkey = o.bkey || 'classic';
   },
   controls(){
     const st = ST;
-    return ctlRow('ladder β', ctlSlider('rlBaB', 0.2, 0.97, 0.005, st.beta)) +
+    const head = ctlRow('how to look at it',
+      ctSeg('rlBaM', st.bmode, [['scene', 'watch it happen'], ['events', 'the four events']]));
+    if(st.bmode === 'events') return head + rlBarnControls(st);
+    return head +
+      ctlRow('ladder β', ctlSlider('rlBaB', 0.2, 0.97, 0.005, st.beta)) +
       ctlRow('ladder L₀', ctlSlider('rlBaL', 1, 4, 0.05, st.L0)) +
       ctlRow('barn D', ctlSlider('rlBaD', 1, 4, 0.05, st.D)) +
       rlClockCtl() +
@@ -60,6 +66,8 @@ STAGES.rlBarn = {
       near one shuts at all. No door ever touches the ladder in either account.</p>`;
   },
   wire(){
+    ctWireSeg('rlBaM', v => { ST.bmode = v; });
+    if(ST.bmode === 'events'){ rlBarnWire(); return; }
     wireSlider('rlBaB', () => ST.beta, v => { ST.beta = v; ST.t = 0; }, rlBetaFmt, RL_BETA_LIM);
     wireSlider('rlBaL', () => ST.L0, v => { ST.L0 = v; ST.t = 0; }, v => fmtNum(+v, 3));
     wireSlider('rlBaD', () => ST.D, v => { ST.D = v; ST.t = 0; }, v => fmtNum(+v, 3));
@@ -80,6 +88,7 @@ STAGES.rlBarn = {
     };
   },
   frame(st, dt, ctx, W, H){
+    if(st.bmode === 'events') return rlBarnFrame(st, ctx, W, H);
     const f = this.facts(st);
     const P = rlPanes(W, H, 22);
     const span = Math.max(st.L0, st.D) * 3.2;
@@ -148,6 +157,7 @@ STAGES.rlBarn = {
     stageNote(ctx, 'both accounts describe the same events — they disagree only about which happened first', W, H);
   },
   readout(st){
+    if(st.bmode === 'events') return rlBarnReadout(st);
     const f = this.facts(st);
     return `<div class="card tight"><div class="ttl">Who is short, and by how much</div>
       ${kv('β', fmtNum(st.beta, 4) + ' c')}
@@ -178,12 +188,20 @@ STAGES.rlBarn = {
     </div>`;
   },
   chip(st){
+    if(st.bmode === 'events') return rlBarnChip(st);
     const f = this.facts(st);
     return `<div class="k">Ladder & barn</div>
       <div style="color:var(--c-grad)">barn sees L = ${fmtNum(f.Lseen, 3)}</div>
       <div style="color:var(--c-pos)">ladder sees D = ${fmtNum(f.Dseen, 3)}</div>`;
   },
-  legend(){ return [['var(--c-grad)', 'the barn'], ['var(--c-pos)', 'the ladder'],
+  legend(st){
+    if(st && st.bmode === 'events')
+      return [['var(--c-grad)', 'the front reaching the near door'],
+              ['var(--c-pos)', 'the back clearing it'],
+              ['var(--accent)', 'the front reaching the far door'],
+              ['var(--c-curl)', 'the back leaving it'],
+              ['var(--c-warn)', 'the light cone from the near-door closing']];
+    return [['var(--c-grad)', 'the barn'], ['var(--c-pos)', 'the ladder'],
                     ['var(--c-warn)', 'a door, shut']]; }
 };
 
@@ -229,10 +247,18 @@ STAGES.rlElevator = {
     st.mode = o.mode || 'accel';    // accel | rest | fall | float
     st.exag = o.exag === undefined ? 12 : o.exag;
     st.h = 22.5;                    // the Pound–Rebka tower, by default
+    st.emode = o.emode === 'measure' ? 'measure' : 'boxes';
+    st.gkey = o.gkey || 'strong';
   },
   controls(){
     const st = ST;
-    return rlSeg('rlElM', st.mode, [['accel','accelerating in deep space'],['rest','at rest on Earth'],
+    /* `rlElN`, not `rlElM` — the four-box picker below already owns that id, and
+       two controls with one id in one document is what auditlink fails on. */
+    const head = ctlRow('what to do with it',
+      ctSeg('rlElN', st.emode, [['boxes', 'compare the four boxes'], ['measure', 'measure both predictions']]));
+    if(st.emode === 'measure') return head + rlElevControls(st);
+    return head +
+      rlSeg('rlElM', st.mode, [['accel','accelerating in deep space'],['rest','at rest on Earth'],
                                      ['fall','free-falling'],['float','floating, no gravity']]) +
       ctlRow('bend ×', ctlSlider('rlElX', 1, 40, 1, st.exag)) +
       ctlRow('tower h (m)', ctlSlider('rlElH', 1, 400, 0.5, st.h)) +
@@ -245,12 +271,15 @@ STAGES.rlElevator = {
       the readout always states the true number.</p>`;
   },
   wire(){
+    ctWireSeg('rlElN', v => { ST.emode = v; });
+    if(ST.emode === 'measure'){ rlElevWire(); return; }
     rlWireSeg('rlElM', v => { ST.mode = v; ST.t = 0; });
     wireSlider('rlElX', () => ST.exag, v => { ST.exag = Math.round(v); }, v => '×' + Math.round(v));
     wireSlider('rlElH', () => ST.h, v => { ST.h = v; }, v => fmtNum(+v, 4) + ' m');
     rlWireClock(st => { st.t = 0; });
   },
   frame(st, dt, ctx, W, H){
+    if(st.emode === 'measure') return rlElevFrame(st, ctx, W, H);
     const bx = W * 0.5 - 150, by = 44, bw = 300, bh = H - 150;
     const grav = st.mode === 'accel' || st.mode === 'rest';
     const label = { accel:'Accelerating at g, far from any mass',
@@ -327,6 +356,7 @@ STAGES.rlElevator = {
       : 'and nothing inside this one can tell you either — free fall is indistinguishable from no gravity', W, H);
   },
   readout(st){
+    if(st.emode === 'measure') return rlElevReadout(st);
     const g = 9.80665, w = 10;                       // a 10 m wide box
     const drop = 0.5 * g * (w / C_SI) * (w / C_SI);  // true deflection across it
     const zTower = grRedshiftWeak(g, st.h);
@@ -356,12 +386,19 @@ STAGES.rlElevator = {
     </div>`;
   },
   chip(st){
+    if(st.emode === 'measure') return rlElevChip(st);
     const grav = st.mode === 'accel' || st.mode === 'rest';
     return `<div class="k">Equivalence</div>
       <div style="color:${grav ? 'var(--c-pos)' : 'var(--c-grad)'}">${grav ? 'ball falls · light bends' : 'ball floats · light straight'}</div>
       <div>Δν/ν = ${fmtNum(grRedshiftWeak(9.80665, st.h), 4)}</div>`;
   },
-  legend(){ return [['var(--c-curl)', 'the dropped ball'],
+  legend(st){
+    if(st && st.emode === 'measure')
+      return [['var(--c-grad)', 'the beam in the accelerating box, integrated'],
+              ['var(--accent)', 'the same beam in a uniform field, in closed form'],
+              ['var(--c-pos)', 'the exact Doppler shift'],
+              ['var(--faint)', 'the familiar gh, which is its first term']];
+    return [['var(--c-curl)', 'the dropped ball'],
                     ['var(--c-warn)', 'the light beam'],
                     ['var(--faint)', 'the straight line it would have taken'],
                     ['var(--c-neg)', 'the redshift experiment: emitter below, receiver above']]; }
@@ -409,10 +446,16 @@ STAGES.rlDisk = {
   enter(st, o){
     st.brim = o.brim === undefined ? 0.6 : o.brim;   // rim speed, in c
     st.probe = 0.7;                                   // fractional radius of the probe
+    st.dmode = o.dmode === 'survey' ? 'survey' : 'spin';
+    st.dkey = o.dkey || 'fast';
   },
   controls(){
     const st = ST;
-    return ctlRow('rim speed β', ctlSlider('rlDkB', 0, 0.95, 0.005, st.brim)) +
+    const head = ctlRow('the disk',
+      ctSeg('rlDkM', st.dmode, [['spin', 'watch it spin'], ['survey', 'survey it yourself']]));
+    if(st.dmode === 'survey') return head + rlDiskControls(st);
+    return head +
+      ctlRow('rim speed β', ctlSlider('rlDkB', 0, 0.95, 0.005, st.brim)) +
       ctlRow('probe r/R', ctlSlider('rlDkR', 0.05, 1, 0.01, st.probe)) +
       rlClockCtl() +
       `<p class="help">Lay rulers along the rim and count how many it takes to go round. Each of them is
@@ -424,6 +467,8 @@ STAGES.rlDisk = {
       bent geometry.</p>`;
   },
   wire(){
+    ctWireSeg('rlDkM', v => { ST.dmode = v; });
+    if(ST.dmode === 'survey'){ rlDiskWire(); return; }
     /* These two constrain each other: a point at radius r moves at β·(r/R), so
        the ceiling on either one depends on where the other one is standing. */
     const diskWhy = 'On a disk turning with rim speed β, the material at radius r moves at β·(r/R), ' +
@@ -436,6 +481,7 @@ STAGES.rlDisk = {
     rlWireClock();
   },
   frame(st, dt, ctx, W, H){
+    if(st.dmode === 'survey') return rlDiskFrame(st, ctx, W, H);
     const cx = W * 0.30, cy = H * 0.50, R = Math.min(W * 0.24, H * 0.36);
     const g = relGamma(st.brim);
     const ang = st.t * st.brim * 0.9;
@@ -489,6 +535,7 @@ STAGES.rlDisk = {
     stageNote(ctx, 'dτ/dt = √(1 − ω²r²/c²)  —  compare with √(1 − rs/r) in the Schwarzschild metric', W, H);
   },
   readout(st){
+    if(st.dmode === 'survey') return rlDiskReadout(st);
     const g = relGamma(st.brim);
     const b = st.brim * st.probe, gp = relGamma(b);
     return `<div class="card tight"><div class="ttl">At the rim</div>
@@ -517,12 +564,19 @@ STAGES.rlDisk = {
     </div>`;
   },
   chip(st){
+    if(st.dmode === 'survey') return rlDiskChip(st);
     const g = relGamma(st.brim);
     return `<div class="k">Rotating disk</div>
       <div style="color:var(--c-curl)">C/2πR = ${fmtNum(g, 5)}</div>
       <div style="color:var(--c-neg)">rim clock ×${fmtNum(1 / g, 5)}</div>`;
   },
-  legend(){ return [['var(--c-pos)', 'rim rulers — contracted, so more are needed'],
+  legend(st){
+    if(st && st.dmode === 'survey')
+      return [['var(--c-warn)', 'rim rulers, contracted — more are needed'],
+              ['var(--c-curl)', 'radial rulers, untouched'],
+              ['var(--c-grad)', 'C/2R = πγ'], ['var(--accent)', 'π(1 + v²/2), the second-order estimate'],
+              ['var(--faint)', 'π, where Euclid says it should be']];
+    return [['var(--c-pos)', 'rim rulers — contracted, so more are needed'],
                     ['var(--c-grad)', 'radial rulers — unaffected'],
                     ['var(--c-curl)', 'C / 2πr, against radius'],
                     ['var(--c-neg)', 'clock rate dτ/dt, against radius'],

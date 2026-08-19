@@ -54,10 +54,17 @@ STAGES.rlDyn = {
     st.beta = o.beta === undefined ? 0.8 : o.beta;
     st.p = o.p || 'proton';
     st.L = o.L === undefined ? 15000 : o.L;      // muon flight path, metres
+    st.dymode = o.dymode === 'collide' ? 'collide' : 'shell';
+    st.xkey = o.xkey || 'clay';
+    st._col = null;
   },
   controls(){
     const st = ST;
-    return rlSeg('rlDyP', st.p, [['electron','electron'],['muon','muon'],['proton','proton']]) +
+    const head = ctlRow('what to show',
+      ctSeg('rlDyM', st.dymode, [['shell', 'one particle on its mass shell'], ['collide', 'a collision you write']]));
+    if(st.dymode === 'collide') return head + rlDynControls(st);
+    return head +
+      rlSeg('rlDyP', st.p, [['electron','electron'],['muon','muon'],['proton','proton']]) +
       ctlRow('speed β', ctlSlider('rlDyB', 0.001, 0.99999, 0.0005, st.beta)) +
       ctlRow('flight path', ctlSlider('rlDyL', 500, 30000, 100, st.L)) +
       `<p class="help">The top plot is what it costs to go fast: <b>γ</b> is a wall, not a slope. The
@@ -68,11 +75,14 @@ STAGES.rlDyn = {
       atmosphere, with and without time dilation.</p>`;
   },
   wire(){
+    ctWireSeg('rlDyM', v => { ST.dymode = v; ST._col = null; });
+    if(ST.dymode === 'collide'){ rlDynWire(); return; }
     rlWireSeg('rlDyP', v => { ST.p = v; });
     wireSlider('rlDyB', () => ST.beta, v => { ST.beta = v; }, rlBetaFmt, RL_BETA_LIM);
     wireSlider('rlDyL', () => ST.L, v => { ST.L = v; }, v => fmtNum(+v / 1000, 3) + ' km');
   },
   frame(st, dt, ctx, W, H){
+    if(st.dymode === 'collide') return rlDynFrame(st, ctx, W, H);
     const g = relGamma(st.beta);
     const colW = W * 0.46, rightX = W * 0.53;
     /* --- energy and momentum against speed --- */
@@ -144,6 +154,7 @@ STAGES.rlDyn = {
     stageNote(ctx, 'mass is the length of the four-momentum vector — not a quantity that grows with speed', W, H);
   },
   readout(st){
+    if(st.dymode === 'collide') return rlDynReadout(st);
     const P0 = RL_PARTICLES[st.p], m = P0.m, g = relGamma(st.beta);
     const E = relEnergy(m, st.beta), p = relMomentum(m, st.beta), K = relKinetic(m, st.beta);
     const MEV_J = 1.602176634e-13;
@@ -196,12 +207,19 @@ STAGES.rlDyn = {
     </div>`;
   },
   chip(st){
+    if(st.dymode === 'collide') return rlDynChip(st);
     const P0 = RL_PARTICLES[st.p], g = relGamma(st.beta);
     return `<div class="k">${P0.name}</div>
       <div style="color:var(--c-pos)">γ = ${fmtNum(g, 5)}</div>
       <div style="color:var(--c-grad)">E = ${fmtNum(relEnergy(P0.m, st.beta), 5)} MeV</div>`;
   },
-  legend(){ return [['var(--c-grad)', 'total energy E / mc², and the mass shell'],
+  legend(st){
+    if(st && st.dymode === 'collide')
+      return [['var(--c-grad)', 'each incoming particle, laid tip to tail'],
+              ['var(--c-pos)', 'each outgoing one'],
+              ['var(--c-curl)', 'the total four-momentum'],
+              ['var(--accent)', 'the mass shell the total sits on']];
+    return [['var(--c-grad)', 'total energy E / mc², and the mass shell'],
                     ['var(--c-neg)', 'momentum pc / mc², and the same particle in other frames'],
                     ['var(--c-curl)', 'kinetic energy (γ−1)mc²'],
                     ['var(--faint)', 'the classical ½mv² and E = mc² + p²/2m'],
@@ -253,10 +271,18 @@ STAGES.rlDopp = {
       const u = 2 * rnd() - 1, ph = 2 * Math.PI * rnd();
       st.stars.push({ ct: u, ph, r: 0.7 + 1.6 * rnd() });
     }
+    st.smode = o.smode === 'shift' ? 'shift' : 'sky';
+    st.skey = o.skey || 'fast';
+    /* a preset seeds beta; the slider owns it from then on */
+    if(o.beta === undefined && RL_SOURCES[st.skey]) st.beta = RL_SOURCES[st.skey].beta;
   },
   controls(){
     const st = ST;
-    return ctlRow('your speed β', ctlSlider('rlDoB', 0, 0.995, 0.005, st.beta)) +
+    const head = ctlRow('what to show',
+      ctSeg('rlDoM', st.smode, [['sky', 'the sky, rearranged'], ['shift', 'the shift at every angle']]));
+    if(st.smode === 'shift') return head + rlSrcControls(st);
+    return head +
+      ctlRow('your speed β', ctlSlider('rlDoB', 0, 0.995, 0.005, st.beta)) +
       `<p class="help">The left panel is the whole sky, mapped so that the centre is straight ahead and
       the outer circle is straight behind. At rest the stars are spread evenly. Accelerate and they
       <b>pile up ahead of you</b> — not because they moved, but because
@@ -266,8 +292,13 @@ STAGES.rlDopp = {
       <b>1/γ</b>, which is why relativistic jets look one-sided and why synchrotron beamlines are
       thin, bright and useful.</p>`;
   },
-  wire(){ wireSlider('rlDoB', () => ST.beta, v => { ST.beta = v; }, rlBetaFmt, RL_BETA_LIM); },
+  wire(){
+    ctWireSeg('rlDoM', v => { ST.smode = v; });
+    if(ST.smode === 'shift'){ rlSrcWire(); return; }
+    wireSlider('rlDoB', () => ST.beta, v => { ST.beta = v; }, rlBetaFmt, RL_BETA_LIM);
+  },
   frame(st, dt, ctx, W, H){
+    if(st.smode === 'shift') return rlSrcFrame(st, ctx, W, H);
     const b = st.beta, g = relGamma(b);
     /* --- the sky --- */
     const R = Math.min(W * 0.21, (H - 120) * 0.46);
@@ -343,6 +374,7 @@ STAGES.rlDopp = {
     stageNote(ctx, 'nothing about the source changed — only the frame the light is being catalogued in', W, H);
   },
   readout(st){
+    if(st.smode === 'shift') return rlSrcReadout(st);
     const b = st.beta, g = relGamma(b);
     const thB = relBeamingAngle(b);
     /* our own motion through the CMB — the largest Doppler shift anyone has measured */
@@ -385,13 +417,20 @@ STAGES.rlDopp = {
     </div>`;
   },
   chip(st){
+    if(st.smode === 'shift') return rlSrcChip(st);
     const g = relGamma(st.beta);
     return `<div class="k">Aberration</div>
       <div style="color:var(--c-neg)">ahead ×${fmtNum(relDoppler(st.beta, 0), 4)}</div>
       <div style="color:var(--c-pos)">astern ×${fmtNum(relDoppler(st.beta, Math.PI), 4)}</div>
       <div style="color:var(--c-warn)">cone ≈ ${fmtNum(1 / g, 4)} rad</div>`;
   },
-  legend(){ return [['var(--c-neg)', 'blueshifted — ahead of you'],
+  legend(st){
+    if(st && st.smode === 'shift')
+      return [['var(--c-grad)', 'δ against the angle in your frame'],
+              ['var(--c-curl)', 'the transverse point, δ = 1/γ'],
+              ['var(--c-warn)', 'where the shift vanishes — and δ⁴, below'],
+              ['var(--c-pos)', 'your chosen angle']];
+    return [['var(--c-neg)', 'blueshifted — ahead of you'],
                     ['var(--c-pos)', 'redshifted — behind you'],
                     ['var(--c-warn)', 'the beaming cone, and the emitted power pattern'],
                     ['var(--faint)', 'what the source emits in its own frame — isotropic']]; }

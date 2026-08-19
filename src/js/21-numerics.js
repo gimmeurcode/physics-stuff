@@ -72,8 +72,16 @@ const NQ_GL = {
        w:[0.1012285362903763, 0.2223810344533745, 0.3137066458778873, 0.3626837833783620,
           0.3626837833783620, 0.3137066458778873, 0.2223810344533745, 0.1012285362903763] }
 };
+/* The table has orders 2, 3, 4, 5 and 8 and nothing else, so every read of
+   it must fall back. nqGauss did (`NQ_GL[k] || NQ_GL[5]`) and nqDoubleRect did
+   not (`NQ_GL[k || 5]`, which is a fallback for a MISSING k and not for an
+   unsupported one) — so a caller asking for order 6, a perfectly reasonable
+   request, got `undefined` and a TypeError three frames later that named
+   neither the caller nor the order. One accessor, so the two cannot drift
+   apart again. Found 2026-08-19 by the first new caller to ask for 6. */
+const nqGL = k => NQ_GL[k] || NQ_GL[5];
 function nqGauss(f, a, b, k, panels){
-  const G = NQ_GL[k] || NQ_GL[5], m = Math.max(1, panels || 1);
+  const G = nqGL(k), m = Math.max(1, panels || 1);
   const H = (b - a) / m;
   let s = 0;
   for(let p = 0; p < m; p++){
@@ -172,7 +180,7 @@ function nqImproperTail(f, a, tol){
    stages check that by running it both ways and differencing. */
 
 function nqDoubleRect(f, a, b, c, d, k, panels){
-  const G = NQ_GL[k || 5], m = Math.max(1, panels || 8);
+  const G = nqGL(k), m = Math.max(1, panels || 8);
   const inner = x => {
     let s = 0;
     const H = (d - c) / m;

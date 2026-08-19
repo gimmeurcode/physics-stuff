@@ -239,8 +239,8 @@ STAGES.atomBinding = {
     </div>
     <div class="card tight"><div class="ttl">The five terms (MeV)</div>
       ${kv('volume +15.75·A (strong)', fmtNum(aV, 1))}
-      ${kv('surface −17.8·A^⅔', fmtNum(aS, 1))}
-      ${kv('Coulomb −0.711·Z²/A^⅓ (EM)', fmtNum(aC, 1))}
+      ${kv('surface −17.8·A^(2/3)', fmtNum(aS, 1))}
+      ${kv('Coulomb −0.711·Z²/A^(1/3) (EM)', fmtNum(aC, 1))}
       ${kv('asymmetry −23.7·(A−2Z)²/A (Pauli)', fmtNum(aA, 1))}
       <p class="help">Each nucleon only feels neighbours (strong force saturates) so volume binding is linear in A — but every proton repels every other, so Coulomb grows as Z². That mismatch is the entire story of the periodic table's upper end.</p>
       <p class="help" style="color:var(--faint)">A detail usually glossed over: the true maximum of B/A is <b>⁶²Ni</b> at 8.7945 MeV, a hair above ⁵⁶Fe's 8.7903. Iron still dominates stellar ash because what a collapsing core actually minimises is free energy at fixed proton fraction under photodisintegration, not B/A — so "the iron peak" is a statement about abundance, and nickel wins the binding contest by 4 keV per nucleon.</p>

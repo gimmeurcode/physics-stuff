@@ -1,4 +1,4 @@
-﻿# SITE RULES
+# SITE RULES
 
 **What must be true of this laboratory, and what any change to it owes the rest
 of it.**
@@ -89,6 +89,31 @@ consequences that matter most often:
 - **The two routes must not share their error.** Two quadratures of the same
   family agreeing tells you they are the same routine, not that the answer is
   right. Refine each side separately before believing either.
+- **A two-route check is only a check where BOTH routes are valid, and the panel
+  must say where that is.** `rlHole` compared a quadrature against an RK4 march
+  of the geodesic equation *at the reader's probe* — which the reader can drive
+  to within 10⁻¹² of a horizon, where the integrator carries dt/dτ = E/A in its
+  state vector and its drift in E reaches 3×10⁸ (2026-08-18). Its *proper* time
+  is still good there; only its coordinate time has gone. Neither route was
+  wrong and the comparison was meaningless, which is the worst of the three
+  outcomes because it looks like a disagreement about the physics. Choose the
+  radius, name it in the panel, and say why — and note that a route failing is
+  often the phenomenon rather than a defect in it.
+- **And the two routes must be compared AT THE SAME PLACE, which is not always
+  where the headline number lives.** `rlLens` reports the deflection all the way
+  to infinity; a fixed-step integrator cannot start there, so the quadrature is
+  re-run at the integrator's own observer and *that* pair is differenced
+  (2026-08-18). Differencing the two headline numbers instead reads as a 2.6%
+  disagreement which is entirely the finite observer — a residual between two
+  different quantities, printed in the place a residual between one quantity's
+  two routes belongs.
+- **A guard that returns zero for a sample it cannot evaluate has changed the
+  question.** The integral is then over a different domain, and the panel says
+  nothing about it. `rlDeflect` reported 0.2193 for a ray whose honest answer,
+  measured where both ends are real, is 0.2170 (2026-08-18). Refuse on the
+  endpoints, **and** count the samples you could not take: a metric can go
+  non-static strictly between two perfectly good endpoints, and no endpoint check
+  will ever see that.
 - **Print what the zero cancelled.** `∮|B·n̂|dA` beside `∮B·dA`, `Σ|dB|` beside
   `|ΣdB|` — otherwise the panel cannot distinguish a physical cancellation from a
   routine that computed nothing.

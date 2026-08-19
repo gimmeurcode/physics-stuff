@@ -43,7 +43,15 @@ $exempt = @(
   'x\^2 \+ y\^2',                  # ditto: the expression-box placeholder
   'sqrt\(max\(0,',                 # the Type I/II region examples, meant to be copied
   'written phi and t',             # the spherical slots naming their own identifiers
-  'written t'                      # ditto, for the polar-angle slots
+  'written t',                     # ditto, for the polar-angle slots
+  # The proof wing's parser accepts the Unicode operators AND their ASCII
+  # spellings, and a reader with an ordinary keyboard has to be told the second
+  # set exists -- there is no → key. Both strings show the ASCII forms as INPUT
+  # SYNTAX, printed beside the Unicode they stand for, which is the same case as
+  # `a^n` and `x^2 + y^2` above. The patterns are deliberately narrow: a bare
+  # `->` anywhere else in the site still shouts, including elsewhere in this wing.
+  '~ & \| -> <->',                 # the formula box's "what you may type" hint
+  'rain -> wet'                    # the same point made as a sentence
 )
 function Exempted([string]$s) {
   foreach ($e in $exempt) { if ($s -match $e) { return $true } }

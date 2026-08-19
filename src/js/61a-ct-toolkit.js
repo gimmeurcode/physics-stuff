@@ -122,6 +122,39 @@ function ctNiceStep(span){
   const raw = span / 8, mag = Math.pow(10, Math.floor(Math.log10(raw))), n = raw / mag;
   return (n < 1.5 ? 1 : n < 3.5 ? 2 : n < 7.5 ? 5 : 10) * mag;
 }
+/* Marks at whole units of a quantity the READER controls — one dot per year,
+   one notch per metre — and the reason this is a helper rather than a for-loop
+   at each site.
+
+   `for(let k = 1; k <= Math.floor(T); k++)` is the obvious way to write it and
+   it is a hang waiting for its input. On 2026-08-19 `rlMotFrameTwin` drew one
+   dot per year of the stay-at-home's clock, and the stay-at-home's clock is
+   sinh(φ)/a: at a programme of a = 5 over ten years of ship time that is
+   2.6×10²⁰ years, so the loop ran 2.6×10²⁰ times and the whole application
+   stopped. Nothing was infinite and no number was wrong — the trip count was
+   simply a PHYSICAL quantity, and physical quantities in relativity are
+   exponential in the input.
+
+   The bound here is on the OUTPUT rather than on the input, which is what makes
+   the defect unrepresentable: at most `most` marks come back whatever is handed
+   in, and the step is widened to a round number until they fit. A caller that
+   draws one mark per returned value cannot loop more than `most` times, and the
+   returned `step` is what the caption must say when it is not 1 — a dot every
+   ten years labelled "one dot per year" would be a lie the reader can count. */
+function ctUnitMarks(lo, hi, most){
+  const a = Math.min(lo, hi), b = Math.max(lo, hi), span = b - a;
+  const cap = Math.max(2, Math.round(most || 40));
+  if(!Number.isFinite(span) || !(span > 0)) return { vals:[], step:1 };
+  let step = 1;
+  if(span / step > cap) step = ctNiceStep(span);
+  while(span / step > cap) step *= 10;          /* at most ~310 turns in float64 */
+  const vals = [];
+  for(let k = Math.ceil(a / step); k * step <= b + 1e-12 * span && vals.length < cap; k++){
+    const v = k * step;
+    if(v > a - 1e-12 * span) vals.push(v);
+  }
+  return { vals, step };
+}
 /* a 2D arrow in data coordinates, with the head sized in pixels */
 function ctArrow(ctx, P, x0, y0, x1, y1, col, w, label){
   const ax = P.X(x0), ay = P.Y(y0), bx = P.X(x1), by = P.Y(y1);

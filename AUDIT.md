@@ -5289,3 +5289,1930 @@ passed, 0 failed** · `runstagetests` **106 passed, 0 failed** · `auditcustom`
 **flagged=0** · `auditmarks` 2303 → 20 · `runall` **caught=0 OK** ·
 `auditdocs` **bad=0 OK**. Both stages screenshotted; the first screenshot of
 `laAbstract` is what found the matrix sitting under the readout chip.
+
+---
+
+# 2026-08-17 · Syllabus gap B4 — existence and uniqueness for ODEs
+
+`odExist` and `odUnique` (`71d-stages-ode-exist.js`), engine
+`26a-ode-exist.js`, six demos at the head of the `ode` wing, four statement
+cards, and 127 unit + 73 stage assertions. What was *verified*, not what was
+built:
+
+1. **The Lipschitz constant is scanned at five separations, and one would have
+   been worthless.** `3∛(y²)` returns a perfectly respectable **L = 21** at
+   δ = 0.003 — a finite number with nothing wrong-looking about it. Only its
+   refusal to settle as δ shrinks distinguishes an unbounded ∂F/∂y from a large
+   one, and the ratio is exactly **∛4 = 1.5874** per quartering, for ever. The
+   verdict threshold (1.05) sits between two *measured* populations rather than
+   at a round number: over the ten presets the convergent cases reach a last
+   ratio of at most **1.0059** (`circle`, whose quotient 1/(y₁y₂) approaches its
+   sup from below), against 1.5874 for the divergent one.
+2. **The symmetric difference quotient is the wrong probe here, and would have
+   reported the opposite.** F = 3∛(y²) is *even* in y, so
+   (F(y+d) − F(y−d))/2d is exactly **0** at y = 0 for every d — a field with an
+   infinite y-derivative reported as having a zero one. `odLipScan` uses
+   one-sided pairs. `odVariational` still uses a central difference, which is
+   why the stage withholds ∂y/∂y₀ entirely when the local scan says the
+   derivative is unbounded, rather than printing the 1 that quotient returns.
+3. **Picard's 5×10⁻¹² floor is truncation, not round-off — measured, not
+   assumed.** Halving the grid four times cut it by **15.9, 16.0, 16.0, 15.7**:
+   fourth order, i.e. the cumulative Simpson's own error. So more iterates buy
+   nothing past that point and a *finer grid* is the cure — a relative floor
+   would have been the J9 mistake inverted. Pinned by a test that asserts the
+   ratio, not the value.
+4. **A flat tolerance on the two-route Picard check was wrong and the failure
+   was right.** `logistic` failed a flat 1e-8 because its h = 1.667 is the
+   largest interval in the table and the series converges like hⁿ/n!, so ten
+   iterates genuinely have not arrived. The assertion is now the theorem's own
+   tail Σ M Lᵏ hᵏ⁺¹/(k+1)!, which is 1.6×10⁻⁵ for `logistic` and 2.4×10⁻¹¹ for
+   `linear` — six orders *tighter* where the mathematics allows it.
+5. **The escape time, by two routes that share nothing.** Marching the equation
+   in x until y leaves every bound, against integrating dx/dy = 1/F in y. They
+   agree to **8.8×10⁻¹²**, and that residue is *flat across four decades* of the
+   cut-off level — so it is the marcher's own error and not the truncation. The
+   first version of the test compared π/2 − x against arctan(1/cap) and failed
+   by 2×10⁻⁸: a relative step overshoots the level by ~0.4%, so the test was
+   measuring the overshoot. Against arctan(1/**y_stop**) the identity is exact.
+6. **FALSE-SCALE, caught before it shipped.** The y ≡ 0 member of the
+   non-uniqueness family is a solution whose own gross ∮|F| is **exactly zero**,
+   so its residual quoted against itself printed 5×10⁻¹¹ as a **5000%
+   disagreement** in the affirmative colour — J9 inverted, the class
+   `fmtAgreeGross` exists for. The scale is floored with M, the largest slope
+   the field produces on the rectangle, computed once in `recompute` so the
+   readout and the stage test read one number.
+7. **Two prose statements were false and only a screenshot could see it.** The
+   `odUnique` plot title said "every curve here passes through the same point"
+   and the caption said "all of these solve the same equation with the same
+   initial value" — both false of the dashed perturbation bundle, which starts
+   a hair *above* the point. That is half the curves in the picture.
+8. **An axis printed `2.218281828`.** `fmtTick` derives its precision from the
+   step it is handed, and the euler window was fitted exactly to the data, so
+   the step was 1.218281828 and nine decimals were faithfully rendered. The
+   window is quantised with `ctNiceStep` now. `auditticks` could not see it: it
+   fails on *duplicate* labels, and this one was unique — just useless.
+9. **A curve that left its window came back as a flat line.** `odDrawSamples`
+   clamped each sample into the box, so e^x leaving the top of the `odUnique`
+   window was ruled along y = y₀ + b and read as a solution that levels off —
+   the "clamping invents data" case `plotCurve`'s own comment records, written
+   again in a second place because the helper was new. It now clamps to a band
+   four spans out (so the rasteriser cannot drop the path) and lets `pvClip`
+   clip, breaks the path between opposite bands so a pole is never chorded, and
+   the window is fitted over **exactly** the list of curves drawn. `auditframe`
+   unchanged at cut=3.
+10. **A claim about the escape that measurement refused.** `odEscape` was given
+   a second outcome, `stalled`, for the *other* way a solution stops existing —
+   a vertical tangent, where y is finite and the slope is not — on the reasoning
+   that the step control would drive h below its floor. Measured, it **never
+   fired**: not on any preset, and not on a field built to trigger it
+   (F = 1/√(1−x), slope diverging at x = 1 while y → 2), because h shrinks like
+   1/|F| and an infinite F always arrives first. Worse, the case it was written
+   for is not detected at all: `y′ = −x/y` from (0, 2) has the solution
+   √(4−x²), which **ends at x = 2**, and the marcher steps straight through
+   y = 0 onto the lower branch and reports `escaped = false` all the way to
+   x = 40 with y ≈ 18. The branch was removed rather than shipped unexercised,
+   the panel now says "no blow-up along the path marched" instead of implying
+   the solution exists there, and three tests pin what the route actually does —
+   including that it walks onto a different branch. **This is Part 4's category:
+   a finite number produced by correct arithmetic about the wrong object.**
+
+**Two findings in code this session did not own** (§4.3a rule 8):
+
+- **`OD_FIELDS` had no caller anywhere.** Eight first-order fields with closed
+  forms and prose, plus `odEuler`, `odHeun`, `odRK4First`, `odStepOrder`,
+  `odExponential` and `odLogistic` — engine code, unit-tested, with `auditclaims`
+  checking its closed forms, and **nothing on screen using any of it** since it
+  was written. Meanwhile the wing's own home card promised "slope fields and the
+  solution curves that follow them, Euler's method against Heun and RK4 with
+  each observed order measured", and the wing delivered none of it. Both stages
+  now drive the table; the card is true.
+- **`auditscan` was red at 3 HIGH when first run**, and two of the three were
+  ASCII e-notation (`1e-9`, `1e-12`) in demo prose landed by 2026-08-16's B2 and
+  B3 work — i.e. that day's recorded `audittext + auditscan OK` did not cover
+  the demos it shipped. All three fixed; 0 HIGH.
+
+**And a documentation defect of the same shape as the one `auditdocs` was built
+for.** Part 0's headline table carried a per-row `(re-measured YYYY-MM-DD)`
+stamp on most of its rows. `auditdocs` exempts any figure sharing a line with a
+date — so those stamps had made **the site's own state table permanently
+invisible to its own gate**. It read 599 experiments, 178 stages, 231 modules,
+4318 tests and 253 `mkPlot` sites against a site reporting 610, 184, 237, 4502
+and 262. The stamps are gone and the date is on one line above the table.
+`-Fix` could not have found this: it only rewrites what it is allowed to see.
+
+**The gate additions.** `auditclaims` reaches `OD_FIELDS`'s new `lip` and `esc`
+claims by routes the table does not own — the Lipschitz scan and a quadrature in
+y — taking it from 249 claims to **264**. Corrupting `blowup.lip`,
+`cuberoot.lip` and `blowup.esc` turned it red on all three; corrupting the M
+floor, the escape-aware sweep interval and the fixed order base count turned
+`runstagetests` red on five assertions. A gate never seen to fail is not known
+to work.
+
+Gates: `build` 237 modules · `smoke` OK (stages=184, seelinks=86) · `runtests`
+**4505 passed, 0 failed** · `runstagetests` **179 passed, 0 failed** · `runall`
+demos=610 controls=6645 **caught=0 OK** · `auditclaims` **264 claims, bad=0** ·
+`auditsides` falsescale 0/0 presetgap **0/0 OK** · `auditresid` **findings=0**,
+noscale unchanged at 7 · `auditcustom` **bad=0 OK** (109 stages, 144 boxes) ·
+`auditlink` **findings=0** over 610 trips · `auditpanel` **bad=0** ·
+`auditzoom` **findings=0** · `auditframe` **OK**, cut=3 unchanged ·
+`auditticks` **OK** · `auditperf` 2 heavy stages unchanged, 2-D mean 131 ·
+`auditsize` **findings=0** · `auditviewport` 16 sizes **bad=0** ·
+`auditderive` **flagged=0** · `audittext` + `auditscan` **0 HIGH** ·
+`auditprose` 0 · `auditcontrast` **OK** · `auditdocs` **bad=0 OK**.
+`auditmarks` and `auditartifact` were **not run**: nothing here touches
+`pvFeatures` or the artifact wrapper. Four screenshots looked at; two of the
+eight findings above came from them and from nothing else.
+
+---
+
+## 2026-08-18 · Programme A relativity item 1 — a metric the reader supplies
+
+`46a-gr-metric.js` (new, 420 lines) and `rlMetric` rebuilt as a scenario editor
+(`68a`, with `rlOrbit` split out to `68ab` so neither file passes the size
+guidance). Units throughout: **G = c = 1, lengths in GM/c²**, so Schwarzschild is
+`1 - 2/r` and its horizon is at r = 2.
+
+**What the stage used to assert, and what it now measures.** Four things were
+written down as formulae: the horizon at 2GM/c², the photon sphere at 1.5 rs, the
+ISCO at 3 rs, and the caption "the two factors — and they are reciprocals". All
+four are now located from whatever A and B are in the boxes.
+
+| claim | second route | measured |
+|---|---|---|
+| horizon = 2GM/c² | bisection on the sign change of a *compiled source string* | r = 2 to **1e-14**; acceptance was 1e-9, and bisection to the last bit beats it by five orders |
+| photon sphere = 1.5 rs | bisection on A′r − 2A with a finite-difference A′ | 3 to **1e-11**; and **exactly 3 for Schwarzschild–de Sitter too**, because the Λ terms cancel out of A′r = 2A — asserted because it is not obvious and the panel prints it |
+| ISCO = 3 rs | innermost minimum of the circular-orbit L², bisected on its derivative | 6 to **1e-6**; and independently *bracketed* by integrating a nudged circular orbit — unstable at 5.5, bounded at 6.5 |
+| A·B = 1 | a scan of the product over the static band | 1e-16 for Schwarzschild and Reissner–Nordström, **2/r** for the "only time curved" preset, which is the point of that preset |
+| E, L conserved | read off route A's state, imposed nowhere in it | **3.2×10⁻¹³** over ten orbits |
+| Flamm's paraboloid | ∫√(B−1)dr by Simpson in w = √(r−r₀) | **1e-8 absolute**, and every *increment* exact to 1e-12 |
+| the precession | the u-equation integrator in `46`, different variables and a different parameter | **1e-4 relative** |
+
+**The drift is truncation down to h ≈ 1 and round-off below h ≈ 0.5, and both
+regimes are asserted.** J9's rule applied: halving h cuts the drift 16× (RK4's
+order) at h = 4→2→1, and stops cutting it at all by h = 0.5→0.25, where the ratio
+is 0.87. A test that had only asserted the first would have failed the moment
+anyone chose a finer step; a test that had only asserted a threshold would never
+have distinguished the two errors at all.
+
+**Five defects, four of them found by a gate and each invisible to the gate
+above it in this list.**
+
+1. **`rlCircularEL` and `rlApsidesEL` sold L² = 0 as an orbit.** A constant A
+   returns zero angular momentum, which describes a particle sitting still — so
+   the engine reported that Minkowski has circular orbits everywhere and that
+   E = 1 was their energy. Found by the flat-spacetime control in `runtests`,
+   which is the entire reason that preset exists. Both now require L² > 0.
+2. **`rlEmbedZ` evaluated its integrand ON the horizon**, where B is infinite,
+   took the guard's zero, and lost the whole first panel — **17% of z at the
+   first sample**, a wrong picture of the funnel exactly where its shape is.
+   The first fix nudged w by 1e-9·wEnd and **changed nothing**, because
+   2 + (6e-9)² rounds back to exactly 2 in double precision. Offsetting r by a
+   fixed 1e-10 relative works. The residual 6.9e-9 at that one sample is a
+   **√eps floor** — nudging by δ costs eps/δ in cancellation and δ in the limit,
+   which balance at √eps — so the test asserts 1e-8 *absolute* everywhere and
+   1e-12 on every *increment*, which is the sharper statement and the one that
+   says the quadrature is right.
+3. **The rubber sheet was drawn as a dome.** z is a height and screen y grows
+   downward, so it must be subtracted; it was added, putting the rim below the
+   throat. Inherited from the stage as it stood, present in the code this
+   replaced, and visible only in a screenshot — no gate reads a projection's
+   sign.
+4. **Two radii bracketing a *barrier* were integrated as an orbit.**
+   V²(r₁) = V²(r₂) = E² is necessary and **not** sufficient: the same two
+   conditions hold when the effective potential rises *above* E² in between, and
+   then the region between is forbidden. Schwarzschild cannot produce it, which
+   is exactly why the formula looked finished. Schwarzschild–de Sitter does it as
+   soon as the apsides straddle the maximum of A, and the "orbit" with apsides
+   14 and 20 escaped to **r = 80** while the panel reported it as bound. Found by
+   `runstagetests`, on a stage-state assertion that `runtests` could not have
+   made because the metric is a preset. `rlApsidesEL` now samples the interior
+   and refuses, naming the shape it found.
+5. **The wrong pair of turning points, on the one metric that has four.**
+   Schwarzschild's potential gives exactly three roots — the plunge branch and
+   the two apsides — so "take the outermost two" was right *by accident*.
+   Schwarzschild–de Sitter gives four, because beyond the outer apsis the
+   potential falls back under E² and the escape region is allowed, and the panel
+   reported a pericentre **four units** away from the one it had been asked for.
+   Found by `auditsides` sweeping presets — the only gate that drives every
+   preset a reader can select, and the only one that asks whether two routes
+   *agree* rather than whether the difference is formatted properly. The band is
+   now chosen from the launch radius, which is an input rather than anything
+   route A computed, so the check keeps its independence.
+
+**A sixth, in this session's own audit code, three times over.** "Outside the
+outermost horizon" is where nobody can stand once a metric has a cosmological
+horizon — beyond it A < 0 and every quantity comes back NaN. The unit suite made
+that assumption first (four false failures), then the `auditclaims` block made it
+twice more, the second time producing 1200 imaginary embedding samples. That is
+what `rlStaticBand` is for and nothing may compute a band by hand again.
+
+**`auditclaims` gained `RL_METRICS`** — 55 rows, 264 claims to 319. Its second
+routes share nothing with `46a`: horizons from the closed forms 1 ± √(1−Q²) and
+from the **trigonometric solution of the cubic** λr³ − r + 2 = 0 (which agreed
+with bisection to 2e-13); the marginally stable orbits from the algebraic
+condition r·A·A″ + 3A·A′ = 2r·A′², reduced by hand per family. That reduction was
+**derived here rather than quoted**, and the check that it is right is that the
+charged case reproduces the published cubic r³ − 6r² + 9Q²r − 4Q⁴ = 0 and the
+Λ = 0 limit gives exactly 6. **Both directions of the gate were watched to
+fail**: the embedding row failed on its first run for a real reason, and two
+declared numbers were then corrupted deliberately (an ISCO by 1e-3 and a `vac`
+flag) and both were caught.
+
+**One honest exception whitelisted, with its mathematics**, and only after the
+other two rows from the same run were fixed rather than excused:
+`rlMetric|readout|worst A·B against 1` is exact on every vacuum preset and reads
+2/r on "only time curved", because A·B = 1 is equivalent to the radial pressure
+equalling minus the energy density and that metric is not a solution of anything.
+
+Gates: `build` 239 modules · `smoke` OK (wings=40, stages=184, seelinks=86) ·
+`runtests` **4643 passed, 0 failed** · `runstagetests` **243 passed, 0 failed** ·
+`runall` demos=611 controls=6682 **caught=0 OK** · `auditclaims` **319 claims,
+bad=0** · `auditsides` falsescale 0/0 presetgap **0/0 OK** · `auditresid`
+**findings=0**, noscale 7→6 · `auditcustom` **bad=0 OK** (110 stages, 146
+boxes) · `auditlink` **findings=0** over 611 trips · `auditpanel` **bad=0** ·
+`auditzoom` **findings=0** · `auditframe` **OK**, cut=3 unchanged · `auditticks`
+**OK** · `auditperf` 2 heavy stages unchanged, 2-D mean 131 unchanged ·
+`auditsize` **findings=0** · `auditviewport` 16 sizes **bad=0** · `auditderive`
+**flagged=0** · `audittext` + `auditscan` **0 HIGH** · `auditcontrast` **OK** ·
+`auditdocs` **bad=0 OK**. `auditmarks` and `auditartifact` **not run**: nothing
+here touches `pvFeatures` or the artifact wrapper. Three screenshots looked at;
+defect 3 came from them and from nothing else.
+
+## 2026-08-18 · Programme A relativity item 2 — orbits of a metric the reader supplies
+
+`rlOrbit` knew it was looking at Schwarzschild. It integrated the u-equation
+`d²u/dφ² + u = GM/L² + 3GMu²/c²`, whose relativistic term is *written into the
+source*, so every statement the panel made about precession was a property of
+that one line rather than of any spacetime. §2.9's rule is that what a preset may
+assume is exactly what the reader's own scenario has to test, so the orbit is now
+a geodesic of whatever `A(r)` and `B(r)` are in the boxes and the advance between
+pericentres is measured from it by two routes that share `A`, `B`, `E` and `L`
+and nothing else:
+
+- **route A** — `rlGeoRun` marches the second-order geodesic equation from the
+  Christoffel symbols of those two functions; `rlPeriShift` locates successive
+  pericentres in the track by parabolic refinement in the index.
+- **route B** — `rlApsidalQuad` integrates `dφ/dr = (L/r²)√(AB/(E²−V²))` between
+  the apsides. No geodesic equation, no proper time, no Christoffel symbols.
+
+They agree to between **4×10⁻¹¹ and 3×10⁻⁹** relative across every preset. The
+first-order formula `6πGM/c²a(1−e²)` is then a **third** number and deliberately
+not a check: it is right to **0.67%** at the widest orbit the sliders reach and
+**21% low** at r₁ = 20, and the deviation was measured to fall like 1/p rather
+than asserted to be small.
+
+**Route B's endpoint singularity is removed, not stepped over.** `E² − V²`
+vanishes linearly at both apsides, so the integrand has an inverse-square-root
+singularity at each end and no ordinary rule converges. Substituting
+`r = ½(r₁+r₂) + ½(r₂−r₁)·sin θ` makes `dr` carry a `cos θ` that cancels it
+exactly, the ratio becomes analytic in the distance to the endpoint, and
+Gauss–Legendre — which never evaluates an endpoint — converges spectrally: 16
+panels is already at 10⁻¹², and 256 is very slightly *worse* than 64 because past
+convergence it only accumulates round-off. Both halves are asserted.
+
+**The control.** Every number here is a small difference from 2π, so the question
+that cannot be answered from inside is whether the machinery *manufactures* one.
+`rlKeplerApsidal` runs the identical quadrature on the Newtonian orbit, whose
+apsidal angle is exactly π because the inverse square is one of only two central
+force laws whose bound orbits close, and returns **π to 4×10⁻¹²** — under a
+billionth of the smallest precession the sliders reach. Quadrupling the panels
+does not improve it, which is how we know it is the endpoint cancellation and not
+truncation (J9's rule, applied to the control rather than to the answer).
+
+### The defect: a necessary condition, one level further out than last time
+
+`rlApsidesEL` was corrected on 2026-08-18 to reject apsides bracketing a
+**barrier** rather than a well. That fix scanned the interior — and the interior
+is exactly where the *next* two failures are invisible, because both are
+statements about the **slope at each apsis**:
+
+1. **The apocentre at the top of the outer barrier.** V² falls again just outside
+   r₂, so r₂ is an unstable circular orbit rather than a turning point: a
+   particle placed there takes infinite proper time to arrive and the least
+   round-off carries it over. Schwarzschild–de Sitter does this the moment the
+   apocentre reaches its outermost unstable circular orbit. Apsides **10 and
+   13.53** passed every check the engine had — L² positive, V² equal at both
+   ends, the interior a genuine well — and the integrated track left the window
+   while route B reported a perfectly good precession of 22 rad/orbit.
+2. **The pericentre with no wall under it.** V² falls away just *inside* r₁, so
+   there is no centrifugal barrier to turn the orbit and it plunges. This half is
+   **not exotic — Schwarzschild does it**, for every pericentre inside the
+   unstable circular orbit of that L, and it was reachable from `rlMetric`'s own
+   pericentre slider at **r₁ = 5.5**, which is inside the ISCO at 6.
+
+Both are now local secant probes at each apsis, at two offsets, and the measured
+margins are **returned rather than merely tested** — how far V² rises above E² at
+the wall is how far the orbit is from being marginally bound, and de Sitter
+apsides 12 / 12.49 sit **3×10⁻⁸** from it. The refusal names which of the two it
+was (`escape` / `plunge`), because "no bound orbit" alone leaves a reader unable
+to tell a control behaving correctly from a broken one.
+
+**This was found by measurement, not by reading**: route A and route B were
+driven against each other across a sweep of apsides, and the four cases where the
+integrator disagreed with the quadrature were the four defective ones. The guard
+was then **corrupted back and watched to fail** — `runtests` loses 5 assertions,
+`runstagetests` loses 1, `auditclaims` goes to `bad=1`.
+
+**A second defect, in the step rule.** Sizing `h` by the Newtonian radial period
+is wrong in exactly the regime this wing exists to show: a relativistic orbit
+spends most of its *angle* near pericentre, whirling, and that rule sampled the
+whirl a handful of times. It dropped four presets' tracks through a horizon.
+`rlOrbitPlan` now bounds the **angular** step at pericentre too — where
+`dφ/dτ = L/r₁²` is largest — and takes whichever is smaller; that alone turned
+those four into agreement at 10⁻¹⁰. Corrupting it back to the radial rule loses 3
+assertions.
+
+**And that rule was written out longhand in `rlMetric` as well**, which is where
+it came from — so the defect was in item 1's stage too, whether or not a picture
+had shown it. `68a` now calls the same `rlOrbitPlan`. At apsides 8 and 32 the two
+rules differ by a factor of seven, and `tests-stages.js` gained the two-route
+check at exactly those apsides: the integrated apsidal angle against
+`rlApsidalQuad`, which has no step size in it at all, agreeing to 8×10⁻¹². This
+is rule zero doing its job at the second site rather than the first — nothing
+reported `rlMetric` as wrong; the fix was carried there because the cause was
+there.
+
+**A measured result worth having.** The metric `A = 1 − 2/r, B = 1` — curved
+time, flat space — precesses by **0.666712 of the Schwarzschild value at
+p = 26 000**, converging on exactly 2/3. It is the perihelion twin of the factor
+of two in light bending, and it is now a demo. What is asserted is the ratio for
+*that spacetime* at the same **areal** semi-latus rectum, which is a fact about
+two geometries. What is **not** asserted, here or in the panel, is that
+two-thirds of Schwarzschild's precession is "caused by" curved time: that split
+is coordinate-dependent, and in isotropic coordinates the same deletion leaves a
+third instead. The pre-existing unit test carried that caution and it is kept.
+
+**Mercury is computed by a different engine, on purpose.** Its semi-latus rectum
+is 3.8×10⁷ GM/c², where `E² − V²` is a difference of order 10⁻⁹ between two
+numbers of order 1 and `rlDeriv`'s own noise floor on A′ would swamp a precession
+of 5×10⁻⁷ rad. The general route has no precision there and the panel says so
+rather than printing noise; the Schwarzschild u-equation adds its relativistic
+term instead of cancelling it, reaches the weak field, and lands on **43″ per
+century**. Saying which route can go where is part of the result.
+
+`RL_METRICS` gained **`orb: [pericentre, eccentricity]`** — where the stage opens
+on each metric, and a *claim* that a bound orbit exists there, checked by
+`auditclaims` through `rlApsidesEL` and then by integrating it. It cannot be one
+pair for all five rows: de Sitter's A(r) turns over near 21.5 and its orbits all
+live inside that, so the r₁ = 20 every other row uses is in its forbidden region.
+`orb: null` is the opposite claim and Minkowski is there to make the panel report
+that nothing happens.
+
+Gates: `build` 239 modules · `smoke` OK (wings=40, stages=184, seelinks=86) ·
+`runtests` **4700 passed, 0 failed** (+57) · `runstagetests` **294 passed, 0
+failed** · `runall` demos=612 controls=6704 **caught=0 OK** · `auditclaims`
+**336 claims, bad=0 OK** (+17) · `auditsides` **OK** · `auditresid`
+**findings=0**, noscale 6 unchanged · `auditlink` **findings=0** over 612 trips ·
+`auditzoom` **findings=0** · `auditframe` **OK**, cut=3 unchanged · `auditticks`
+**OK** · `auditperf` 2 heavy stages unchanged, 2-D mean 131 unchanged.
+
+---
+
+## 2026-08-18 · Programme A relativity item 3 — `rlHole`, the fall and its two clocks
+
+`STAGES.rlHole` knew it was looking at Schwarzschild and said what followed:
+rs = 2GM/c², the photon sphere at 1.5 rs, the ISCO at 3 rs, the proper time from
+the cycloid, the coordinate time from MTW Box 25.4, the tide as 2GM L/r³. Those
+are the properties the presets are *allowed* to assume, so by §2.9 they are the
+ones the reader's own metric has to test. The stage is now a scenario editor over
+`RL_METRICS` with the same picker `rlMetric` and `rlOrbit` carry, and the closed
+forms have moved into the unit suite as the check rather than the answer.
+
+New engine module **`46b-gr-infall.js`** (split from `46a`, which was already 720
+lines). Released from rest at r₀ with L = 0 and E = √A(r₀), the first integral
+gives two *different* integrands over the same path,
+
+    dτ/dr = √(A·B/(E² − A))        dt/dr = (E/A)·dτ/dr
+
+and they are integrated separately. `rlInfallE`, `rlInfallD`, `rlInfallQuad`,
+`rlInfallRun`, `rlInfallRedshift`, `rlInfallLogRate`, `rlInfallHalvings`,
+`rlABLim`, `rlTidalRadial`, `rlDeriv2`.
+
+### What was measured
+
+| quantity | route A | against | agreement |
+|---|---|---|---|
+| τ from r₀ = 20 to the horizon | quadrature in w = √(r₀−r) | the cycloid | **6.9×10⁻¹²** at n = 400 |
+| τ from r₀ = 20 to r = 0 | the same | the cycloid | 2.5×10⁻¹² |
+| t down to r_h + 10⁻⁶ | quadrature in u = ln(r−r_h) | MTW Box 25.4 | **2.1×10⁻¹⁰** |
+| τ and t a third of the way down | the quadrature | `rlGeoRun`, RK4 on the geodesic equation | **3.6×10⁻¹³ – 1.9×10⁻¹²** over five presets |
+| coordinate time per halving of the gap | `rlInfallHalvings`, 20 dedicated integrals | ln2·√(A·B)/A′ at the horizon, no integral in it | **2×10⁻⁸** (best 7.9×10⁻¹⁰ on Reissner–Nordström) |
+| the same, in SI | this engine × GM/c³ | `grInfall` | 4.2×10⁻¹² on all six bodies |
+| the tide across 2 m | `rlTidalRadial` | `grTidal` | 1.6×10⁻¹⁰ on all six bodies |
+| the radial tide | `rlTidalRadial` | −2/r³, and −2/r³ + 3Q²/r⁴ | 2×10⁻¹¹ |
+
+**τ's convergence is fourth order down to a round-off floor at 3×10⁻¹².**
+Measured by halving h: 9.6×10⁻¹¹, 6.9×10⁻¹², 1.9×10⁻¹², then it stops improving
+and wanders. Attributed: at the first interior node E² − A is a difference
+between two numbers agreeing to eight digits, so the floor is round-off and no
+number of panels touches it. Both regimes are asserted separately, per J9.
+
+**A divergence cannot be checked by evaluating it, so what is checked is the
+rate.** The prediction is local — √P/A′(r_h) with P = lim A·B — and the
+measurement is the coordinate time added by each successive halving of the
+remaining gap. The shortfall falls linearly in the gap (5.6×10⁻³ at d = 5×10⁻³,
+3.4×10⁻¹⁰ at d = 4.8×10⁻⁹) and then turns back **up** to 1.1×10⁻⁶ by d = 3×10⁻¹⁰
+as r_h + d loses figures. The panel reports the best agreement *with the gap it
+happened at*, and says why the sequence turns.
+
+### Four defects found in code that was already shipping
+
+1. **A guard doing a limit's job cost the quadrature its order.** The singular
+   endpoint was nudged inward by a millionth of the segment; the error then fell
+   like h, not h⁴ (4.19×10⁻¹⁰ → 4.41×10⁻¹¹ over eight doublings of n). Shrinking
+   the nudge a thousandfold made it a **thousand times worse**, because at that
+   distance A is still exactly 0 in double precision, A·B is NaN, and the last
+   panel was dropped whole. Two failure modes with opposite cures is the
+   signature that a guard is standing in for a limit. Both endpoint limits are
+   now evaluated analytically.
+
+2. **The textbook grouping of the radial tide is wrong near a horizon.**
+   (1/2B)[A″/A − (A′)²/2A² − A′B′/2AB] has two terms each diverging like 1/A and
+   cancelling — and it needs **B′**, which `rlDeriv`'s five-point stencil at
+   h = 10⁻³r cannot supply within a thousandth of B's pole. Measured against
+   −2/r³ on Schwarzschild:
+
+   | r | textbook grouping | grouped in Q = A·B |
+   |---|---|---|
+   | 2.1 | rel 3.9×10⁻⁶ | rel 2.7×10⁻¹¹ |
+   | 2.001 | rel 7.1×10² | rel 5.6×10⁻¹¹ |
+   | 2.000001 | rel **5.0×10⁵** | rel 2.1×10⁻¹¹ |
+   | 2 | NaN | rel 1.6×10⁻¹⁰ |
+
+   Adding the two divergent terms algebraically first, using A′/A + B′/B = Q′/Q,
+   gives (A″ − A′Q′/2Q)/2Q, in which every factor is finite at a horizon. Found
+   by a unit test asking for the tide **at** r = 2 and getting NaN — which is
+   where the wing's most-quoted tidal number lives.
+
+3. **Route B returned NaN on every preset, and the panel printed it.**
+   `rlGeoRun` does not record the step that trips its stop, so a run halted *at*
+   the comparison radius leaves every recorded sample above it and there is
+   nothing to interpolate between. `rStop` now sits below the comparison radius
+   on purpose. Nothing but a stage-level test could see this: `runtests` cannot
+   reach modules ≥ 50, `auditsides` reads rendered text and a missing row is not
+   a wrong one, and `runall` reported `caught=0` throughout.
+
+4. **The release slider was silently clamped, and two radii 90 apart gave the
+   identical answer.** `rlStaticBand` was scanned over the metric table's own
+   `rMax`, so the static band appeared to end where the *scan* did and r₀ was
+   clamped to 58.2. Schwarzschild has no upper limit on where one may hover; de
+   Sitter does, at r ≈ 99, and that one is real — so the scan now reaches past
+   the reader's r₀, the clamp fires only where there is a second horizon, and
+   when it moves the reader's number the panel says why (§1.5).
+
+**And route B's drift is not a defect — it is the phenomenon.** Comparing the two
+routes *at the probe* gave a relative drift in E of 3×10⁸ once the probe was
+within 10⁻⁴ of the horizon, because route B marches dt/dτ = E/A in its state
+vector and that runs away there. Its *proper* time stays good long after its
+coordinate time has gone. The comparison is therefore made a third of the way
+down, where both routes are sound, and the panel names that radius and explains
+the choice. **A two-route check is only a check where both routes are valid.**
+
+### The result the stage exists for
+
+The rate of the freezing carries **√P**, with P = lim A·B at the horizon. For
+every vacuum metric P = 1, the pole in t is simple, and the coordinate time
+diverges logarithmically at 1/2κ per e-fold — κ being the surface gravity, and E
+having cancelled out entirely, so *every* infaller freezes at the same rate
+whatever height they were dropped from. The `newton` preset keeps A and flattens
+B to 1: P = 0, measured as pRatio = 9.99991 against 1.00000 for the vacuum rows,
+the pole softens to an integrable 1/√(r−r_h), the increments fall by 1/√2 per
+halving (measured 0.70710677 against 1/√2 = 0.70710678), and **the coordinate
+time to the horizon is finite**. Nothing about A has changed — horizon, photon
+sphere, ISCO and every clock rate are exactly where Schwarzschild puts them — so
+no argument about gravitational time dilation can account for it. The frozen star
+is g_rr. That metric's tide at r = 2 is then *unbounded*, growing like 1/(r−r_h)²
+(measured: a factor of 99.91 per decade, against the 100 a second-order pole
+requires), so it has a naked curvature singularity where Schwarzschild has a
+smooth horizon. It is the third time in this wing that deleting the curvature of
+space costs something specific — half the light deflection, a third of the
+perihelion advance, and now the whole of the freezing — and it earned the stage's
+second demo.
+
+Also fixed while measuring: the redshift is computed as A/(E + √(E² − A)) rather
+than as the algebraically identical E − √(E² − A), which loses three figures by
+r_h + 10⁻¹³; the plotted redshift window is fitted over the samples it draws from
+and spans at least six decades whatever the probe is doing; the photon-sphere and
+ISCO labels are on opposite sides of the disc, because the (r/r_h)^0.45
+compression puts them eight pixels apart; and the "off the top, for ever" arrow
+on the coordinate clock is gone — a logarithm adds 2·ln10 ≈ 4.6 per decade and
+never visibly leaves a frame 225 tall, so an arrow claiming otherwise would be a
+picture that looks the same whether the mathematics is right or not. The caption
+says the climb is logarithmic and points at the panel that measures it.
+
+Gates: `build` 240 modules · `smoke` OK (wings=40, stages=184, seelinks=86) ·
+`runtests` **4772 passed, 0 failed** (+72) · `runstagetests` **434 passed, 0
+failed** (+140, including a corrupt control that was watched to fail) · `runall`
+demos=613 controls=6735 **caught=0 OK** · `auditclaims` **336 claims, bad=0 OK**
+· `auditsides` falsescale=0 presetgap=0 **OK** · `auditresid` **findings=0**,
+noscale 6 unchanged · `auditlink` **findings=0** over 613 trips · `auditcustom`
+**bad=0 OK** · `auditzoom` **findings=0** · `auditframe` **OK**, cut=3 unchanged
+· `auditticks` **OK** · `auditperf` 2 heavy stages unchanged, 2-D mean 131 ·
+`auditsize` **findings=0** · `auditviewport` 16 sizes **bad=0** · `auditpanel`
+**bad=0** · `auditderive` **flagged=0** · `audittext` + `auditscan` **OK** ·
+`auditprose` **OK** · `auditdocs` **bad=0 OK**. `auditmarks` and `auditartifact`
+were **not run** — nothing here touches `pvFeatures` or the artifact wrapper, and
+§4.3a rule 5 says do not run a gate that cannot see the change.
+
+---
+
+## 2026-08-18 — Programme A relativity item 4: light through a metric the reader types (`rlLens`, engine `46c-gr-lensing.js`)
+
+**The claim under test, from MASTER-PLAN §3.1:** *a point mass gives 4GM/c²b to
+1e-6 — exactly twice the Newtonian value.* Both halves are now measured, and
+neither is asserted as a tolerance.
+
+**The first half is not a tolerance, it is 15π/16b.** The deflection agrees with
+4GM/c²b to **9.8×10⁻⁷** at b = 3×10⁶ (acceptance 1e-6), and the deviation at
+smaller b is the second-order term, measured rather than excused: (Δφ·b/4 − 1)·b
+comes out 2.95595, 2.94633, 2.94578, 2.94963 at b = 10³ … 10⁶ against
+15π/16 = 2.945243. Against the two-term expansion 4/b + 15π/4b² the quadrature
+agrees to better than 1e-6 relative at b = 10⁴ and 10⁶. Below that the residual
+is round-off, not truncation: it does not improve with more panels.
+
+**The second half is γ.** The same quadrature is run twice over the same A — once
+with the reader's B and once with B = 1 — and the turning point depends on A
+alone, so the two runs traverse the same path and differ in exactly one function.
+The ratio is the PPN space-curvature parameter: **1 to 3.9×10⁻⁶** for
+Schwarzschild in the weak field, and **exactly 0** for the flat-space twin, so
+"twice Newton" is a measurement. At the reader's own b it is **0.960**, which is
+the strong-field correction and is reported as a separate row rather than as γ.
+Cassini's γ − 1 = (2.1 ± 2.3)×10⁻⁵ is quoted beside it as the experiment.
+
+**The near-critical divergence is checked by its RATE**, as the coordinate clock
+in 46b is. Δφ ≈ −(1/λ)ln(b/b_c − 1) with λ the Lyapunov exponent of the photon
+sphere, computed **locally** from A, B and W″ = (A/r²)″ with no integral in it.
+Measured against a quadrature of the extra angle each decade of approach buys:
+Schwarzschild λ = 1.0000000000113 (closed form 1) and 2.302546 radians per decade
+against ln10 = 2.302585, agreeing to **1.7×10⁻⁵**; the flat-space twin λ = √3 and
+1.329366 against 1.329398; Reissner–Nordström λ = 0.890338 against the analytic
+W″ = 6/r⁴ − 24/r⁵ + 20Q²/r⁶ to 1.5×10⁻¹¹. **Λ drops out of W″ entirely**, so
+Schwarzschild–de Sitter's λ is 1 exactly like Schwarzschild's while its b_c is
+5.20318 rather than 3√3. The same λ gives the photon rings their brightness
+ratio e^(−2πλ) = 1 part in 535.
+
+**Two routes that share no arithmetic**, at the same radius: the quadrature above,
+and `rlGeoRun` marching the null geodesic through the Christoffel symbols of the
+same two functions, told neither b's turning point nor the first integral. They
+agree to **4.6×10⁻¹² – 1.5×10⁻¹¹** on the asymptotically flat presets and
+3.4×10⁻⁸ on Schwarzschild–de Sitter, whose observer is finite so route A's fixed
+step covers a much longer path. Route A's order is measured by halving its step:
+the error falls 16× per halving until a floor below 1e-10 rad, and the two
+turning points — one bisected on W, one read off the integrated track — agree to
+1e-8. Its drift in E is 1e-13 to 1e-10.
+
+**Closed forms the engine does not own, checked against it.** b_c = 3√3 to
+**9×10⁻¹⁶**. A conical halo M(r) = kr makes A the constant 1 − 2k, and the
+deflection is exactly π(1/√(1−2k) − 1) at **every** impact parameter — matched to
+1e-12 at b = 4, 40 and 400, and its measured log–log slope against b is
+−1.6×10⁻¹². Outside a uniform sphere M = min(1, (r/R)³) the deflection is
+**identical to a point mass of the same total, bit for bit** (Birkhoff, measured;
+and a ray passing inside differs by 22%). Minkowski turns a ray at exactly r₀ = b
+and bends it by less than 1e-11. The Einstein ring of a 10¹² M☉ lens, solved from
+the lens equation with this deflection, matches √(4GM D_LS/c²D_L D_S) to
+7.2×10⁻⁴%. Starlight at the solar limb: **1.7512″**, computed from the quadrature
+at b = R☉c²/GM☉ = 471142 rather than from 4GM/c²b, with the Newtonian half at
+0.8756″.
+
+### Five defects found, and what found each
+
+1. **A guard returning zero for a bad sample silently redefined the domain of
+   integration.** The deflection to u = 0 is an integral out to r = ∞, and
+   Schwarzschild–de Sitter has no such place: beyond its cosmological horizon
+   A < 0 and nothing is static. The first version's integrand guard returned 0
+   for those samples, and the panel reported **0.2193** for a ray whose honest
+   answer, measured between two observers inside the static band, is **0.2170**.
+   `rlDeflect` now refuses on the **observer radius**, probes far out for an
+   asymptotic region before accepting Infinity, **and** counts every sample it
+   could not evaluate — one makes the whole answer NaN. That third check is not
+   redundant: an A that dips negative *between* the turning point and the
+   observer passes both of the first two, and it has its own test with a metric
+   built to do exactly that. Corrupted back and watched to fail.
+2. **`rlTurnR`'s inner bracket is an existence argument, not an optimisation.**
+   The turning point is the largest r with W(r) = 1/b², so bisecting on
+   `[argmax W, r_obs]` finds it whenever one exists, and "W(r_peak) < 1/b²" is
+   then a **proof** of capture rather than a failed search. Bracket from the
+   horizon instead and W(2.0001) = 1.2×10⁻⁵ is far below 1/b² = 0.037, so a ray
+   that winds two and a half times round the hole is reported CAPTURED; a
+   2000-point logarithmic scan of [2, 10⁵] misses it too, because at
+   ε = b/b_c − 1 = 10⁻⁷ the window where W > 1/b² is 0.0018 wide and the scan's
+   cells at r = 3 are 0.02. **Both wrong methods are asserted to be wrong in
+   `tests.js`**, which is what stops either coming back — and the first
+   corruption attempt (replacing bisection with a scan on the *right* bracket)
+   passed, which is how the argument was found to be about the bracket rather
+   than about the search. A comment claiming the wrong reason was corrected.
+3. **Item 2's `rlOrbitPlan` lesson, repeated for light.** A fixed observer at
+   200 GM/c² and a fixed step gave route A a deflection of **6.6×10⁻⁵ radians in
+   flat space**, where the quadrature returns zero exactly: dφ/dτ = b/r₀² at
+   closest approach, so a step sized to cover the radial journey resolves the
+   bend only when r₀ is comparable with the observer's radius. `rlRayPlan` scales
+   the observer to the ray (20 r₀) and bounds the angular step at closest
+   approach as well as the radial one. That took the two routes from 3.7×10⁻⁸ to
+   1.9×10⁻¹¹ on the conical halo and to round-off on Minkowski. Found by
+   `runstagetests` driving the slider to its own lower end — nothing else looks
+   there.
+4. **γ is not the ratio, and the ratio is not always defined.** Three cases, each
+   a wrong number before it was separated out: at the reader's b the ratio is
+   0.960 on Schwarzschild, and printing that as "the PPN parameter" reports a 4%
+   violation of general relativity; Schwarzschild–de Sitter has no asymptotic
+   region at all and its ratio to a finite observer is **4.31**; and a conical
+   halo makes the time-only route exactly **zero**, so the ratio is a division by
+   round-off and printed **−9.6×10¹²**. The last is real physics said plainly —
+   with A constant there is no gravitational time dilation anywhere and the whole
+   bend is spatial curvature — and the panel now says that instead.
+5. **`auditperf` counts paint calls, and the screenshot found the picture.** A
+   single `stroke()` over a 22 000-point path is one paint call and a real cost;
+   tracks are decimated to 240 points before drawing, which is more than a
+   300-pixel picture resolves. Separately, every track starts at φ = 0, so drawn
+   as they come, eleven rays leave the **same point** on the canvas and the fan
+   reads as a lamp — starlight is a parallel bundle. Each is now rotated by the
+   angle its own velocity makes with the incoming direction, which reduces to
+   arcsin(b/r_obs) in flat space and puts each ray's incoming line at height
+   exactly b, so the undeflected dashed line lines up with it. **The fan then
+   dropped that angle when it repacked the result into its own row** — the same
+   class `rtRaceRun` was fixed for — and the second screenshot is what showed the
+   point source still there. Also fixed by screenshot: the picture was centred at
+   0.55·ph with a radius of 0.92·ph, so its widest ray reached y = 3 and drew
+   straight through its own title at y = 32; and the log–log window was fitted
+   over the B = 1 curve as well, whose round-off floor on a conical halo
+   stretched the axis over **twelve decades** with the real curve flat against
+   the top.
+
+### Two more, outside item 4
+
+**`auditscan` was red at 2 HIGH before this session's work, and neither finding
+was item 4's.** Both were caret exponents in the semi-empirical mass formula's
+prose — `A^⅔` and `A^⅓`, five sites across `60ca` and `85c` — left as ASCII
+carets on screen because `supify` converts an exponent only when **every**
+character of it is in its class, and the vulgar fractions were not there. One
+unlisted character silently disables the whole conversion rather than half of it,
+which is why this survived: the sites *look* like they are using real notation.
+The five now read `A^(2/3)`, which typesets as a superscript 2/3, and ½⅓⅔¼¾ and
+the rest are in the class so the next author cannot reintroduce it.
+
+**`RL_METRICS` gained two declared fields, `bc` and `lyap`**, recomputed by
+`auditclaims` from closed forms derived by hand per family — 3√3, √3, the
+analytic W″ above — plus a further row per metric comparing the **measured**
+radians per decade against ln10/λ. That check was red on its first run at five
+decades (1.5×10⁻⁴ relative short, because the expansion about the photon sphere
+is asymptotic and approaches from below); at six decades the four rows land at
+1.7×10⁻⁵, 2.4×10⁻⁵, 1.5×10⁻⁵ and 6.6×10⁻⁵, and the tolerance is 2e-4 — three
+times the worst measured error, not a round number. Two declared values were
+corrupted and watched to fail.
+
+Gates: `build` 241 modules · `smoke` OK (wings=40, stages=184, seelinks=86) ·
+`runtests` **4869 passed, 0 failed** (+97) · `runstagetests` **513 passed, 0
+failed** (+79, including a corrupt control that was watched to fail) · `runall`
+demos=615 controls=6786 **caught=0 OK** · `auditclaims` **357 claims, bad=0 OK**
+(+21) · `auditsides` falsescale=0 presetgap=0 **OK**, one new ALLOW entry with
+its reason (the A·B row on the metric built to lack it, the same physics as
+`rlMetric`'s) · `auditresid` **findings=0**, noscale 6 unchanged · `auditlink`
+**findings=0** over 615 trips · `auditcustom` **bad=0 OK** over 113 stages ·
+`auditzoom` **findings=0** · `auditframe` **OK**, cut=3 unchanged · `auditticks`
+**OK** · `auditperf` 2 heavy stages unchanged, 2-D mean 132 · `auditsize`
+**findings=0** · `auditviewport` 16 sizes **bad=0** · `auditpanel` **bad=0** ·
+`auditderive` **flagged=0** · `audittext` + `auditscan` **0 HIGH** (was 2) ·
+`auditcontrast` **OK** · `auditdocs` **bad=0 OK**. `auditmarks` and
+`auditartifact` were **not run** — nothing here touches `pvFeatures` or the
+artifact wrapper, and §4.3a rule 5 says do not run a gate that cannot see the
+change.
+
+---
+
+## 2026-08-18 · Programme A relativity item 5 — what a binary radiates
+
+`46d-gr-waves.js` (engine), `rlWave` rebuilt in `68c`, `rlDecay` new in `68d`,
+eight guided experiments in the "Ripples in spacetime" group. Units throughout
+are **G = c = 1 with everything in seconds**: a mass is GM/c³, a length is a/c,
+a luminosity is dimensionless and a strain always was.
+
+### What was checked, against what
+
+| quantity | route A | route B | measured |
+|---|---|---|---|
+| the chirp mass | RK4 on ȧ = −(64/5)m₁m₂M/a³, which knows m₁ and m₂ separately, with ḟ then **differenced off the track** by a five-point Lagrange derivative | the closed-form chirp relation ḟ = (96/5)π^(8/3)Mc^(5/3)f^(11/3), which knows only Mc | **6.5×10⁻⁸** worst over the track at frac = 0.004 (acceptance was 1e-6) |
+| the order of that derivative | five-point on the graded grid | three-point on the same grid | halving the step cuts the five-point error **16×** and the three-point one 4×; the three-point form is measured to be **160× worse** on the identical track, and both regimes are asserted |
+| a(t) | the same RK4 track | a₀(1−t/t_c)^(1/4) | **1.2×10⁻¹⁰** worst |
+| the sweep rate's exponent | least squares on log ḟ against log f over the whole track | 11/3 exactly | **10⁻⁸** on every preset |
+| the strain | I_ij of the two bodies, **differentiated twice numerically** on a periodic five-point stencil and projected onto (e_θ, e_φ) | 4Mc^(5/3)(πf)^(2/3)/D | **10⁻⁸**, and doubling the samples cuts it 16× |
+| the polarisation pattern | the same projection at 0°, 30°, 60°, 90° | (1+cos²ι)/2 and cos ι | **10⁻⁸** at every inclination; edge-on h× is 10⁻¹⁷ of h₊ — gone but for cos(π/2) not being a float |
+| the factor of two in frequency | **counted**: four zero crossings of h₊ per orbit, located by interpolation | 2 × Kepler's orbital frequency | **10⁻⁶** |
+| the energy balance | −L/(dE/da) with dE/da differentiated numerically | −(64/5)m₁m₂M/a³ | **10⁻⁹** at three separations — the only row that recomputes the 64/5 |
+| Peters' F(e) | ⟨P⟩ by quadrature round a Keplerian ellipse with dt = (r²/h)dφ, no enhancement factor in it | (1 + 73e²/24 + 37e⁴/96)/(1−e²)^(7/2) | **10⁻¹²** at e = 0, 0.1, 0.4, 0.617, 0.9, 0.95; 64 panels already give 12 figures, because a smooth periodic integrand makes the trapezoid converge geometrically — measured by doubling n rather than asserted |
+| Ṗ_b | (3/2)P·ȧ/a fed from that quadrature | −(192π/5)(2πMc/P)^(5/3)F(e) | **10⁻⁹** |
+| the (a, e) decay | Peters' two coupled equations, integrated | his closed-form trajectory a(e), which has no time in it | **10⁻⁹** |
+| the cycle count | φ integrated along the track | (1/32)π^(−8/3)Mc^(−5/3)(f₁^(−5/3) − f₂^(−5/3)) | **10⁻⁹** on every preset, including 5.9×10¹² cycles for a binary pulsar |
+
+**And two comparisons whose second number came from a telescope.**
+PSR B1913+16: predicted **−2.4021×10⁻¹² s/s**, observed −2.398×10⁻¹² —
+**0.2%**, and the prediction's own uncertainty is dominated by the masses
+quoted to four figures, since Ṗ ∝ Mc^(5/3). PSR J0737−3039: predicted
+**−1.24781×10⁻¹²**, published GR value −1.247920×10⁻¹² — **0.009%**. Both are
+computed from the masses and the orbital elements with nothing fitted. The
+eccentric enhancement is load-bearing rather than decorative and there is a row
+asserting it: without F(0.617) = 11.857 the Hulse–Taylor prediction is an order
+of magnitude low, and the "confirmation" becomes a refutation.
+
+Other numbers pinned: GW150914 899.04 km apart at 35 Hz with 0.1833 s left;
+GW170817 399.44 km at 24 Hz with 101.8 s left and ~3 900 wave cycles;
+HM Cancri's observed Ṗ implying a chirp mass of 0.319 M☉ against the 0.331 its
+quoted masses give; the Earth radiating **196.6 W** and merging with the Sun in
+10²³ years; c⁵/G = 3.628×10⁵² W.
+
+### The four defects, all of one family
+
+**Arithmetic that REPORTS a result can be wrong while the arithmetic that
+produces it is right.** Not one of these was in an integrator.
+
+1. **An elapsed-time array with no digits left at the far end.** Hulse–Taylor
+   reaches its ISCO 5.2×10¹⁶ s after the start and finishes in steps of
+   2×10⁻⁵ s. One ulp of float64 at 5×10¹⁶ is **eight seconds**, so the last
+   stretch of the elapsed-time array is a single repeated float and the
+   derivative taken against it is meaningless: the recovered chirp mass came out
+   **33% wrong on every long inspiral** while every compact one passed at 10⁻⁸.
+   The cure is to accumulate the time **remaining**, summed backwards from the
+   end, where each step is comparable with the running sum. `tests.js` pins the
+   mechanism (`R.t[n] === R.t[n−1]` is asserted true) and carries the control:
+   differentiating against the elapsed time must **not** recover the mass.
+   Found by `./runstagetests.ps1`; invisible to `runtests`, which was only
+   driving GW150914.
+2. **A step bound added for a plausible reason, truncating the answer it was
+   added to protect.** The phase was given a step of a twenty-fourth of an
+   orbit, on the reasoning that an oscillation must be resolved. It need not be:
+   φ̇ = ω(a) is smooth on the inspiral timescale, so the cycle count is a
+   quadrature and not a waveform. Under that bound GW170817 needed 47 000 steps,
+   hit the 40 000 cap, stopped short, and the panel printed a count **571 cycles
+   low** beside ∫f dt as though the comparison were complete. Found by
+   `./auditsides.ps1` on a preset the default is not. The bound is gone; a run
+   that does stop short now reports **no** count and says why; and the count is
+   a genuine second route on every preset, which it never was before.
+3. **A constant chain with no physics in it.** `gwChirpFreq`, `gwISCOFreq`,
+   `gwStrain` and `gwTimeToMerge` in `46-relativity.js` turned a solar mass into
+   a time through **M☉ × G**, while `46d` used the measured product **GM☉**.
+   The two differ by 6.5×10⁻⁸ — the rounding of `M_SUN_KG` to the six figures G
+   supports — and that difference has no meaning. The constants block in `46`
+   already said which to use. Fixed there, and the row that would catch it
+   coming back compares the two modules at 1e-12.
+4. **Four hand-typed numbers in a preset table.** The `GW_BINARIES` block
+   written for `./auditclaims.ps1` rejected four of the table's own declared
+   values on its first run: the separations of GW170817, J0737 and HM Cancri,
+   and the Sun–Earth luminosity. The last is the instructive one — 196.26 W is
+   the circular formula and 196.62 W is the orbit average, and the Earth's
+   e = 0.0167 is the 0.18% between them. **A declared luminosity is a claim
+   about an orbit, not about a formula for a circle.**
+
+### Two things deliberately NOT done
+
+**The ISCO is 6GM/c² at every mass ratio**, which is exact only for a test
+particle. Nothing past it belongs to this model and both stages say so: the
+track stops there, the picture marks it, and the readout names it. The
+alternative is numerical relativity.
+
+**The inspiral is Newtonian orbits plus quadrupole radiation** — leading order,
+no post-Newtonian terms, no spin. That is what makes the chirp-mass identity
+exact within the model and therefore a test of the numerics; the panels say
+which regime they are in rather than implying more.
+
+Gates: `build` 243 modules · `smoke` OK (wings=40, stages=185, seelinks=86) ·
+`runtests` **5004 passed, 0 failed** (+135) · `runstagetests` **630 passed, 0
+failed** (+117, including two corrupt controls watched to fail — a track
+integrated with 63/5 instead of 64/5, and an orbit average with 12v² − 10ṙ²) ·
+`runall` demos=622 controls=6981 **caught=0 OK** · `auditclaims` **417 claims,
+bad=0 OK** (+60, a new `GW_BINARIES` block; four of its rows were red first
+run) · `auditsides` falsescale=0 presetgap=0 **OK** (presetgap was 1 and is the
+defect above) · `auditresid` **findings=0**, noscale 6 unchanged · `auditlink`
+**findings=0** over 622 trips · `auditcustom` **bad=0 OK** over 115 stages ·
+`auditzoom` **findings=0** · `auditframe` **OK**, cut=3 unchanged ·
+`auditticks` **findings=0** · `auditperf` 2 heavy stages unchanged, 2-D mean
+132 · `auditsize` **findings=0** · `auditviewport` 16 sizes **bad=0** ·
+`auditpanel` **bad=0** · `auditderive` **flagged=0** · `audittext` +
+`auditscan` **0 HIGH** · `auditdocs` **bad=0 OK**. `auditcontrast`,
+`auditmarks` and `auditartifact` were **not run** — nothing here touches a
+colour, `pvFeatures` or the artifact wrapper.
+
+---
+
+## A worldline the reader writes, and a chain of boosts (46e) — 2026-08-19
+
+Programme A relativity items 10 and 11, on one new engine module,
+`46e-sr-frames.js` — the first special-relativity engine, and the one the
+remaining fourteen SR editors will share. `rlMink` gains a second mode; `rlVel`
+gains a boost sheet.
+
+### What was checked, against what
+
+**Proper time along an arbitrary x(t), by two routes that share no arithmetic.**
+Route A is the lab's ∫√(1 − ẋ²)dt with the symbolic derivative and adaptive
+Simpson. Route B is the moving observer's: it inverts t′(t) = γ(t − βx(t)) by
+**bisection**, so it evaluates x(t) and never the derivative; it differentiates
+x′ against t′ with a five-point stencil whose five nodes are five separate
+inversions; and it integrates adaptively in t′.
+
+- Against closed forms: at rest → Δt to 10⁻¹³; straight at 0.6c → Δt/γ to
+  10⁻¹³; **constant proper acceleration → asinh(at)/a to 10⁻¹²**, at two
+  interval lengths.
+- Between the routes, over five worldlines × six boosts: **10⁻¹³–10⁻¹⁴ on the
+  gentle cases and 4.8×10⁻⁹ at worst** — 0.99 tanh t seen from β = 0.99, whose
+  primed integrand has all its structure in the first fiftieth of t′. That
+  worst case is the acceptance, and it is a measurement rather than a choice.
+- The stencil's h was **swept, not derived**. Worst-case relative gap over the
+  same grid: 7×10⁻⁴ → 1.2×10⁻⁶, 2×10⁻⁴ → 1.2×10⁻⁷, **8×10⁻⁵ → 4.8×10⁻⁹**,
+  3×10⁻⁵ → 1.4×10⁻⁸, 1×10⁻⁵ → 2.0×10⁻⁸. The textbook balance ε^(1/5) ≈ 7×10⁻⁴
+  is three decades off, because the round-off term carries |x′| and the
+  truncation term carries x⁽⁵⁾ and neither is 1. `tests.js` asserts that both
+  neighbours of the chosen h are worse, in both directions.
+- Adaptive **depth** was swept too and buys nothing: 7 → 9 → 11 costs
+  72 k → 153 k → 417 k integrand calls and moves the worst case by nothing.
+  An unbounded recursion took **94 532** calls for an answer no better than
+  1 124 gave.
+
+**The invariance statements that are exact are checked separately and are
+exact.** The inscribed polygon computed from **boosted** coordinates equals the
+lab's to 10⁻¹⁵ on every preset and at every boost tried, because each chord's
+interval is separately invariant; the endpoints' own s² likewise.
+
+**The polygon converges to τ from ABOVE, at h², and the module's first draft
+said the opposite.** Measured on the hyperbolic preset: excess 7.115×10⁻⁵,
+1.779×10⁻⁵, 4.447×10⁻⁶, 1.112×10⁻⁶ at n = 100, 200, 400, 800 — ratios 4.00,
+4.00, 4.00, so second order, from above. The Euclidean analogy (an inscribed
+polygon is shorter than its arc) is exactly backwards here: every chord is the
+**straight** route between two events, and in Minkowski geometry the straight
+route is the longest. That is the reverse triangle inequality and it is the
+whole twin paradox; the deficit against `rlWlStraight` is now what the stage
+prints.
+
+**The timelike guard takes two independent checks, and neither is sufficient
+alone.** On 0.5t + 0.02exp(−((t−1.2345)/0.02)²) a plain 64-point grid maximum
+is **0.52** — comfortably subluminal and completely wrong; the same 64 points
+with golden-section refinement give **1.36**, matching a scan sixty-four times
+finer; and the quadrature's own bad-sample counter fires independently on the
+same worldline. `tests.js` asserts the plain grid is **wrong**, which is what
+stops the refinement being tidied away. Neither guard can see a feature
+narrower than both grids at once — stated as a limit, not covered.
+
+**A chain of boosts, three ways.** Folding (w+β)/(1+wβ); summing artanh and
+taking one tanh; multiplying the 2×2 Λ(β) and reading β back off the product.
+Agreement **≤ 4×10⁻¹⁶** on every preset. The matrix route also certifies
+ΛᵀηΛ = η **on the product** — round-off against the γ² its entries cancelled
+from — and a deterministic **shuffle** of the chain returns the same β to the
+same tolerance, which is the 1+1 boost group being abelian, measured. (It is
+false in 3+1 for non-collinear boosts; the discrepancy is the Wigner rotation.)
+
+**Where route A runs out of digits, reported rather than guarded.** 1 − tanh φ ≈
+2e^(−2φ), so past Σφ ≈ 19 the composed β is exactly 1.0 in float64. On
+`0.9 ×20` (φ = 29.44) that happens at **boost 14 of 20**, the shortfall from c
+is **5.32×10⁻²⁶** computed from φ, and γ = 3.05×10¹². The panel names the step
+and moves the comparison into rapidity instead of printing a residual it cannot
+support.
+
+### What bit
+
+1. **The engine tests passed and the panel was wrong, because they called
+   different things.** `rlWlMeasure` — the wrapper the stage uses — passed a
+   leftover node count into the adaptive routine's **tolerance** slot, so its
+   route B stopped at the first estimate. Every test in `tests.js` called
+   `rlWlTauPrimed` directly and passed. The panel printed a two-frame residual
+   of **1.7×10⁻⁸** where the engine gives 10⁻¹², and **only the screenshot saw
+   it**. The general statement: a two-route check tests the route it *calls*.
+   `tests-stages.js` now sweeps the wrapper over every preset and boost;
+   corrupting the fix back reports 3.06×10⁻³ and fails.
+2. **A residual against the wrong scale, inside the gate written to prevent
+   exactly that.** `auditclaims`'s new `RL_CHAINS` block checked det Λ − 1
+   against an absolute 10⁻⁹ and went red on the two chains with large γ:
+   3×10⁻⁸ at γ = 10 604, and a flat −1 at γ = 3×10¹² where one ulp of γ² is
+   1.6×10⁹. Neither is a broken group law; both are subtractions with no digits
+   left. The ΛᵀηΛ row two lines above already carried its scale.
+3. **A uniform grid in t′ cost four digits** — 3×10⁻⁴ where an adaptive rule
+   gives 2×10⁻¹¹ — because dt′/dt = γ(1 − βẋ) runs 0.14 → 7.09 on one preset
+   and a grid uniform in t′ is fifty times coarser in t at one end. Item 2's
+   lesson in a third costume.
+4. **A harness trap, not a code defect.** `runapp.ps1`'s screenshot pass hung
+   with no error and no output on three consecutive attempts, on demos that had
+   just worked. Cause: a Chrome killed mid-run leaves `cprof-app` locked, and
+   **every later run on that profile hangs silently** rather than failing. The
+   bisect that isolated it — demos 1.0, 1.4 and 1.5 all hanging, including
+   stages nothing had touched — is what proved it was not the new code. Kill
+   stray `chrome.exe` and delete the profile directory before believing a hang.
+
+### Corrupt controls, watched to fail
+
+- `rlWlMeasure`'s tolerance argument put back → stage suite reports 3.06×10⁻³
+  and 5.8×10⁻⁵ on the typed worldline. Two rows red.
+- `rlWlPane` given a separate y scale (which is what an unequal-scale Minkowski
+  diagram is) → the equal-scale assertion fails on the wide-and-short window,
+  53.76 against 65.04 px per unit. **The light cone at 45° is the one thing no
+  other gate can see**: the picture still looks like a picture.
+- `RL_WORLDLINES.rocket`'s declared τ multiplied by 1.0000001, and
+  `RL_CHAINS.classic`'s declared φ shifted by 10⁻⁶ → `auditclaims` reports both.
+
+Gates: `build` 245 modules · `smoke` OK (wings=40, stages=185, seelinks=86) ·
+`runtests` **5114 passed, 0 failed** (+110) · `runstagetests` **777 passed, 0
+failed** (+147) · `runall` demos=624 controls=7019 **caught=0 OK** ·
+`auditclaims` **507 claims, bad=0 OK** (+90, two new blocks; the det row was red
+first run) · `auditsides` falsescale=0 presetgap=0 **OK** · `auditresid`
+**findings=0** · `auditcustom` **bad=0 OK** over 116 stages · `auditlink`
+**findings=0** · `auditzoom` **findings=0** · `auditframe` **OK**, cut=3
+unchanged · `auditticks` **findings=0** · `auditperf` 2 heavy stages unchanged,
+2-D mean 132 · `auditsize` **findings=0** · `auditviewport` 16 sizes **bad=0** ·
+`auditpanel` **bad=0** · `auditderive` **flagged=0** · `audittext` +
+`auditscan` **0 HIGH** · `auditdocs` **bad=0 OK**. `auditcontrast`,
+`auditmarks` and `auditartifact` were **not run** — nothing here touches a
+colour, `pvFeatures` or the artifact wrapper.
+
+---
+
+## The field the reader supplies (46f) — 2026-08-19
+
+Programme A relativity items 7 (`rlEB`) and 8 (`rlTensor`), on one new engine
+module. It exists for one reason: module 46's `relBoostTensor` conjugates the
+field tensor by Λ **for a boost along x only**, and every boost these two stages
+care about is along E×B, which points wherever the reader's field points.
+
+### What was checked, against what
+
+**The two routes, in directions no axis-aligned boost reaches.** Route A is the
+six component formulas (`relTransformEB`); route B builds F^μν, conjugates it by
+a **general-direction** Λ — Λⁱⱼ = δⁱⱼ + (γ−1)vⁱvʲ/v² — and reads E and B back
+off. They share nothing: route A never forms a matrix, route B never mentions a
+parallel or perpendicular component. Over five fields × six boosts, including
+skew ones and one along E×B: **worst 10⁻¹⁶ relative**. The check is not vacuous
+— boosting a pure E at 0.6 produces |B| = γβ|E| = 0.75, pinned separately.
+
+**`rlBoost4` is a Lorentz transformation in any direction**: ΛᵀηΛ = η to 10⁻¹³
+on four directions including the zero one, and it reproduces
+`relLorentzMatrix(β)` exactly along x. It refuses |v| ≥ 1 by throwing.
+
+**The frame the classification promises, visited.** "E·B = 0 and E² > B² means a
+frame exists where B vanishes" is a claim about a **frame**, so the panel goes
+there. Measured: B really vanishes, to 4×10⁻¹⁵ of the field it came from, at
+drift speeds up to **0.98c** (the `nearly null` preset, where E² only just beats
+B²); the reverse case removes E; and where E·B ≠ 0 neither goes but the frame
+that makes them **parallel** is found and |E×B|/|E||B| there is 10⁻¹².
+
+**The null field is refused with a reason, not clamped.** E·B = 0 and E² = B²
+makes |E×B| = E² exactly, so the drift speed is **exactly 1** — checked to
+10⁻¹⁵ — and `rlFieldDrift` returns the reason rather than a number. No frame
+makes a light wave anything but a light wave.
+
+**Both invariants, by two definitions that look nothing alike.** E·B and E² − B²
+from the vectors, against F_μν F̃^μν/(−4) and F_μν F^μν/(−2) built from the
+sixteen components with no mention of E or B. Agreement 10⁻¹⁴, on every preset,
+before and after a skew boost. **The factor in the dual contraction is checked
+rather than trusted** — a stray 2 there would be invisible to every other gate,
+because both routes would still be perfectly boost-invariant.
+
+**Antisymmetry is measured, against the largest entry.** 10⁻¹⁵ of the scale on
+every real preset, and **2 against a scale of 1** on the one built to fail.
+
+### What bit
+
+1. **A shipped function's stated purpose was true only in the case its one
+   caller used.** `relDriftVelocity` returned (E×B)/max(E²,B²) and its comment
+   called that "the frame in which E ∥ B". That is the parallel frame exactly
+   when E·B = 0 and wrong otherwise — and nothing noticed, because the one
+   caller **hid the row unless E·B vanished** while the prose beside it promised
+   a parallel frame it never computed. Item 7's editor computes it, and the test
+   measured sin θ = 0.8 where 0 was claimed. Fixed to the general root of
+   v/(1+v²) = |E×B|/(E²+B²), written 2s/(1+√(1−4s²)) so small s does not cancel.
+   **The fix carries its own regression row**: wherever E·B = 0 the general root
+   still equals (E×B)/max(E²,B²) to 10⁻¹⁵, so the case that worked is proved not
+   to have moved.
+2. **A numeric box accepted a variable name and read it as zero.** `mathNum` —
+   the shared implementation behind `ctlParse` and every engine that parses a
+   typed scenario — compiled the text and evaluated it at the origin, so `x`,
+   `y`, `z`, `r` and `rho` all returned a confident **0**, and `t` returned the
+   animation clock. Now it requires a **constant**: a second evaluation at an
+   unrelated point must agree, and `t` is refused by name because no choice of
+   x, y, z separates it. Twelve rows in `tests.js`. Found because a tensor entry
+   typed as `x` was silently accepted as 0.
+3. **`num` with a declared zero can never pass.** Eleven rows of honest 10⁻¹⁶
+   round-off went red on the first run of the `RL_FIELDS` block, because
+   `auditclaims`'s `num` takes a tolerance **relative to the declared value**.
+   `resid` is the helper for a quantity that must vanish, and it takes an
+   absolute one. Third instance of §2.1 in two days, second of them inside the
+   gate written to enforce it.
+4. **Two canvas labels printed through each other, and no gate can see that.**
+   `rlEB`'s component read-out landed within a pixel of its own plot title, so
+   the right-hand block was drawn straight through "Sweeping every boost".
+   `auditticks` reads duplicate *ticks* and headings under the *chip*; two
+   arbitrary labels colliding is neither. Screenshot only, and the fix is a
+   smaller triad and a tighter row pitch.
+5. **A preset table said one thing and its own numbers said another.** The
+   `strong` field was described as "E·B not quite zero" and written with
+   E = (0.3, 0.2, 0) against B = (0, 0, 1.4) — which is E·B = **0** exactly, a
+   clean magnetic case. The unit test comparing the declared character with the
+   computed one caught it on the first run; the components now carry the z
+   term the description always claimed.
+
+### Corrupt controls, watched to fail
+
+- `RL_FIELDS.pureB`'s declared character flipped to `electric` → 3 rows red.
+- `RL_TENSORS.broken`'s declared `anti` flipped to `true` → 1 row red.
+- The tolerance mistake in (3) was itself found by the gate on its first run,
+  which is the strongest form of this evidence: it failed before it passed.
+
+Gates: `build` 247 modules · `smoke` OK · `runtests` **5219 passed, 0 failed**
+(+105) · `runstagetests` **839 passed, 0 failed** (+62) · `auditclaims` **609
+claims, bad=0 OK** (+102, two new blocks, eleven rows red on the first run).
+
+---
+
+## A charge configuration, and a wire, the reader supplies (46g) — 2026-08-19
+
+Programme A relativity items 6 (`relBoost`) and 9 (`rlWire`), on one new engine
+module. Both stages gain a mode rather than losing one: `rlWire`'s two existing
+modes carry SI numbers pinned by the suite, and the new sheet works in c = 1
+Gaussian units beside them.
+
+### What was checked, against what
+
+**Gauss's law, integrated rather than quoted.** ∮E·dA over a sphere the reader
+places, with the field of charges moving at any β — a field that is **γ³ times
+stronger across the motion than along it**, so every part of the integrand is
+wildly different from its rest-frame value and the total is not.
+
+- 4πq to **10⁻¹²** at β = 0, 0.3, 0.6, 0.9 and 0.99, centred and off-centre, at
+  radii from 0.4 to 17.
+- The anisotropy is checked too, so the agreement is not vacuous: across/along
+  is **γ³** to 10⁻⁹, and for multi-charge configurations the integrand is
+  required to vary by more than 2× around the sphere.
+- **Route B is a different surface.** The lab sphere's events are an
+  **ellipsoid** in the charges' rest frame (x′ = γx), where the field is plain
+  Coulomb; the integral there uses that ellipsoid's own area element, taken as
+  ∂P/∂θ × ∂P/∂φ rather than derived by hand. Agreement **10⁻⁸** at β up to 0.95.
+- **The half people forget**: a charge *outside* contributes exactly nothing
+  (10⁻⁸ of the ∮\|E\|dA it is measured against, which is not small), and a
+  dipole *inside* gives zero the same way.
+- A charge sitting **on** the surface is refused by name — Gauss's law says
+  nothing there and the quadrature diverges.
+
+**A wire built from a list of carrier species.** Neutrality is Σλ, measured.
+
+- The force agrees between the lab (magnetic) and the charge's own frame
+  (electrostatic) to **10⁻¹²** on every preset, after the single transverse
+  factor F = F′/γ, which is applied once and named rather than folded in.
+- Including a wire that is **charged** in the lab — the case the two-species
+  textbook version cannot express, and the one that shows neutrality was never
+  what made the argument work.
+- **The cancellation is measured, not hidden.** At a realistic 3×10⁻¹³ drift the
+  species-by-species sum — which is exactly what the argument says in words —
+  has lost every digit it had, while the closed form γ(v′) = γ(v)γ(βₜ)(1 − vβₜ)
+  is unmoved. Both are printed, with the number of decimal digits lost.
+- **The sign is pinned against physics, separately.** Two frames agreeing is
+  blind to a convention error made consistently in both, so: like currents
+  attract, antiparallel repel, and a charged wire repels a like charge at rest
+  with no magnetic part at all.
+
+### What bit
+
+1. **A derivation rung had been promising this measurement since the stage was
+   written.** `relBoost`'s ladder says "the panel integrates it in the boosted
+   frame and gets the same answer", and nothing integrated anything — in a
+   stage whose whole subject is that the flux survives a boost. Second instance
+   in one day: `rlEB`'s prose promised a frame in which E and B are parallel
+   and never computed one. **A rung that says "the panel computes" is a
+   testable claim about the panel.**
+2. **A quadrature aligned with the wrong axis loses four digits and refining
+   does not help.** The boosted field's structure is a band around the motion;
+   with the polar axis on z and the boost on x it fell in φ, where the
+   trapezoid cannot be refined selectively. A centred charge at β = 0.9 stuck
+   at **2.7×10⁻⁵** and at β = 0.99 at **6.4×10⁻²**, and neither moved between
+   20 and 800 panels. Aligning the polar axis with the boost took the same work
+   to 10⁻¹⁴. **An error that does not respond to resolution is an error in the
+   parameterisation.**
+3. **And the error is unsigned, which the first version of the test denied.**
+   "A grid that misses part of a positive integrand can only lose flux" is a
+   Riemann sum's argument; a Gauss node landing inside the peak over-weights
+   it. Three panels by eight azimuthal points returns 13.30 against 12.566.
+4. **`num` versus `resid` again, and an anisotropy row that was only true for
+   one charge.** The `RL_CHARGES` block's "the field is anisotropic" row
+   sampled the single-charge pancake ratio, which is meaningless for a dipole —
+   it came out 0.60 and went red on the first run. Replaced with a claim that
+   is true for any configuration: the integrand varies by more than 2× around
+   the sphere.
+
+### Corrupt controls, watched to fail
+
+- `RL_CHARGES.pair`'s declared enclosed charge changed from 0 to 1 → 2 rows red.
+- `RL_WIRES.real`'s declared neutrality flipped → 1 row red.
+- Finding (4) was the gate failing on its own first run, before it passed.
+
+Gates: `build` 250 modules · `smoke` OK · `runtests` **5321 passed, 0 failed**
+(+102) · `runstagetests` **904 passed, 0 failed** (+65) · `auditclaims` **660
+claims, bad=0 OK** (+51, two new blocks, two rows red on the first run).
+
+---
+
+## A motion programme the reader writes (46h) — 2026-08-19
+
+Programme A relativity items 12 (`rlTwin`) and 13 (`rlRocket`). Both stages gain
+a mode; the existing ones are the two special cases the textbook draws, and this
+is the general instrument they are cases of.
+
+### What was checked, against what
+
+**The engine's whole content is that proper acceleration is the derivative of
+rapidity** — dφ/dτ = a(τ), then β = tanh φ, γ = cosh φ, dt/dτ = cosh φ,
+dx/dτ = sinh φ. That removes every singular denominator: nothing divides by
+1 − β², so a programme reaching 0.9999999c costs exactly what a slow one costs.
+
+- **Against the closed forms**, which exist for constant a: φ = aτ to 10⁻¹²,
+  t = sinh(aτ)/a and x = (cosh(aτ)−1)/a to 10⁻⁹, at three accelerations × three
+  durations.
+- **The integrator's order, measured by halving**: 16× per halving, twice.
+- **Route B is the proper time read back off the worldline** as Σ√(Δt²−Δx²),
+  which knows nothing about a, φ or a differential equation. It recovers τ to
+  10⁻⁶ and does so **from above**, falling at order 2 — the same reverse
+  triangle inequality 46e records, met again from the other side.
+- **The final rapidity is the area under the engine**, checked against a
+  Gaussian burn's closed-form area to 10⁻⁸, and the coasting speed is tanh of
+  it.
+- **The Rindler horizon** comes out at 1/a exactly — 0.969 ly at one g.
+- **Refusals**: an acceleration with a pole inside the interval reaches infinite
+  rapidity in finite proper time and is refused with the τ it diverges at; an
+  a(τ) with no value counts the points it could not evaluate; a zero-length or
+  negative programme is refused.
+- **The four-leg twin** comes home to 10⁻³ ly, having aged 8 years against
+  15.01 — a ratio of **1.876**, which is sinh(2a)/a per leg and not any γ.
+
+### What bit
+
+Nothing in the engine. Three expectations of mine were wrong and the
+measurements corrected them, which is the useful record:
+
+1. **The twin ratio is 1.876, not "somewhere between 2 and 4".** Each two-year
+   leg at one g contributes sinh(2a)/a = 3.76 of coordinate time, so the four
+   give 15.0 against 8. Guessing a range and asserting it is how a test comes to
+   encode a mistake.
+2. **A Gaussian burn's closed-form area is the WHOLE Gaussian**, and a burn
+   centred at τ = 2 leaves 1.2×10⁻⁶ of itself before the programme starts. The
+   first version of that row blamed the 1.2×10⁻⁶ on the integrator. Moving the
+   burn's centre to 3.5 puts the missing tail at 10⁻¹⁶.
+3. **cos(τ/2) has period 4π, not 4.** "A cosine engine over two periods ends
+   near rest" was wrong at τ₁ = 8: φ(8) = 2.065 sin(4) = −1.56 and the ship
+   ends at −0.92c, going *backwards*. At τ₁ = 4π the area is exactly zero and it
+   ends at rest to 10⁻⁶, which is a far better test than the one I meant to
+   write.
+
+Also fixed by looking: two canvas labels were drawn at the upper **right** of
+their panes, where both curves plateau — φ's ceiling and the c line. Both moved
+to the upper left, where every curve here starts at zero.
+
+Gates: `build` 252 modules · `smoke` OK · `runtests` **5409 passed, 0 failed**
+(+88) · `runstagetests` **997 passed, 0 failed** (+93) · `auditclaims` **701
+claims, bad=0 OK** (+41).
+
+---
+
+## The sixteen special-relativity editors, finished (46e–46k) — 2026-08-19
+
+Programme A relativity items 6–21, closing the wing at twenty-one of
+twenty-one. Seven engine modules in one day, each small because the physics is
+one identity and the work is finding a **second route** to it.
+
+| module | the identity | second route |
+|---|---|---|
+| `46e` | proper time is the length of a worldline | the moving observer inverts t′(t) and integrates in their own variable |
+| `46f` | E and B are one tensor | Λ F Λᵀ with Λ in a general direction, against the six component formulas |
+| `46g` | charge is invariant | the lab sphere against the ellipsoid it becomes at rest |
+| `46h` | proper acceleration is dφ/dτ | the proper time read back off the worldline as chord intervals |
+| `46i` | a light clock is a path length | the tick solved for, at any mirror position, against γ×rest |
+| `46j` | the barn paradox is four events | the ladder's own geometry, with no boost in it |
+| `46k` | a collision is a sum of four-vectors | the invariant mass recomputed in a frame nobody chose |
+
+### The measurements that carry the most
+
+- **A light clock ticks γ times slower whatever shape it is** — every mirror
+  position at every boost, to 10⁻¹³, with each leg verified to be a null path.
+  Across the motion the two halves are equal; along it they are in the ratio
+  **(1+β)/(1−β)** exactly; the total never notices. That is Michelson–Morley,
+  and it only works because the longitudinal arm contracts.
+- **The order of two events reverses under some boost exactly when they are
+  spacelike.** Not two conditions that coincide: β = Δt/Δx lies inside (−1,1)
+  precisely when |Δx| > |Δt|. The boundary is sharp — 0.99 flips, 1.01 does
+  not — and s² survives every boost regardless.
+- **Gauss's law survives a boost to 10⁻¹²** at β = 0.99, where the integrand
+  varies by a factor of 350 around one sphere; and the same events integrated
+  over the **ellipsoid** they become at rest agree to 10⁻⁸.
+- **Two lumps of clay make one of mass 2.5, not 2**, and the 0.5 is exactly the
+  kinetic energy that stopped being kinetic. Two massless photons head-on make
+  a system of invariant mass 2 from a mass sum of 0.
+- **The angle at which a Doppler shift vanishes is not 90°.** It is
+  cos θ = (1 − 1/γ)/β, forward of it, because the transverse redshift has to be
+  cancelled by a real approach first — and at 90° itself the shift is exactly
+  1/γ, which Newtonian physics cannot produce at all.
+- **C/2R = πγ by closed form and by counting contracted rulers**, converging as
+  the rulers shrink; and the excess over π is πv²/2, so a bicycle wheel is
+  non-Euclidean **below one ulp of π** — which the panel says rather than
+  reporting round-off as a discrepancy.
+
+### What bit, beyond the records already written for items 6–13
+
+1. **The light clock did not contract its own arm.** The first version placed
+   the mirror at its rest offset in the lab, so the along-the-motion clock
+   ticked 3.125 against the across-the-motion clock's 2.5 at β = 0.6 — a 25%
+   disagreement between two arms of one instrument, which is precisely the
+   fringe shift Michelson and Morley went looking for. Caught by the unit tests
+   on their first run, before any picture was drawn.
+2. **"The two door-closings are spacelike" is not always true.** The barn
+   module asserted it; the tests found a preset where s² comes out **exactly
+   zero**, and a shorter ladder makes them timelike, where every frame agrees
+   which shut first. The paradox needs L/γ > B(1−β) — a condition on the
+   numbers, not a feature of the setup. `RL_BARNS` now carries all three cases.
+3. **Two controls for one quantity.** `rlDopp`'s preset returned its own β
+   while the slider still showed the stage default, so the picture was drawn at
+   0.8 with the slider reading 0.7 and no way to tell which produced the
+   answer. The slider owns β now; a preset only seeds it.
+4. **A mass shell drawn outside its own window.** `rlDyn`'s collision plot
+   scaled to the largest *single* particle, and the shell the *total* sits on
+   starts at E = m — off the top of the plot. Screenshot only.
+5. **Three expectations of mine were wrong and the measurements corrected
+   them**: the twin ratio is 1.876 (sinh(2a)/a per leg), a Gaussian burn's
+   closed-form area is the *whole* Gaussian and a burn centred at τ = 2 leaves
+   1.2×10⁻⁶ of itself outside the run, and cos(τ/2) has period 4π rather than 4.
+   Each was written into a test as an assertion first.
+6. **Two canvas captions named colours the picture does not use** — the J7
+   class, already fixed three times in this repo. `TH.pos` is orange in both
+   themes. Reworded to name no colours at all.
+
+Gates: `build` 258 modules · `smoke` OK · `runtests` **5738 passed, 0 failed**
+· `runstagetests` **1144 passed, 0 failed** · `auditclaims` **912 claims,
+bad=0 OK**, thirteen new blocks across the seven modules, every one of them
+seen to fail on a corrupted declaration.
+
+---
+
+## 2026-08-19 · widening `auditcustom`, and the four defects that fell out
+
+**`auditcustom` only ever saw each stage's DEFAULT mode — FIXED.** `stageEnter`
+opens a stage in the state its author wrote, so every reader-supplied box living
+behind a segmented mode switch was rendered by no pass and exercised by no gate.
+Sixteen of the relativity editors delivered the day before are built that way,
+which is what made the blind spot visible: the picker and box counts did not move
+when fifteen typed inputs were added. The sweep now walks every option of every
+segmented control that is not itself a "type your own" picker, breadth-first,
+because a switch can reveal a picker that reveals another switch. **Coverage:
+stages 118 → 136, pickers 120 → 138, boxes 154 → 182**, `bad=0 OK`. A `-From`/`-To`
+slice was added at the same time and immediately earned its keep (below).
+
+**`rlMotFrameTwin` could hang the whole application — FIXED.** The widened sweep
+did not report; it never returned. The cause was `for(let k = 1; k <= Math.floor(R.tEnd); k++)`,
+one dot per year of the stay-at-home's clock — and that clock reads sinh(φ)/a, so
+a programme of a = 5 held for ten years of ship time makes it 2.6×10²⁰ years and
+the loop has 2.6×10²⁰ turns. Nothing was infinite and no number was wrong: the
+trip count was a **physical quantity**, and physical quantities in relativity are
+exponential in the input. It is reachable by any reader who types that programme.
+Fixed by `ctUnitMarks(lo, hi, most)` in `61a`, which bounds the **output** —
+at most `most` marks come back whatever is handed in, the step widening to a
+round number until they fit — so the defect is not expressible at a call site.
+The caption now reports the step it used rather than claiming "one dot per year".
+A second instance of the same shape (`pbCdfAt`, `79f`) was bounded exactly the
+same day: the tail of both discrete distributions is below 1e-300 forty standard
+deviations out, so the bound truncates nothing.
+
+**Two panels reported a correctly wired box as unwired — FIXED, and the cause was
+in the gate's own contract.** `rlDyIn`/`rlDyOut` and `rlWiS` carried `data-audit`
+attributes copied from their stages' default presets, so the harness typed
+exactly what was already in the box, nothing changed, and the wiring check fired.
+The attributes now differ from every preset, and **a duplicated `data-audit` is
+itself a reported finding** — the alternative is a box that no gate exercises and
+nobody knows it.
+
+**Three boxes in a new wing read as unwired for the opposite reason — FIXED.**
+`auditcustom` types an expression into every `.fld input`, and a box expecting a
+complex number correctly rejects it; a rejected edit is indistinguishable from an
+unwired box. `fnHtml` and the `pk*` slots now take an `audit:` field naming what
+a gate should type, which is the contract textareas have had since the circuit
+netlist.
+
+**Chrome's `--virtual-time-budget` virtualises `Date.now()` — NOTE.** A wall-clock
+budget added to `auditcustom` to bound the sweep never fired and reported every
+stage as taking 0 ms, because virtual time advances only while the page is idle
+and a synchronous sweep is never idle. Removed, with the reason recorded in the
+script so it is not re-added; the bound that works is a bound on the work, and
+the way to locate a hang here is the `-From`/`-To` slice, which found this one in
+a single run.
+
+## 2026-08-19 · `rlEB`'s vanishing invariants — FIXED
+
+`auditsides` raised a FALSE-SCALE on `rlEB`: the residuals row compared the two
+field invariants across a boost with `fmtAgree`, whose derived scale is
+`max(|a|,|b|)`. Both invariants legitimately vanish — E·B = 0 for any crossed
+field, E² − c²B² = 0 for a null one — so that scale becomes the round-off itself
+and a perfect result printed as "100% — agreeing to 0 figures". Now
+`fmtAgreeGross` with the magnitudes the cancellation came from: |E||B| for the
+dot, max(E², B²) for the difference, taken in whichever frame is larger. The
+regression sweeps every preset against seven boosts and **asserts `fmtAgree`
+alone is wrong on at least one of them**, so the test cannot quietly stop
+measuring what it was written for.
+
+`rlTensor`'s two PRESET-GAP rows were **not** a defect and are whitelisted with
+their reason: the `broken` preset is a deliberately non-antisymmetric array, both
+rows are the measurement that says so, and the panel's own prose explains that
+E·B = −F F̃/4 is an identity about antisymmetric arrays and therefore comes apart
+on that one. Every other preset reads exact.
+
+## 2026-08-19 · Programme C wing C2 — complex numbers, elementary
+
+Six stages on a new engine (`41a-cnum.js`), 15 guided experiments, a prose essay
+with five statement cards, and 129 new rows in `auditclaims`. What was measured
+rather than asserted:
+
+- **multiplication is a rotation** — the componentwise product against the polar
+  form, on every preset, with the argument compared **on the circle**: a product
+  whose argument crosses the branch cut differs by 2π and is the same angle;
+- **Euler's formula** — summed term by term from the series, never against
+  `cxExp`, which *is* Euler's formula in code and would agree by construction;
+- **de Moivre** — n multiplications against rⁿ∠nθ, two routes with different
+  error growth;
+- **the n-th roots** — each raised back by n ordinary multiplications, and their
+  sum against zero scaled by the sum of their sizes;
+- **the fundamental theorem of algebra** — roots by Aberth's iteration, then the
+  factors multiplied back out and compared with the typed coefficients, a route
+  that never evaluates the polynomial;
+- **phasors** — the complex sum against the summed *wave*, sampled over a period
+  and projected onto cos and sin.
+
+**A repeated root is not a failure of the root finder — NOTE.** The first
+version of the tests asserted 10⁻¹⁰ on (z² + z + 1)² and failed at 1.3×10⁻⁸,
+which is √ε. Near a root of multiplicity m, p behaves like (z − r)^m, so a
+perturbation of size ε in the coefficients moves the root by ε^(1/m); exact
+arithmetic followed by a floating-point square root hits the same wall. The
+engine now **measures** the multiplicity by clustering and **derives** the
+accuracy it may claim from it, the tests take their tolerance from that
+measurement rather than from a widened guess, and the panel prints it. The
+tests also assert the gap is **not** smaller than √ε, so a change that appears
+to improve it is flagged rather than accepted.
+
+Three defects were found by screenshot alone and are recorded in `src/js/CLAUDE.md`:
+a window fitted to the unit circle while the partial sums it draws overshoot it
+(the `odSpring` class, in a new wing); canvas captions drawn over the axis labels
+below the plot; and one preset table labelling a picker for the wrong one of the
+two stages that share it.
+
+## 2026-08-19 · Programme C wing C4 — coordinate systems and Jacobians
+
+Three stages on two new engines (`25a-coords.js`, `25b-coords-3d.js`), 14 guided
+experiments, a prose essay with three statement cards, and 129 new rows in
+`auditclaims`. The wing exists to join two things the site already had and never
+connected: the polar and spherical integrals of the integration wing, and the
+Jacobian matrix of the partial-derivatives wing.
+
+**The Jacobian is computed four ways, and the change-of-variables theorem three.**
+Nothing here is asserted:
+
+| route | what it is | how it is held |
+|---|---|---|
+| `csJacNum` | the determinant of the centrally differenced matrix | round-off |
+| `igCellArea` | the AREA of a small mapped cell, over h² | **first order** — its *order* is the claim, measured by halving h |
+| `csMetric` | √(EG − F²) from the first fundamental form | round-off; it is Lagrange's identity, not the determinant rearranged |
+| `CS_MAPS.jac` | the closed form each preset declares | round-off |
+| `csAreaPull` | ∬\|J\| du dv | round-off |
+| `csAreaGreen` | ∮x dy round the image of the boundary | its own error, from N against N/2 |
+| `csAreaGrid` | invert the map over a grid, count what came from the rectangle | its own error, from n against 2n, floored at one cell along the perimeter |
+
+**`nqDoubleRect` threw on any Gauss order the table does not hold — FIXED.**
+`nqGauss` guarded its lookup with `NQ_GL[k] || NQ_GL[5]`; `nqDoubleRect` wrote
+`NQ_GL[k || 5]`, which falls back for a *missing* k and not for an unsupported
+one. A caller asking for order 6 — a perfectly ordinary request — got
+`undefined` and a `TypeError` three frames later that named neither the caller
+nor the order. `nqGL(k)` is now the only way to read the table, and `tests.js`
+drives `nqGauss`, `nqDoubleRect`, `nqDoubleTypeI` and `nqTriple` at six bad
+orders. This had been latent since the file was written.
+
+**The grid route found only 58% of a disc — FIXED, and the cause generalises.**
+Newton inverting a coordinate map converges to *a* preimage, and a map has as
+many as it has branches: polar's (r, θ) and (−r, θ+π) name the same point.
+Newton converged to the negative-r branch over two fifths of the disc, those
+points were correctly judged outside the rectangle, and the area came out at
+π/2·(something). Fixed by **continuation** — each cell starts from the last
+preimage that worked, since neighbouring points have neighbouring preimages —
+plus a spread of fallback starts, accepting a point if any of them lands inside.
+A map periodic in a variable also needs its preimage wrapped, and `csPeriodic`
+measures periodicity rather than assuming it.
+
+**A pane that promises equal scales must ask for its box before choosing them —
+FIXED, and it had a sibling.** `csRectPane` fitted its scale to the box it
+wanted; `mkPlot` then clamped that box to the canvas, and the two scales came
+out 1.3% apart on a tall window. `ctFitBox` (60a) is that clamp extracted, so
+the two callers cannot drift; `cnPlotFor` in the complex wing had the same
+latent bug and now uses it too. `tests-stages.js` asserts equal scales on a box
+deliberately taller than the canvas, which is the case that failed.
+
+**Escaping authored prose printed the tags — FIXED in both new wings.**
+`<p class="help">${esc(P.why)}</p>` renders `<b>` as four characters.
+`auditscan` called it notation/leakage: five rows in C4 and two in C2. `esc()`
+is for what the reader typed — an expression, an error message derived from one
+— never for a preset table's own copy.
+
+**Three declared properties were wrong and the measurement said so.** The fold
+map was declared non-orthogonal; its coordinate curves are horizontal and
+vertical lines, so it is orthogonal, and the correction is worth keeping because
+it makes the point that being well behaved locally says nothing about being
+one-to-one globally. Two solids were declared to have only one route; both were
+given a genuine second one (a two-piece cylindrical description for the shell,
+a cone-and-sphere one for the ice-cream cone) rather than relaxing the test.
+
+**Two rows are in `auditsides`' ALLOW with reasons.** `csGrid`'s cell-against-|J|
+row is a truncation error the stage exists to display — exact for an affine map,
+O(h) otherwise, and the row below it reports the measured order. `csArea`'s
+A-against-B row is the fold counterexample: the theorem does not apply there and
+the panel says so in three places.
+
+---
+
+## 2026-08-19 · Programme C wing C15 — signal processing
+
+**The wing.** `49a-signal.js` (prefix `dsp`), four stages in
+`64d-stages-signal-sample.js` and `64e-stages-signal-filter.js`, 23 experiments
+in four groups, and `85fa-theory-signal.js` with five statement cards, all
+proved and all linked to an experiment. Nothing here re-implements a transform:
+`ftFFT`, `ftSincRecon`, `ftAlias`, `ftConvolve` and `ftWindowFn` are reused
+unchanged, and `cnPolyRoots` — the complex wing's Aberth iteration — answers the
+stability question without modification.
+
+### What was measured, and against what
+
+| claim | route 1 | route 2 | agreement |
+|---|---|---|---|
+| a window's coherent gain | Σw/N over 256 taps | a₀, exactly, from the cosine coefficients | round-off |
+| its noise bandwidth | N·Σw²/(Σw)² | 1 + Σ<sub>k≥1</sub>a<sub>k</sub>²/2a₀², exactly | round-off |
+| its whole leakage pattern | a 32× zero-padded FFT of the taps | a complex sum of shifted Dirichlet kernels, which never forms the window | < 1e-13 relative, over 90 dB |
+| the alias of a tone | `ftAlias` — a modulus | the peak of a transform of the samples actually taken, refined on the **log** magnitude | < 1e-4 Hz on seven rate/frequency pairs |
+| a filter's response | B(z)/A(z) on the unit circle | driving e^(2πifn) through the difference equation and dividing | < 1e-12 of the peak gain, all seven filters |
+| its group delay | −d(arg H)/dω, exactly | the same, by differencing the phase | < 1e-4 samples |
+| its group delay at DC | either of the above | Σn·h[n]/Σh[n], the centroid of the impulse response | < 1e-9 samples |
+| the STFT resolution product | Δt·Δf, swept over five N and five rates | the window's ENBW | exact, and the spread is 0 |
+| a chirp's ridge | the peak of each STFT column | f₀ + kt, evaluated at the window's **centre** | 0.047 Hz against a 2 Hz bin |
+
+**Sidelobe levels, first nulls and scalloping losses are checked against Harris
+1978** in `auditclaims.ps1` — the table every textbook copies and nothing here
+had ever recomputed. All six cosine-sum windows agree to the two decimals Harris
+quotes.
+
+### Nine defects, and which gate found each
+
+1. **`dspFirLP` windowed its taps with the PERIODIC sampling**, which is not
+   symmetric, so a "linear phase" design would not have been. Found while
+   writing, and it is the reason `dspWindowSym` exists as a named function: one
+   definition, two samplings, and `tests.js` pins that
+   `dspWindow(k, n, N) === ftWindowFn(k, n, N+1)` exactly.
+2. **`dspWinMetrics` read m[0] as the peak and walked out to "the first place
+   the curve stops falling".** The flat-top window's main lobe is deliberately
+   flat, so the first ripple in it is a local minimum: its first null was
+   reported at 1/32 of a bin instead of 5. A null of a cosine sum is an exact
+   ZERO — look for one, do not look for a descent that ends. Found by the probe.
+3. **`dspSettle` did not count an FIR's taps.** Driving a 41-tap filter for 8
+   samples and calling the answer its steady state made the two routes disagree
+   by 100%. An FIR forgets at its last tap and no estimate is involved. Found by
+   `runtests` on its first run.
+4. **The group delay was returning a number where it does not exist.** At a zero
+   of H on the unit circle arg H jumps by π; differencing across that gave the
+   difference filter a group delay of **−24 999.5 samples** at DC — a phase
+   discontinuity wearing the units of a delay, finite and plausible. Both routes
+   now return `null` and the panel counts the frequencies where they do. Found
+   by `runtests`.
+5. **Three filters declared a Nyquist gain of exactly 0 or 1, and no windowed
+   sinc has one.** A filter with finitely many taps is a trigonometric
+   polynomial: it has finitely many zeros and they go where you design them. The
+   table now declares a stopband BOUND over a band, which a design can keep.
+   Found by `runtests`.
+6. **The signal presets have a domain of validity and the controls could leave
+   it.** The record was N/f<sub>s</sub> with N a slider — 0.67 s to 85 s — and
+   every signal in the table is a formula written for two seconds. At 256 samples
+   and 24 a second the chirp named "1 → 14 Hz" reached 70 and the folding map's
+   axis ran to 110. The record is now fixed at `DSP_DUR`, the chirp is named by
+   its **rate** rather than its endpoint, and `runstagetests` asserts the record
+   length at six rates. Found by the screenshot.
+7. **A peak frequency was being reported for a record with no energy in it.**
+   The AM carrier at exactly Nyquist samples to identically zero — every sample,
+   exactly — and the parabola then fits three logarithms of 10⁻³⁰⁰ and returns a
+   confident 11.95 Hz. `dspPeakFreq` returns `null` and the panel says so. Same
+   class as the ratio-of-two-small-numbers rule in SITE-RULES §2.1. Found by the
+   probe, confirmed by `auditsides`.
+8. **The panel reported "linear phase, delay 0 samples" for a two-pole
+   resonator.** Its numerator is a single number, which is trivially a
+   palindrome. The symmetry argument is about the NUMERATOR and survives only
+   with no denominator to spoil it. The fix is `dspLinearPhase(b, a)` rather than
+   a comparison at the call site, so the condition cannot be got wrong at a
+   second one. **Only the screenshot could have found this**, and
+   `tests-stages.js` now checks the verdict against every filter's declaration.
+9. **The window stage's closed-form curve omitted the negative-frequency
+   image.** A real cosine is half a positive exponential and half a negative one,
+   so X[k] = ½[W(k−f₀) + W(k+f₀)]; dropping the second term agreed *perfectly*
+   whenever the tone sat on a bin — the image's Dirichlet kernel has an exact
+   zero at every bin — and disagreed by up to **21 dB** the moment it moved off
+   one. **The failure pattern was the diagnosis**: off-bin only, and worst at the
+   far end of the axis where the two images are equally distant. Found by the new
+   `tests-stages.js` rows on their first run, which is what that suite is for.
+
+### Two things the measurement overruled
+
+**`fmtAgree` on the guarded reconstruction was reporting a perfect result as a
+100% disagreement.** With the anti-alias filter on and a 19 Hz tone at 32
+samples a second, the filter removes the signal entirely — so the reconstruction
+and the filtered signal are both round-off, the derived scale IS the round-off,
+and 2.4×10⁻⁵ printed as 100%. The scale that means something is the amplitude of
+what went in. Found by `auditsides`, and it is another instance of the class
+`fmtAgreeGross` exists for.
+
+**"Measured peak against the arithmetic" is not a comparison when the guard is
+on**, because the two routes are then describing different signals — the
+arithmetic describes what would have happened and the measurement describes what
+did. The row now says so instead of printing a 1 Hz gap. Found by `auditsides`.
+
+### Three defects inside the gate itself
+
+`auditclaims`' new block was red on its first run for reasons that were its own,
+which is the standing warning about a new gate. **A declared zero needs `resid`,
+not `num`** — `num` divides by the declared value, so three filters declaring an
+exact zero gain read as infinitely wrong. **The ENBW invariance claim was too
+broad**: it holds for a cosine sum because the closed form contains no N, and a
+triangle is not one, so Bartlett gets a convergence claim instead. And **the
+chirp-ridge tolerance was set from a guess and had to be set from the
+measurement**: at N = 32 the record opens with the chirp at 1 Hz and one bin is
+4 Hz, so the first columns are being asked for a frequency the transform has no
+bins for — `dspPeakBin` cannot report below half a bin because there is nothing
+on the other side of the peak to interpolate against.
+
+### Four advisory rows in `auditsides`, read by hand and all legitimate
+
+- `sigAlias` reconstruction at 202% on the 19 Hz preset — that IS the demo: a
+  folded signal's reconstruction is a different wave, and the panel says so.
+- `sigAlias` peak-against-arithmetic at two figures on the two-tone preset —
+  0.0035 Hz on a 32-sample record whose bins are 0.5 Hz apart, which is seven
+  thousandths of a bin.
+- `sigAlias` guarded reconstruction at 53% on the AM preset — the carrier sits
+  *at* Nyquist, in the filter's transition band, so it is not removed and not
+  representable either. The strict inequality in the sampling theorem, again.
+- `sigSpectro` ridge at 0.568 Hz with a rectangular window — a rect window's
+  leakage genuinely degrades a peak estimate, and the panel prints the figure in
+  bins beside it.
+
+### What did not change
+
+`ftWindowFn`, `ftAliasEnergy` and `ftDiscrete` are untouched. The two window
+conventions are deliberate and different — periodic for spectral analysis
+(no seam when the record repeats), symmetric for filter design (palindromic
+taps, hence linear phase) — and `tests.js` pins that they are one function.
+`ftStems` was batched into one stroke and one fill for all its stems rather
+than two paths per stem, which the Fourier wing gets as well: `auditperf`'s
+2-D mean fell from 128 to 125 with four new stages added.
+
+
+## 2026-08-19 · Programme C wings C3 and C5 — units/dimensions/uncertainty, and discrete maths
+
+**An eighth defect, found by `runall` after everything else was green.**
+`dcCount` at k = 0 threw `TypeError: Cannot read properties of undefined`.
+The enumeration there is **not** empty — it is a list of one object, and that
+object is the empty array — so the `!C.list.length` guard was false, the drawing
+path read `obj[0]` of an empty array, handed `NaN` to `rampSeq` and threw on the
+colour it got back. The demo it killed is the one called *"Choosing nothing, and
+why 0! = 1"*, whose entire subject is that the count is one rather than zero.
+Nothing but the exhaustive harness could have found it: every unit test, stage
+test and claim about k = 0 passed, because they all ask for the **count**, and
+the count was right. It was only the *picture* that fell over.
+
+Two Tier-1 wings, built and gated the same day. `units` (five stages, 30
+experiments, `30a-units.js`) sits at the head of classical physics; `discrete`
+(five stages, 20 experiments, `42a-discrete.js`) sits immediately before
+probability. Both were predicted in `MASTER-PLAN.md` §3.3 as "almost no engine"
+and "small", and both took a session, for the reason the previous three tier-1
+wings recorded: **the second route is the work, not the arithmetic.**
+
+### What the second route is, in each
+
+- **`units`, dimensions.** Route 1 walks the expression adding exponents. Route 2
+  gives the seven base units the values 2, 3, 5, 7, 11, 13, 17 raised to assorted
+  powers, evaluates the expression as an ordinary product of numbers — so it comes
+  out as ∏λᵢ^dᵢ — and recovers the exponents by solving a 7 × 7 system in the
+  logarithms. The two share the tokenizer and nothing else, so a sign error in
+  "dividing subtracts exponents" cannot survive. Worst gap over the presets:
+  1.2×10⁻¹⁵ on the volt, which is the linear solve's own round-off.
+  The λ are **primes rather than random**: the system's matrix is made of their
+  logarithms, and logarithms of distinct primes are rationally independent, so it
+  is never singular. A random draw would occasionally be near-singular and give a
+  gate that fails intermittently for no physical reason.
+- **`units`, Buckingham.** The count of groups is recomputed from the dimension
+  matrix by rank–nullity, and every group's dimensions are recomputed **from its
+  tidied exponents**, so a bad tidy cannot hide behind a check of the untidied
+  vector. Two presets carry a number the method cannot supply and something
+  independent to compare it against: the Bohr radius group reads
+  1.0000000012 on CODATA 2022 numbers (the residual is the rounding CODATA itself
+  publishes), and Taylor's Trinity radii give a slope of 0.39888 against the
+  theorem's exact 0.4 — 0.28% apart, r² = 0.9974 over the middle nineteen points.
+- **`units`, uncertainty.** First-order propagation against a seeded Monte Carlo,
+  with the gap reported **in units of the Monte Carlo's own sampling error**. That
+  last part is what makes the comparison mean anything: at 20 000 draws a 1%
+  disagreement is noise and at 10 million it is a defect. On the pendulum the two
+  agree at 0.75σ; on e^(−λt) with λt = 2 ± 1 they are 104σ apart and the panel
+  says the linearisation is what is wrong.
+- **`discrete`, everything.** Counting is the one subject where the second route
+  is not an approximation but the **definition**: every closed form is drawn
+  beside an enumeration of the objects it counts, built one at a time. The
+  enumerators refuse above their cap rather than truncating, because a truncated
+  list turns a wrong count into a plausible one.
+
+### Seven defects, and which gate found each
+
+None of the seven was found by reading the code, and none was visible to
+`runtests` — five of them live above module 50.
+
+1. **FIXED — `uniSup` lifts what follows a CARET, so every exponent in the units
+   wing printed as ASCII.** `uniSup('2')` returns `'2'`; the dimension bars, the
+   SI forms and every Π group read `T2 g / L` where they mean `T² g / L`, a
+   SITE-RULES §1.7 violation across a whole wing. A second attempt was also wrong:
+   `uniSup('^(0.5)')` returns the string unchanged, because UNI_SUP has no
+   superscript full stop, so `m^(1/2)` kept a literal caret on a canvas label.
+   `unSup` now writes a half as the **fraction it is** (`¹ᐟ²`, using UNI_SUP's own
+   U+141F) and maps the characters one at a time rather than through uniSup's
+   caret grammar. Found by a stage test asserting the exact string rather than the
+   exponent — which is why it asserts the string.
+2. **FIXED — `ctUnitMarks` returns `{vals, step}` and two stages passed the whole
+   object to `plotTicksX`.** `auditresid` reported `unSig THREW ticks is not
+   iterable`. The correct form also fixes a second thing for free: the `step` it
+   returns is the **rounded** one `fmtTick` needs, which is the whole reason to
+   take the step from there rather than from (hi−lo)/n.
+3. **FIXED — three units stages printed their row labels under the readout chip.**
+   `plotFrame` routes its centred title through `ctTitleClearChip` and that is all
+   the help the core gives; every stage in that wing writes `M (kg)`, `M` or a
+   dimension-matrix row name in the left margin, where the chip floats. New
+   `unChipBox(ctx, W, H, pad, bottom)` pushes the whole box below the chip zone,
+   which is the right fix rather than shortening the labels — the labels are the
+   picture's key. Found by `auditticks`; nothing else can see this class.
+4. **FIXED — `unPi`'s `data-audit` values duplicated the defaults' DIMENSIONS.**
+   The boxes shipped `km`, `ms`, `N/kg` against defaults `m`, `s`, `m/s^2` — the
+   same seven exponents, so every output of the stage was byte-identical after
+   typing and `auditcustom` correctly reported a wired picker as unwired. The gate
+   was right and the attribute was wrong. They are now `kg`, `J`, `V`, `Pa`, `mol`,
+   which give rank 3 with no dimensionless combination at all. Same class as the
+   two instances recorded on 2026-08-19 for C2 and C4, and the third in three
+   wings: **an audit value must differ in what the stage COMPUTES, not in how it
+   is spelt.** The same pass found that `pkOwn` only seeds on its first call, so
+   raising the variable count from three to five left two boxes rendering the
+   word `undefined`; `unPiOwn` now seeds any slot the reader has grown into.
+5. **FIXED — `dcPascal` drew Sierpinski's gasket from `T[n][k] % 2`, which is
+   meaningless past row 53.** C(63, 31) is 9.2×10¹⁷, past 2⁵³, so the stored float
+   has no low-order bits left; the naive test found **665 odd cells in the first
+   sixty-four rows where the answer is 3⁶ = 729**, and the gasket came out with
+   holes in it. No error, no NaN, no gate could have seen it — just a slightly
+   wrong fractal. `dcOddEntry(n, k)` is Kummer's theorem in base two,
+   `(k & (n − k)) === 0`, and never looks at the entry at all. The readout now
+   prints the naive count **beside** the bitwise one, so the failure is part of
+   the lesson; `auditclaims` checks the bitwise count against 3^m over the first
+   2^m rows for six values of m, and asserts the naive test **disagrees** past
+   2⁵³ — a negative control, without which the bitwise rule would be pointless.
+6. **FIXED — `dcRec` compared a count against the wrong term of its own
+   sequence.** Binary strings of length n with no two adjacent 1s number F(n+2)
+   on the 0,1 convention; the stage compared against F(n), got 144 against 55,
+   and printed "they differ, so the recurrence does not describe this count" —
+   a correct panel reporting a false conclusion. The offset belongs to the
+   counting problem rather than to the recurrence, so it lives on the preset
+   beside the enumerator that needs it, and the readout names it.
+7. **FIXED — the birthday claim used 1.177√N, whose error is order 1.** The
+   familiar form drops a term **linear in k**, so it costs an absolute error of
+   about a person whatever N is: 22.49 against a crossing at 23, and 4.08 against
+   5 at N = 12. On a quantity whose answer is an integer that is the whole of the
+   accuracy, and three of four presets failed a 2% relative claim. Solving the
+   quadratic k(k−1)/2N = ln 2 instead of dropping the k/2 costs one more character
+   and lands inside one person at every preset. **The claim is now absolute rather
+   than relative**, which is the right form for an integer-valued quantity, and
+   the readout prints both forms with the gap each owes.
+
+### Two things the measurement overruled
+
+- **Trinity's yield lands 14% below the declassified figure, and that is
+  attributed rather than tuned.** Two terms are known to be imperfect and both
+  push the same way: ξ₀ = 1.033 is computed for γ = 1.4 and the air inside a
+  fireball is hot enough to dissociate and ionise, which lowers γ; and the visible
+  edge on a photograph is the luminous front, not exactly the shock. The panel
+  says so. Recovering a classified yield to fifteen percent from published
+  photographs and a rank calculation is what the method is *for*, and Taylor's own
+  published estimate sat in the same place. The **slope**, which is the theorem
+  alone, agrees to 0.28%.
+- **`dcBirth`'s "the two, compared" row is whitelisted in `auditsides`, and it is
+  the first entry there whose second route is a MEASUREMENT.** `fmtAgree` is built
+  for two deterministic routes and has no notion of an error bar. On the `small`
+  preset the probability is 1, every trial clashes, and the simulation is
+  deterministic and exact; on `days` it is 0.5073 and a 40 000-trial simulation
+  carries a genuine ±0.0035, so the observed gap of 0.00315 is 0.89 of it. A
+  Monte Carlo cannot agree more closely than its own sampling error. The row the
+  whitelist excuses is not the check — the check is the row beneath it, which
+  divides the gap **by** that standard error and is pinned at four sigma in both
+  `tests-stages.js` and `auditclaims.ps1` over every preset.
+
+### Two tolerances that had to come from the arithmetic, not from a guess
+
+- **`unSig`'s box-against-formula rows.** The exact worst case over the rounding
+  box is found by differencing two numbers of size |v|, so its own absolute error
+  is about ε|v| however small the box itself is. On the `spread` preset v is
+  6×10²³ and the box is 5×10¹⁸, so representation error alone is 1.6×10⁷ — a
+  relative 3×10⁻¹², which a fixed 1e-12 called a defect. Worse, the first
+  corrected floor keyed on |v| and passed the four presets where nothing cancels
+  while failing the four where something does: for a **subtraction** the size that
+  sets the floor is the size of the numbers being differenced, not the size of the
+  answer. That is the same sentence the stage's own readout prints about a − b,
+  appearing in the stage's own test.
+- **`dcRecur` against `dcByMatrix` "exactly".** True only while the ANSWER is
+  exact. Pell(50) is 4.9×10¹⁸, past 2⁵³, and there the two integer routes round
+  differently — not a defect in either but the arithmetic running out. The test
+  now guards on `dcExact` and carries a **negative control** asserting that they
+  genuinely do part company there, so the guard is guarding something real rather
+  than excusing a bug.
+
+### What both wings deliberately refuse
+
+- `unPi` declines a closed-form constant where dimensional analysis cannot supply
+  one, and says the counting has reduced the unknown rather than removed it.
+- `dcBirth` declines to simulate a 32-bit hash space and says why: a trial needs
+  tens of thousands of draws, so the simulation would be slower than the exact
+  product and noisier — a check worse than the thing it checks.
+- `dcRec` declines a two-term closed form for a third-order recurrence. One exists
+  as a real combination of complex powers, but it is not the expression the panel
+  builds, and returning that expression anyway would be answering a different
+  question in the right format. Same discipline as refusing a group delay where
+  the phase jumps.
+- Both wings' enumerators refuse above their cap rather than truncating.
+
+### New gate coverage
+
+`auditclaims` gained `UN_EQNS` (33), `UN_PI` (22), `UN_UNITS` (33), `DC_KINDS`
+(60), `DC_INCL` (22), `DC_RECS` (59), `DC_BIRTH` (15) and `DC_PARITY` (8) — 252
+claims, taking the file from 1322 to 1574. Both blocks were corrupted and watched
+to fail: flipping `UN_EQNS.emcBad.homog` to true and `UN_PI.pend.nPi` to 2 gave
+2 BAD; breaking `dcOddEntry`'s bit mask and `DC_RECS.fib.shift` gave 18.
+`UN_EQNS` is the rare block where **two entries declare FALSE on purpose** and the
+audit has to agree that they are wrong, which is a sharper test than a table where
+everything passes.
+
+## 2026-08-19 · Programme C wing C1 — proof, logic and sets
+
+Tier one of Programme C is complete with this wing. It is the one whose subject
+matter is the site's own formal layer: every other wing states definitions,
+theorems and proofs in cards, and nothing anywhere taught a reader how to read
+one. The essay's closing section does exactly that, and the rest of the wing is
+built so that the distinction those cards depend on — **checking is not
+proving** — is something a reader watches happen rather than something they are
+told.
+
+Three engine modules, `19b-logic.js` (propositional logic and quantifiers),
+`19c-logic-proof.js` (induction, descent, Euclid) and `19d-logic-sets.js` (sets,
+relations, maps, countability); eight stages across `62ga`, `62gb` and `62gc`;
+25 experiments in `72yb-demos-proof.js`; the essay in `84b-theory-proof.js`.
+
+### The second routes
+
+Every verdict the wing prints was reached twice, and the pairs are unusually far
+apart because the subject allows it:
+
+- **Truth tables against clause form.** Route A enumerates the 2ⁿ assignments and
+  evaluates. Route B converts to conjunctive normal form and asks whether every
+  clause holds a letter beside its own negation — a decision made by *syntax*,
+  which never evaluates the formula at any assignment at all. Both are exact, and
+  they share nothing below the parser.
+- **Quantifiers, three ways.** Short-circuiting nested loops (which also return
+  the witness or counterexample a proof would owe you), per-element counts, and
+  the negated dual ¬∀x∃y R ≡ ∃x∀y ¬R evaluated on the negated relation.
+- **Induction: verification against the certificate.** One column checks P(n) at
+  every n in range; the other checks only the base case and the step's own
+  algebra. They are *different claims*, and the wing carries the cases where they
+  part: `offByOne` has a sound step at every n, a failed base, and is false
+  everywhere; `primes41` is confirmed at forty consecutive values and false at
+  the forty-first.
+- **Sets: bitmasks against membership.** Two integers compared bitwise, against
+  "x is in the left side exactly when it is in the right" run one element at a
+  time — which is what a written proof of a set identity does.
+- **Approximation: brute force against continued fractions.** Every denominator
+  q ≤ Q tried, against the convergents and semiconvergents.
+- **Euclid: factoring against remainders.** "Every factor of N is new" against
+  "every listed prime leaves remainder 1", the second of which factors nothing —
+  and is the route the proof actually uses.
+
+### What the gates found that reading did not
+
+1. **The best rational with q ≤ Q need not be a convergent.** At Q = 5 the best
+   approximation to π is 16/5, a *semiconvergent* built on the i = 0 term with
+   the conventional p₋₁/q₋₁ = 1/0. Without that term the two searches disagreed
+   on roughly one Q in three. The default preset is √2, whose continued fraction
+   is all 2s and which never exhibits it: found only by sweeping Q across every
+   target, which is what `runstagetests` and the tests.js sweep now do.
+2. **A declared limit has a domain in which it can be checked.** `PF_TARGETS`
+   declares an approximation floor for each number, and comparing a measured tail
+   minimum against a declared liminf of **0** fails honestly for e — whose limit
+   is approached only through denominators no feasible search reaches — and for
+   the deliberately rational `1.4142135`, whose denominator is two million. The
+   first version asserted it anyway and `runstagetests` failed, correctly. The
+   cure is a third state, *not checkable at this range*, reported rather than
+   passed, with a test asserting that **all three states actually occur** so the
+   third cannot quietly cover everything.
+3. **The global minimum of q²|x − p/q| is not its liminf.** For √2 the smallest
+   value anywhere is 0.3431, at 3/2, while the tail settles on 1/(2√2) = 0.35355;
+   for √3 the records alternate between 0.2887 and 0.5774, so even "the last
+   record" is wrong and it must be the minimum over the tail. A test asserting
+   the obvious reading was written, run, and failed.
+4. **`^` was not a lexer token**, so the exclusive-or law did not parse — caught
+   by the sweep over all 19 laws rather than by reading, because the law's own
+   prose looked perfect.
+5. **A prose claim contradicted the panel.** The essay said the converse "fails
+   at p false, q true"; it parts from the original on *both* mixed rows, and the
+   table reports the other one first. Both are counterexamples; naming one as
+   *the* row was the error.
+6. **`THEORY_BY_WING` declared `discrete` twice** — found while registering this
+   wing. JavaScript keeps the last entry and raises nothing, so `Object.keys`
+   shows one key and every runtime probe, including smoke's own three-lists-agree
+   check, reported a perfectly healthy site. Fixed, and **`smoke.ps1` now scans
+   the source of all four registration objects for repeated keys**, which is the
+   only place the defect exists. Corrupted once and watched to fail.
+
+### New gate coverage
+
+`tests.js` gained 274 assertions over the three modules — the 19 laws by two
+routes plus a third clause-evaluator local to the test, 294 quantified statements,
+every induction claim, 840 approximation searches, the set laws on five triples
+each, Bell numbers against enumerated partitions, injection and surjection counts
+against enumeration, the pairing bijection and the diagonal. `tests-stages.js`
+gained the eight stages driven through their own `cur()` over every preset:
+1 913 assertions in that file now. `auditclaims.ps1` gained `PF_LAWS` (19),
+`PF_SET_LAWS` (9), `PF_CLAIMS` (18), `PF_TARGETS` (7) and `PF_LISTS` (6), each
+recomputed by a **third** route written inside the audit — its own evaluator, its
+own sets-as-lists, its own formulas for the six sum identities, its own
+brute-force search with no continued fractions anywhere.
+
+### Refusals recorded
+
+- The clause route **refuses** above 6 000 clauses rather than truncating, and
+  says so: a truncated clause list would make an invalid formula look valid,
+  which is the one direction that must never fail silently.
+- The truth table refuses past six letters (64 rows) — the most that can be read.
+- `pfFactor` refuses past 2⁵³ rather than returning a factorisation of a number
+  float64 no longer holds exactly, so the Euclid chain stops where the arithmetic
+  stops instead of inventing primes.
+- The power-set enumeration refuses above 1 024 subsets.
+- The diagonal construction avoids the digits 0 and 9, and the panel says why:
+  0.4999… and 0.5000… are the same number, so "differs in every digit" is not on
+  its own enough. That subtlety is the one real gap in the usual telling of the
+  argument, and it is checked rather than mentioned.
+
+### Four more, found after the wing was written — three of them by gates
+
+7. **A trip count taken from a slider.** `PF_CLAIMS.harm` states H(2ⁿ) ≥ 1 + n/2,
+   and its left-hand side sums 2ⁿ terms because that is what H(2ⁿ) *means*. Every
+   other claim in the table costs O(n). `auditclaims` called it at n = 40 — 10¹²
+   terms — and never returned; it had been running for forty minutes before the
+   cost was attributed, and `runall` was hung on the same row at the same time.
+   `runstagetests` had capped its own sweep at 24 and so only made it slow, which
+   is why nothing failed outright. The claim now declares `maxN:14`, which bounds
+   the stage's slider by the same declaration, and **`tests.js` times the whole
+   table driven to each claim's own maximum** — the gate measures the effect
+   rather than trusting the declaration. This is the `ctUnitMarks` class again
+   (SITE-RULES: a loop counted in the quantity is a hang waiting for its input),
+   and the new instance is worth recording because the quantity was not a
+   physical one this time but a *statement about the integers*.
+8. **A deliberately false claim is not a two-route disagreement.** `auditsides`
+   flagged `pfInduct`'s "the two, compared" row as a PRESET-GAP: exact on the
+   default and 1 on `offByOne`. It was right to. The two sides of a *true*
+   identity are two routes to one number and `fmtAgree` is exactly the helper
+   for their residual; the two sides of a claim declared FALSE are not routes to
+   anything, and labelling their gap an agreement invites a reader to read a
+   deliberate counterexample as a defect in the arithmetic. The row now reads
+   "how far apart the two sides are — this is the claim being false", and says
+   that the gap is the same at every n, which is exactly why the step survives.
+9. **Two canvas labels printing through each other** — the class `src/js/CLAUDE.md`
+   records as screenshot-only, and the screenshot found it. `pfDescent` placed
+   its plot at x = 30, and `plotFrame` puts the rotated y-title clear of the tick
+   numbers *only if there is room*, clamping to x = 12 when there is not: the
+   title ran straight through its own labels and "0.8" read as "8.8". The margin
+   is now 66. In the same picture the descent chain, positioned relative to the
+   plot, landed on the x-axis label — it is now measured from the canvas floor —
+   and its fixed 34 px stride hid the first arrow behind "17/12", so it advances
+   by the measured width of what it actually drew.
+10. **Four ladders below the house standard.** `auditderive` flags a derivation
+   whose prose is thin against the site median, and four of the eight new ones
+   were: 89–132 words against a median of 218. They were extended with the
+   material that was missing rather than padded — why clause form is worth having
+   when the table costs 2ⁿ, that validity *is* tautology, that induction is
+   equivalent to well-ordering and that strong and structural induction are the
+   same axiom, that injective ⟺ surjective for equal finite sets and fails
+   exactly when the set is infinite, and that Schröder–Bernstein is why an
+   injection is all anyone ever produces. The median is now 220.
+
+### And two in the documentation gate itself
+
+11. **`auditdocs` could only see numbers written as digits.** Five live claims
+   were written as words — "forty-five wings" twice in README, once in
+   MASTER-PLAN's section heading, and in `shell.html`'s nav title and home
+   tagline — and every one was wrong while the gate printed `bad=0`. It now
+   converts spelled-out totals, and **`src/shell.html` is in its file list**,
+   because the home page is prose a reader sees rather than prose a maintainer
+   sees. That immediately found two more: an HTML comment claiming "Forty wings
+   will not fit on one row" and another saying the palette searches "all twenty
+   wings". Both had the count removed rather than corrected — a number in a
+   comment rots exactly the same way, and neither sentence needed one.
+12. **A duplicate key in a registration object.** `THEORY_BY_WING` declared
+   `discrete` twice. JavaScript keeps the last entry and raises nothing, so
+   `Object.keys` shows one key and every runtime probe — including smoke's own
+   three-lists-agree check, running in the same script — reported a healthy site.
+   Two entries pointing at *different* essays would have shipped the wrong prose
+   under a wing's name with nothing to report it. `smoke.ps1` now walks the
+   braces of all four registration objects in the SOURCE, which is the only place
+   the defect exists; corrupted once and watched to fail.

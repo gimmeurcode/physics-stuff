@@ -148,8 +148,19 @@ STAGES.pbDist = {
 /* the CDF by quadrature, shared by the readout and the ladder */
 function pbCdfAt(D, p, x){
   if(!D.cont){
+    /* Same shape as the defect found in rlMotFrameTwin on 2026-08-19: the trip
+       count is the QUANTITY rather than the work. Here x is a drag coordinate
+       and the plot window keeps it small, so this one was never reachable —
+       but the bound costs nothing and the shape is the one that bites.
+
+       It is not a truncation. Both discrete distributions here have their whole
+       weight below the mean plus forty standard deviations: the binomial's
+       support ends at n, and a Poisson term that far out is below 1e-300, so
+       the partial sum is already 1 to the last bit it can hold. */
+    const m = D.mean(p), sd = Math.sqrt(Math.max(0, D.vari(p)));
+    const top = Math.min(Math.floor(x + 1e-9), Math.ceil(m + 40 * sd + 40));
     let s = 0;
-    for(let k = 0; k <= Math.floor(x + 1e-9); k++) s += D.pdf(k, p);
+    for(let k = 0; k <= top; k++) s += D.pdf(k, p);
     return Math.min(1, s);
   }
   const n = 800, hi = Math.min(x, D.hi), h = (hi - D.lo) / n;

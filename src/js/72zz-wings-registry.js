@@ -3,6 +3,11 @@ const WINGS = {
      and the demo lists inside each wing are ordered the same way: what you
      already know, then the construction, then the result, then where it is
      used later. */
+  proof: {
+    glyph:'⇒', title:'Proof, Logic & Sets', sub:'quantifiers, induction, and how to read a theorem',
+    demoIntro:'This laboratory carries definitions, theorems and proofs in every one of its wings, and until now nothing in it taught a reader how to read one. That is what this wing is for, and it is the first thing on the shelf because everything above assumes it. The connectives are settled by exhaustion — with 2ⁿ assignments there is no room for opinion — and every verdict is reached twice, once by walking the rows and once by a clause form that never evaluates a formula at any assignment at all. Then quantifiers, where ∀x∃y and ∃y∀x come apart on a grid you can look at, and negation flips both. Then the three shapes an argument comes in: induction, where one claim has a flawless step and a failed base and is false everywhere, and another is confirmed for forty consecutive values and false at the forty-first; and contradiction, where a search for a rational √2 is shown doing exactly what it can do and no more — one preset is a ratio of integers that no feasible search can distinguish from an irrational — before the descent settles it in a line. Then sets as bitmasks, where an identity is two integers being equal and the second route is the written proof run as a loop; maps, injections and pigeonholes; and finally the two constructions of Cantor’s, both run rather than described.',
+    groups: PROOF_GROUPS
+  },
   algebra: {
     glyph:'x²', title:'Algebra', sub:'quadratics, polynomials, factoring',
     demoIntro:'The floor everything above stands on, and the one place where a formula is genuinely derived rather than met. The quadratic formula is not stored anywhere in this program: completing the square produces it from your own a, b and c every time you move a slider, and the panel below the controls carries the letters down every line with your numbers substituted beneath. Then polynomials, where a root and a factor turn out to be the same thing said twice.',
@@ -17,6 +22,16 @@ const WINGS = {
     glyph:'sin', title:'Trigonometry', sub:'the unit circle, identities, waves',
     demoIntro:'Sine and cosine are the coordinates of a point going round a circle; the right triangle is what you get by dropping a perpendicular from it. Taking the circle as the definition is what lets angles exceed 90°, go negative and keep going — and it turns sin² + cos² = 1 into Pythagoras rather than a fourth thing to memorise. Unroll the circle and the sine wave appears, which is why every oscillation later in this laboratory is a circle seen edge-on.',
     groups: TRIG_GROUPS
+  },
+  cnum: {
+    glyph:'i', title:'Complex Numbers', sub:'the plane, the turn, and Euler',
+    demoIntro:'The wing that had been missing under all the others that use it. i is introduced here as a <b>rotation by a quarter turn</b> rather than as a square root of −1 — which is what it does everywhere it is later used, and which makes i² = −1 the observation that two quarter turns face you backwards. Then multiplication as stretch-and-turn, with both halves measured rather than asserted; Euler’s formula summed term by term from the only definition an exponential of a complex number can have; the n-th roots as a regular polygon; the fundamental theorem of algebra, with the roots found and then checked by a route that never evaluates the polynomial; and phasors, where adding two waves stops being a trigonometric identity and becomes a triangle.',
+    groups: CNUM_GROUPS
+  },
+  discrete: {
+    glyph:'C', title:'Discrete Mathematics & Combinatorics', sub:'counting, and checking it by counting',
+    demoIntro:'The one branch of mathematics where the second route is not an approximation to the answer but <i>is</i> the answer: every closed form here is drawn beside an actual list of the objects it claims to count, built one at a time, so a reader who doubts that C(6,3) = 20 can count twenty rows. Four counting problems that are one two-by-two table; Pascal\'s triangle built by the recurrence alone and then checked against the factorial formula, with four row identities measured rather than asserted and Sierpinski\'s gasket appearing exactly rather than approximately; inclusion–exclusion, whose alternating signs turn out to be forced by one of those identities, and which is Euler\'s totient formula in disguise; and linear recurrences by three routes — iteration, the companion matrix, and the closed form — ending with the place where an <i>exact</i> closed form is the wrong thing to compute with, and the relative and absolute errors give opposite verdicts about the same number.',
+    groups: DISCRETE_GROUPS
   },
   prob: {
     glyph:'P', title:'Probability & Statistics', sub:'densities, the CLT, regression',
@@ -113,6 +128,11 @@ const WINGS = {
     demoIntro:'A series is the sequence of its partial sums, and convergence is a statement about those and nothing else. Every test here is run on the actual terms, including the cases where it returns "inconclusive" — which is most of them, most of the time. Then alternating series with their error bound measured against the error that occurred, and Taylor polynomials with the Lagrange remainder computed from a sampled maximum rather than a guess.',
     groups: SERIES_GROUPS
   },
+  units: {
+    glyph:'±', title:'Units, Dimensions & Uncertainty', sub:'what the printed digits mean',
+    demoIntro:'Every other physics wing here prints numbers to eight digits, and nothing in any of them says which of those digits mean anything. This is the missing page in front of them. A dimension turns out to be a <i>vector</i> — seven rational exponents, added when quantities multiply — and the wing computes that vector twice by routes sharing nothing but the tokenizer, so a sign error in "dividing subtracts exponents" cannot survive being checked by actually dividing. Then homogeneity, the cheapest necessary condition in physics, run against two equations that are wrong on purpose. Then Buckingham\'s theorem, which is rank–nullity applied to a matrix of exponents: it gets the size of a hydrogen atom right to every digit CODATA publishes with no quantum mechanics at all, and it reads the yield of the Trinity device off published photographs. And finally what survives arithmetic — relative error carried through multiplication, destroyed by a single subtraction, and a first-order error bar checked against a Monte Carlo that says, in units of its own sampling error, exactly when the formula everybody is taught has stopped being true.',
+    groups: UNITS_GROUPS
+  },
   mechanics: {
     glyph:'⇉', title:'Mechanics', sub:'kinematics, forces, energy, momentum, gravity',
     demoIntro:'The kinematic equations are not the model — they are a = const integrated twice, and where the acceleration is not constant the same integrator carries on and the closed forms simply stop applying. Every conserved quantity here is <i>measured</i> along the integrated trajectory: momentum through a collision at any elasticity, energy down a track with friction, and angular momentum around an orbit computed from the inverse-square force alone.',
@@ -153,6 +173,11 @@ const WINGS = {
     demoIntro:'Every derivative on this floor is symbolic — differentiated from the expression by the same engine that drives the vector wing\'s derivation panel — so what a panel prints is the derivative and not a finite difference that happens to be close to one. Work down from surfaces and limits, through partials and the tangent plane, to critical points, Lagrange multipliers and the Jacobian.',
     groups: [...PARTIAL_GROUPS, ...MV_FIELD_GROUPS]
   },
+  coords: {
+    glyph:'∂(x,y)', title:'Coordinate Systems & Jacobians', sub:'polar, cylindrical, spherical · the change of measure',
+    demoIntro:'Polar coordinates appear in the integration wing and the Jacobian matrix appears in the wing before this one, and nothing connects them. This wing does: a coordinate system is a <b>map</b>, a map has a derivative, the derivative is a matrix, and the r in r dr dθ is that matrix’s determinant. The Jacobian is measured four ways — by differentiating, by the area of a small cell you drag about, by √(EG − F²) from the metric, and against a closed form — and the change-of-variables theorem by three routes that share nothing. Those three agree exactly when the map is one-to-one, and a map that folds makes them disagree in three different, correct ways. Then three dimensions, where the same argument produces ρ²sin φ and the choice of system stops being a matter of taste.',
+    groups: COORDS_GROUPS
+  },
   integral: {
     glyph:'∫', title:'Integration', sub:'from Riemann sums to triple integrals',
     demoIntro:'Nothing here is a formula recited. Every sum is summed, every "exact" value comes from adaptive quadrature or a closed-form antiderivative, and every claimed rate of convergence is measured by halving h and looking. Start with what a single integral <i>is</i>, then go up a dimension twice — rectangles, general regions, polar, solids, cylindrical and spherical — and finish with the change of variables that ties all of it together.',
@@ -187,6 +212,11 @@ const WINGS = {
     glyph:'∿', title:'Fourier Analysis', sub:'time, frequency & the transform between them',
     demoIntro:'Every stage here shows one object twice — as a shape in time and as a recipe in frequency — because the claim of the subject is that those are two descriptions of the same thing. Start by building a square wave out of sines, then watch the winding picture that shows <i>why</i> the transform can pick a single frequency out of a mixture. After that: duality and the uncertainty principle, what changes when you only have samples, and the algorithm that made all of it practical.',
     groups: FOURIER_GROUPS
+  },
+  signal: {
+    glyph:'Ш', title:'Signal Processing', sub:'sampling, aliasing, windows & filters',
+    demoIntro:'The Fourier wing ends where this one begins. A computer never has a signal — it has a list of numbers read at instants, over a record that started and stopped — and everything awkward about practical spectrum analysis follows from those two restrictions and nothing else. Sampling first, where the folding map is drawn rather than described and a residual that halves when the record doubles is told apart from one that does not move. Then windows, where seven tapers trade a wider main lobe against lower sidelobes and every number is computed twice, once by summing the taps and once from a closed form in the coefficients. Then filters, whose response is measured by <i>running</i> them as well as by evaluating B(z)/A(z), and whose stability is the complex wing\'s root finder answering a question it already knew how to answer. And finally both domains at once, where the resolution cell changes shape and keeps its area however you set the window.',
+    groups: SIGNAL_GROUPS
   },
   quantum: {
     glyph:'ψ', title:'Quantum Mechanics', sub:'wavefunctions, measurement & spin',

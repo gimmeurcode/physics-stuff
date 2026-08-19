@@ -199,10 +199,18 @@ const mxClone = M => M.map(r => r.slice());
 /* ------------------------------------------------------------ expression ---- */
 /* One-line expression input with inline error reporting. `vars` is only a hint
    printed to the reader; the parser accepts whatever the engine supports. */
-function fnHtml(id, label, src, vars){
+/* `audit` is what a gate should TYPE into this box, and it exists for the same
+   reason the textareas have it: not every reader-supplied box takes an
+   expression. auditcustom types `0.37*x^2 + sin(1.7*x)` into every .fld input
+   it finds, which a box expecting a complex number correctly rejects — leaving
+   the value unchanged, the readout unchanged, and a perfectly wired box
+   reported as unwired. A box whose content is not an expression must say what
+   it will accept. It must also differ from what the box already shows, or the
+   comparison has nothing to see. */
+function fnHtml(id, label, src, vars, audit){
   return `<div class="row"><label class="lb" style="width:86px">${label}</label>
     <span class="fld grow"><input id="${id}" value="${esc(src)}" spellcheck="false"
-      autocomplete="off" aria-label="${esc(label)} expression"></span></div>
+      autocomplete="off"${audit ? ` data-audit="${esc(audit)}"` : ``} aria-label="${esc(label)} expression"></span></div>
     <div class="err" id="${id}err"></div>` +
     (vars ? `<p class="help">in <b>${esc(vars)}</b> — the same syntax as the field engine</p>` : '');
 }
@@ -282,7 +290,7 @@ function pkSeg(id, table, cur, nameOf){
 function pkBoxes(id, cur, st, slots, bounds, help){
   if(cur !== 'custom') return '';
   const own = pkOwn(st, id, slots, bounds);
-  let h = slots.map(s => fnHtml(id + '_' + s.k, s.label, own[s.k], s.vars)).join('');
+  let h = slots.map(s => fnHtml(id + '_' + s.k, s.label, own[s.k], s.vars, s.audit)).join('');
   if(bounds && bounds.length)
     h += '<div class="row wrap">' + bounds.map(b =>
       `<label class="lb">${b.label}</label><input class="num" style="width:78px" id="${id}_${b.k}"` +

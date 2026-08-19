@@ -258,14 +258,31 @@ function relFieldCharacter(E, B){
   if(I.diff < -1e-9 * scale) return 'magnetic — a frame exists where E vanishes';
   return 'null — a light wave; every frame sees a wave';
 }
-/* the boost that removes the magnetic field (when the invariants allow it) */
+/* THE FRAME IN WHICH E AND B ARE PARALLEL — which is the frame that removes
+   one of them whenever E·B = 0, and a frame that removes neither when it is
+   not. It is along E×B, and its speed solves
+
+       v / (1 + v²) = |E×B| / (E² + B²)                                (*)
+
+   This function used to return (E×B)/max(E²,B²) and call that the parallel
+   frame. That is right exactly when E·B = 0 — put |E×B| = EB into (*) and it
+   collapses to B/E or E/B — and wrong otherwise, which nothing noticed because
+   the only caller hid the row unless E·B vanished, while the prose beside it
+   promised a parallel frame it never computed. Found 2026-08-19 by a test that
+   went to the frame and measured the angle: 0.8 where 0 was claimed.
+
+   Written as 2s/(1+√(1−4s²)) rather than (1−√(1−4s²))/2s, which is the same
+   root of (*) without the cancellation at small s. Note 4s² ≤ 1 always, since
+   |E×B| ≤ |E||B| ≤ (E²+B²)/2, with equality only for a null field — where the
+   speed comes out exactly 1 and the caller must refuse rather than clamp. */
 function relDriftVelocity(E, B){
-  const B2 = vdot(B, B), E2 = vdot(E, E);
-  const S = vcross(E, B), s = vdot(S, S);
-  if(s < 1e-24) return v3(0, 0, 0);
-  /* the frame in which E ∥ B: v = (E×B)/max(E²,B²), the E×B drift of plasma
-     physics, which is exactly this boost in disguise */
-  return vmul(S, 1 / Math.max(E2, B2));
+  const S = vcross(E, B), s2 = vdot(S, S);
+  if(s2 < 1e-300) return v3(0, 0, 0);
+  const den = vdot(E, E) + vdot(B, B);
+  if(!(den > 0)) return v3(0, 0, 0);
+  const s = Math.sqrt(s2) / den;
+  const sp = 2 * s / (1 + Math.sqrt(Math.max(0, 1 - 4 * s * s)));
+  return vmul(S, sp / Math.sqrt(s2));
 }
 
 /* ---- the field tensor, explicitly ---- */
@@ -631,26 +648,33 @@ function gwDisplace(x, y, hp, hc){
 }
 const gwChirpMass = (m1, m2) => Math.pow(m1 * m2, 0.6) / Math.pow(m1 + m2, 0.2);
 
+/* Masses become times through GM☉/c³, NOT through M☉×G/c³ — the constants block
+   above says why, and these four helpers were ignoring it until 2026-08-18. The
+   two differ by 6.5×10⁻⁸ relative, which is the rounding of M_SUN_KG (six
+   figures, because that is all G supports), and it showed up as a discrepancy
+   between these and the geometric module 46d that had no physics in it at all.
+   The measured product is the one to use anywhere a solar mass becomes a
+   length or a time. */
 /* frequency of the emitted wave τ seconds before merger, masses in M☉ */
 function gwChirpFreq(tau, McSolar){
   if(tau <= 0) return Infinity;
-  const Mc = McSolar * M_SUN_KG * G_SI / C3;              // chirp mass in seconds
+  const Mc = McSolar * GM_SUN / C3;              // chirp mass in seconds
   return Math.pow(5 / (256 * tau), 3 / 8) / (Math.PI * Math.pow(Mc, 5 / 8));
 }
 /* the wave frequency at the innermost stable orbit — where the chirp ends and
    the merger begins. Twice the orbital frequency, because it is quadrupolar. */
 function gwISCOFreq(MtotSolar){
-  const M = MtotSolar * M_SUN_KG * G_SI / C3;
+  const M = MtotSolar * GM_SUN / C3;
   return 1 / (Math.pow(6, 1.5) * Math.PI * M);
 }
 /* strain amplitude at distance D (metres) from a binary at orbital frequency f */
 function gwStrain(McSolar, fGw, D){
-  const Mc = McSolar * M_SUN_KG * G_SI / C3;
+  const Mc = McSolar * GM_SUN / C3;
   return 4 * Math.pow(Mc, 5 / 3) * Math.pow(Math.PI * fGw, 2 / 3) * C_SI / D;
 }
 /* time from a given wave frequency to coalescence */
 function gwTimeToMerge(fGw, McSolar){
-  const Mc = McSolar * M_SUN_KG * G_SI / C3;
+  const Mc = McSolar * GM_SUN / C3;
   return 5 / 256 * Math.pow(Math.PI * fGw, -8 / 3) * Math.pow(Mc, -5 / 3);
 }
 

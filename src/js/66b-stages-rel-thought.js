@@ -34,10 +34,15 @@ STAGES.rlChase = {
     st.beta = o.beta === undefined ? 0.6 : o.beta;
     st.probe = 0.5;
     st.crestLab = 0; st.crestObs = 0;   // measured crest positions, for the speed check
+    st.chmode = o.chmode === 'rate' ? 'rate' : 'wave';
   },
   controls(){
     const st = ST;
-    return ctlRow('your speed β', ctlSlider('rlChB', 0, 0.995, 0.005, st.beta)) +
+    const head = ctlRow('what to show',
+      ctSeg('rlChM', st.chmode, [['wave', 'the wave itself'], ['rate', 'the closing rate']]));
+    if(st.chmode === 'rate') return head + rlChControls(st);
+    return head +
+      ctlRow('your speed β', ctlSlider('rlChB', 0, 0.995, 0.005, st.beta)) +
       rlClockCtl() +
       `<p class="help">The lower pane is the same wave measured by <b>you</b>, running after it at β.
       Both panes advance on the same clock, and the crest markers are tracked frame by frame, so the
@@ -47,10 +52,13 @@ STAGES.rlChase = {
       still moving past you at c, and it never stands still.</p>`;
   },
   wire(){
+    ctWireSeg('rlChM', v => { ST.chmode = v; });
+    if(ST.chmode === 'rate'){ rlChWire(); return; }
     wireSlider('rlChB', () => ST.beta, v => { ST.beta = v; }, rlBetaFmt, RL_BETA_LIM);
     rlWireClock();
   },
   frame(st, dt, ctx, W, H){
+    if(st.chmode === 'rate') return rlChFrame(st, ctx, W, H);
     const P = rlPanes(W, H);
     const k = relKFactor(st.beta);
     const N = 700, xs = new Float64Array(N);
@@ -96,6 +104,7 @@ STAGES.rlChase = {
     stageNote(ctx, 'both crests advance one pane-width in the same time — that is the whole content of the second postulate', W, H);
   },
   readout(st){
+    if(st.chmode === 'rate') return rlChReadout(st);
     const k = relKFactor(st.beta), g = relGamma(st.beta);
     /* the field transformation, done properly through the tensor: a wave with
        E = ŷ, B = ẑ (c = 1) boosted along the propagation direction */
@@ -123,10 +132,18 @@ STAGES.rlChase = {
       Einstein's teenage puzzle is answered by an invariant, not by a velocity.</p>
     </div>`;
   },
-  chip(st){ return `<div class="k">Chasing light</div>
+  chip(st){
+    if(st.chmode === 'rate') return rlChChip(st);
+    return `<div class="k">Chasing light</div>
     <div style="color:var(--c-pos)">β = ${fmtNum(st.beta, 3)} c</div>
     <div style="color:var(--c-warn)">still c, redshifted ×${fmtNum(relKFactor(st.beta), 3)}</div>`; },
-  legend(){ return [['var(--c-warn)', 'E — the electric field of the wave'],
+  legend(st){
+    if(st && st.chmode === 'rate')
+      return [['var(--c-grad)', 'what you measure the signal receding at'],
+              ['var(--faint)', 'the coordinate gap closing — not a velocity'],
+              ['var(--c-warn)', 'the c lines, and the signal in the lower picture'],
+              ['var(--c-pos)', 'you, and your chosen β']];
+    return [['var(--c-warn)', 'E — the electric field of the wave'],
                     ['var(--c-neg)', 'B — perpendicular, in phase, equal magnitude'],
                     ['var(--c-pos)', 'the tracked crest — same speed in both panes'],
                     ['var(--c-grad)', 'lab frame'], ['var(--c-pos)', 'your frame']]; }
@@ -172,10 +189,16 @@ STAGES.rlTrain = {
     st.beta = o.beta === undefined ? 0.6 : o.beta;
     st.L0 = 2;                            // proper length of the train
     st.t = 0;
+    st.trmode = o.trmode === 'pair' ? 'pair' : 'train';
+    st.ekey = o.ekey || 'lightning';
   },
   controls(){
     const st = ST;
-    return ctlRow('train speed β', ctlSlider('rlTrB', 0.1, 0.95, 0.01, st.beta)) +
+    const head = ctlRow('what to boost',
+      ctSeg('rlTrM', st.trmode, [['train', 'the train and the lightning'], ['pair', 'two events you place']]));
+    if(st.trmode === 'pair') return head + rlEvControls(st);
+    return head +
+      ctlRow('train speed β', ctlSlider('rlTrB', 0.1, 0.95, 0.01, st.beta)) +
       ctlRow('train length', ctlSlider('rlTrL', 1, 3, 0.05, st.L0)) +
       rlClockCtl() +
       `<p class="help">Lightning strikes both ends of the train. In the <b>embankment</b> frame (top) the
@@ -186,6 +209,8 @@ STAGES.rlTrain = {
       whole of the relativity of simultaneity, and everything else in special relativity follows from it.</p>`;
   },
   wire(){
+    ctWireSeg('rlTrM', v => { ST.trmode = v; });
+    if(ST.trmode === 'pair'){ rlEvWire(); return; }
     wireSlider('rlTrB', () => ST.beta, v => { ST.beta = v; ST.t = 0; }, rlBetaFmt, RL_BETA_LIM);
     wireSlider('rlTrL', () => ST.L0, v => { ST.L0 = v; ST.t = 0; }, v => fmtNum(+v, 3) + ' (proper)');
     rlWireClock(st => { st.t = 0; });
@@ -205,6 +230,7 @@ STAGES.rlTrain = {
     };
   },
   frame(st, dt, ctx, W, H){
+    if(st.trmode === 'pair') return rlEvFrame(st, ctx, W, H);
     const P = rlPanes(W, H, 22);
     const f = this.facts(st);
     const span = Math.max(3.4, st.L0 * 1.8);
@@ -295,6 +321,7 @@ STAGES.rlTrain = {
     stageNote(ctx, 'the two panes never disagree about an arrival — only about which emission came first', W, H);
   },
   readout(st){
+    if(st.trmode === 'pair') return rlEvReadout(st);
     const f = this.facts(st);
     return `<div class="card tight"><div class="ttl">The two strikes, in both frames</div>
       ${kv('β', fmtNum(st.beta, 4) + ' c')}
@@ -322,12 +349,19 @@ STAGES.rlTrain = {
     </div>`;
   },
   chip(st){
+    if(st.trmode === 'pair') return rlEvChip(st);
     const f = this.facts(st);
     return `<div class="k">Simultaneity</div>
       <div style="color:var(--c-grad)">embankment: Δt = 0</div>
       <div style="color:var(--c-pos)">train: Δt′ = ${fmtNum(f.dtTrain, 4)}</div>`;
   },
-  legend(){ return [['var(--c-grad)', 'embankment frame and its observer'],
+  legend(st){
+    if(st && st.trmode === 'pair')
+      return [['var(--c-grad)', "Δt′ against β — where it crosses, the order flips"],
+              ['var(--c-neg)', 'the crossover, if there is one'],
+              ['var(--c-pos)', 'your chosen β'],
+              ['var(--accent)', 'the second event'], ['var(--c-warn)', 'the light cone from the first']];
+    return [['var(--c-grad)', 'embankment frame and its observer'],
                     ['var(--c-pos)', 'the train and its observer'],
                     ['var(--c-warn)', 'the lightning strikes and their light']]; }
 };
@@ -373,10 +407,16 @@ STAGES.rlClock = {
     st.beta = o.beta === undefined ? 0.7 : o.beta;
     st.h = 1;                       // mirror separation
     st.ticksRest = 0; st.ticksMove = 0;
+    st.clmode = o.clmode === 'place' ? 'place' : 'updown';
+    st.ckey = o.ckey || 'across';
   },
   controls(){
     const st = ST;
-    return ctlRow('clock speed β', ctlSlider('rlClB', 0, 0.97, 0.005, st.beta)) +
+    const head = ctlRow('the clock',
+      ctSeg('rlClM', st.clmode, [['updown', 'mirror straight up'], ['place', 'put the mirror anywhere']]));
+    if(st.clmode === 'place') return head + rlClkControls(st);
+    return head +
+      ctlRow('clock speed β', ctlSlider('rlClB', 0, 0.97, 0.005, st.beta)) +
       rlClockCtl() +
       `<p class="help">Two identical clocks: a photon bouncing between mirrors a distance <b>h</b> apart.
       One is at rest, one is carried past at β. In the moving clock the photon must travel the
@@ -385,10 +425,13 @@ STAGES.rlClock = {
       is not a fact about clocks; it is a fact about time. Watch the tick counters separate.</p>`;
   },
   wire(){
+    ctWireSeg('rlClM', v => { ST.clmode = v; });
+    if(ST.clmode === 'place'){ rlClkWire(); return; }
     wireSlider('rlClB', () => ST.beta, v => { ST.beta = v; ST.t = 0; ST.ticksRest = 0; ST.ticksMove = 0; }, rlBetaFmt, RL_BETA_LIM);
     rlWireClock(st => { st.ticksRest = 0; st.ticksMove = 0; });
   },
   frame(st, dt, ctx, W, H){
+    if(st.clmode === 'place') return rlClkFrame(st, ctx, W, H);
     const g = relGamma(st.beta);
     const T = st.t * 0.5;
     const per0 = 2 * st.h;             // rest period (c = 1)
@@ -462,6 +505,7 @@ STAGES.rlClock = {
     stageNote(ctx, '(c·t/2)² = (v·t/2)² + h²   ⟹   t = 2h / (c√(1−β²)) = γ t₀', W, H);
   },
   readout(st){
+    if(st.clmode === 'place') return rlClkReadout(st);
     const g = relGamma(st.beta), per0 = 2 * st.h, perM = per0 * g;
     /* Pythagoras, evaluated rather than quoted: the two legs and the hypotenuse
        of the half-tick, in the lab frame */
@@ -488,11 +532,18 @@ STAGES.rlClock = {
       only that the photon's speed is c in <i>both</i> panes. Everything else is geometry.</p>
     </div>`;
   },
-  chip(st){ return `<div class="k">Light clock</div>
+  chip(st){
+    if(st.clmode === 'place') return rlClkChip(st);
+    return `<div class="k">Light clock</div>
     <div style="color:var(--c-grad)">rest: ${st.ticksRest} ticks</div>
     <div style="color:var(--c-pos)">moving: ${st.ticksMove} ticks</div>
     <div>γ = ${fmtNum(relGamma(st.beta), 4)}</div>`; },
-  legend(){ return [['var(--c-warn)', 'the photon and the path it traces'],
+  legend(st){
+    if(st && st.clmode === 'place')
+      return [['var(--c-warn)', 'the outward leg of the light'],
+              ['var(--c-pos)', 'the return leg'],
+              ['var(--c-curl)', 'the mirror'], ['var(--c-grad)', 'the emitter, before and after']];
+    return [['var(--c-warn)', 'the photon and the path it traces'],
                     ['var(--mid)', 'the mirrors'],
                     ['var(--c-grad)', 'the height h — the same in both frames'],
                     ['var(--c-pos)', 'the distance the clock moved in one tick']]; }

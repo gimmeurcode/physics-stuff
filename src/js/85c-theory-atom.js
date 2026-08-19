@@ -72,11 +72,11 @@ ${stEq('<i>V</i>(<i>r</i>) <span class="op">=</span> <span class="frac"><span cl
 
 <h3 id="a8">Nuclei: the four-force ledger, integrated</h3>
 <p>The semi-empirical mass formula the binding stage plots is the forces writing their invoice per nucleus:</p>
-<div class="eqb"><span class="mth">B = a_V A − a_S A^⅔ − a_C Z(Z−1)/A^⅓ − a_A (A−2Z)²/A ± δ(A,Z)</span></div>
+<div class="eqb"><span class="mth">B = a_V A − a_S A^(2/3) − a_C Z(Z−1)/A^(1/3) − a_A (A−2Z)²/A ± δ(A,Z)</span></div>
 <ul>
   <li><strong>Volume, +15.75·A:</strong> the strong force saturates (each nucleon binds only neighbours — the Yukawa range again), so binding is linear in A, not A².</li>
-  <li><strong>Surface, −17.8·A^⅔:</strong> boundary nucleons are short-changed — nuclear surface tension.</li>
-  <li><strong>Coulomb, −0.711·Z(Z−1)/A^⅓:</strong> EM's infinite range taxing every proton pair; the term that ends the periodic table.</li>
+  <li><strong>Surface, −17.8·A^(2/3):</strong> boundary nucleons are short-changed — nuclear surface tension.</li>
+  <li><strong>Coulomb, −0.711·Z(Z−1)/A^(1/3):</strong> EM's infinite range taxing every proton pair; the term that ends the periodic table.</li>
   <li><strong>Asymmetry, −23.7·(A−2Z)²/A:</strong> pure Pauli — protons and neutrons fill separate ladders, so lopsided ratios pay rent in kinetic energy.</li>
   <li><strong>Pairing δ:</strong> like nucleons bind in spin pairs, a quantum bonus for even numbers.</li>
 </ul>

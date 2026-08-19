@@ -27,15 +27,33 @@ function ftLine(ctx, P, xs, ys, col, w){
 }
 /* a stem plot — the honest way to draw a discrete spectrum, which is a set of
    isolated numbers rather than a continuous curve */
+/* One path for every stem and one for every head, rather than two paths, one
+   stroke and one fill PER STEM. A 260-stem impulse response cost 1 040
+   rasterising calls a frame in the per-stem form — the shape MASTER-PLAN §2.5
+   forbids, arrived at by accumulation rather than by a grid. The heads never
+   overlap and are wound alike, so the nonzero fill rule has nothing to cancel;
+   the stems all share one style, which is the condition for batching a stroke. */
 function ftStems(ctx, P, xs, ys, col, wid){
   ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = wid || 2;
+  const r = Math.max(1.6, (wid || 2) * 0.9), y0 = P.Y(0);
+  ctx.beginPath();
   for(let i = 0; i < xs.length; i++){
     if(!Number.isFinite(ys[i]) || Math.abs(ys[i]) < 1e-12) continue;
     const X = P.X(xs[i]);
     if(X < P.px - 1 || X > P.px + P.pw + 1) continue;
-    ctx.beginPath(); ctx.moveTo(X, P.Y(0)); ctx.lineTo(X, P.Y(ys[i])); ctx.stroke();
-    ctx.beginPath(); ctx.arc(X, P.Y(ys[i]), Math.max(1.6, (wid || 2) * 0.9), 0, 6.2832); ctx.fill();
+    ctx.moveTo(X, y0); ctx.lineTo(X, P.Y(ys[i]));
   }
+  ctx.stroke();
+  ctx.beginPath();
+  for(let i = 0; i < xs.length; i++){
+    if(!Number.isFinite(ys[i]) || Math.abs(ys[i]) < 1e-12) continue;
+    const X = P.X(xs[i]);
+    if(X < P.px - 1 || X > P.px + P.pw + 1) continue;
+    const Y = P.Y(ys[i]);
+    ctx.moveTo(X + r, Y);
+    ctx.arc(X, Y, r, 0, 6.2832);
+  }
+  ctx.fill();
 }
 function ftYTicks(ctx, P, vals, fmt){
   ctx.fillStyle = rgbCss(TH.faint); ctx.font = '10px ' + FONT_MONO;

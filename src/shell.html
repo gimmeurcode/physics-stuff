@@ -8,21 +8,23 @@
       </div>
     </div>
 
-    <!-- Forty wings will not fit on one row, and a wrapping row of them is what
+    <!-- The wings will not fit on one row, and a wrapping row of them is what
          made this hard to navigate. They are grouped into seven menus instead,
          and the menus run left to right in the order a reader should meet them:
          each wing's prerequisites are all to its left. #wingNav still contains
          every button[data-w], so markWingNav() and the boot wiring keep working
          unchanged. -->
     <nav class="wingnav" id="wingNav" aria-label="Laboratory wings">
-      <button class="navhome" data-w="home" aria-pressed="false" title="Overview — all forty wings, in order">⌂</button>
+      <button class="navhome" data-w="home" aria-pressed="false" title="Overview — all forty-six wings, in order">⌂</button>
 
       <div class="navgroup" data-g="pre">
         <button class="navgrp" aria-haspopup="true" aria-expanded="false">Precalculus<i class="caret"></i></button>
         <div class="menupanel" role="menu">
+          <button data-w="proof" role="menuitem"><span class="mg">⇒</span><span class="mtx"><b>Proof, Logic &amp; Sets</b><i>truth tables · ∀ and ∃ · induction · Cantor</i></span></button>
           <button data-w="algebra" role="menuitem"><span class="mg">x²</span><span class="mtx"><b>Algebra</b><i>the quadratic formula, derived · factoring · roots</i></span></button>
           <button data-w="functions" role="menuitem"><span class="mg">ƒ</span><span class="mtx"><b>Functions</b><i>transformations · inverses · exponentials &amp; logs</i></span></button>
           <button data-w="trig" role="menuitem"><span class="mg">sin</span><span class="mtx"><b>Trigonometry</b><i>the unit circle · identities · waves &amp; phasors</i></span></button>
+          <button data-w="cnum" role="menuitem"><span class="mg">i</span><span class="mtx"><b>Complex Numbers</b><i>i as a quarter turn · Euler, summed · n-th roots · FTA</i></span></button>
         </div>
       </div>
 
@@ -46,6 +48,7 @@
           <button data-w="linsys" role="menuitem"><span class="mg">⊞</span><span class="mtx"><b>Systems, Matrices &amp; Determinants</b><i>elimination step by step · inverses · area factor</i></span></button>
           <button data-w="vecspace" role="menuitem"><span class="mg">⊕</span><span class="mtx"><b>Vector Spaces &amp; Orthogonality</b><i>span · basis · Gram–Schmidt · least squares</i></span></button>
           <button data-w="eigen" role="menuitem"><span class="mg">λ</span><span class="mtx"><b>Eigenvalues, Diagonalisation &amp; SVD</b><i>Av = λv · PDP⁻¹ · spectral theorem · UΣVᵀ</i></span></button>
+          <button data-w="discrete" role="menuitem"><span class="mg">C</span><span class="mtx"><b>Discrete Maths &amp; Combinatorics</b><i>counting, checked by counting · Pascal · recurrences</i></span></button>
           <button data-w="prob" role="menuitem"><span class="mg">P</span><span class="mtx"><b>Probability &amp; Statistics</b><i>densities · the CLT, run · regression and r²</i></span></button>
           <button data-w="numer" role="menuitem"><span class="mg">≈</span><span class="mtx"><b>Numerical Methods</b><i>convergence order · stability · floating point</i></span></button>
         </div>
@@ -66,6 +69,7 @@
           <button data-w="vectors" role="menuitem"><span class="mg">⟶</span><span class="mtx"><b>Vectors &amp; the Geometry of Space</b><i>dot &amp; cross built, not quoted · lines, planes, quadrics</i></span></button>
           <button data-w="curves" role="menuitem"><span class="mg">γ</span><span class="mtx"><b>Curves &amp; Motion</b><i>cycloids · polar · conics · the Frenet frame</i></span></button>
           <button data-w="partial" role="menuitem"><span class="mg">∂</span><span class="mtx"><b>Partial Derivatives</b><i>contours · Clairaut · Hessian · Lagrange · Jacobian</i></span></button>
+          <button data-w="coords" role="menuitem"><span class="mg">∂(x,y)</span><span class="mtx"><b>Coordinate Systems &amp; Jacobians</b><i>polar · the change of measure · ρ²sin φ</i></span></button>
           <button data-w="vector" role="menuitem"><span class="mg">∇</span><span class="mtx"><b>Vector Calculus</b><i>line integrals · Green · Stokes · divergence theorem</i></span></button>
           <button data-w="forms" role="menuitem"><span class="mg">∧</span><span class="mtx"><b>Differential Forms</b><i>one operator · d∘d = 0 · ∫∂Ω ω = ∫Ω dω</i></span></button>
           <button data-w="potential" role="menuitem"><span class="mg">φ</span><span class="mtx"><b>Potential Theory</b><i>harmonic functions · Green's identities · Helmholtz</i></span></button>
@@ -75,6 +79,7 @@
       <div class="navgroup" data-g="phys">
         <button class="navgrp" aria-haspopup="true" aria-expanded="false">Classical physics<i class="caret"></i></button>
         <div class="menupanel wide" role="menu">
+          <button data-w="units" role="menuitem"><span class="mg">±</span><span class="mtx"><b>Units, Dimensions &amp; Uncertainty</b><i>dimension as a vector · Buckingham · error bars, twice</i></span></button>
           <button data-w="mechanics" role="menuitem"><span class="mg">⇉</span><span class="mtx"><b>Mechanics</b><i>kinematics · free bodies · energy ledger · orbits</i></span></button>
           <button data-w="rotation" role="menuitem"><span class="mg">↻</span><span class="mtx"><b>Torque &amp; Rotational Dynamics</b><i>∫r²dm · parallel axis · τ = rF sin θ · τ = Iα</i></span></button>
           <button data-w="rotenergy" role="menuitem"><span class="mg">⟳</span><span class="mtx"><b>Energy &amp; Momentum of Rotating Systems</b><i>½Iω² · the ramp race · L conserved, K not · precession</i></span></button>
@@ -98,6 +103,7 @@
         <div class="menupanel" role="menu">
           <button data-w="complex" role="menuitem"><span class="mg">ℂ</span><span class="mtx"><b>Complex Functions &amp; Contours</b><i>domain colouring · Cauchy–Riemann · residues</i></span></button>
           <button data-w="fourier" role="menuitem"><span class="mg">∿</span><span class="mtx"><b>Fourier Analysis</b><i>Gibbs · the winding picture · FFT · convolution</i></span></button>
+          <button data-w="signal" role="menuitem"><span class="mg">Ш</span><span class="mtx"><b>Signal Processing</b><i>Nyquist &amp; the fold · windows · filters · spectrograms</i></span></button>
           <button data-w="quantum" role="menuitem"><span class="mg">ψ</span><span class="mtx"><b>Quantum Mechanics</b><i>packets · which-path · tunnelling · Stern–Gerlach</i></span></button>
           <button data-w="statmech" role="menuitem"><span class="mg">∑</span><span class="mtx"><b>Statistical Mechanics</b><i>entropy · partition function · Maxwell speeds · Ising</i></span></button>
           <button data-w="solid" role="menuitem"><span class="mg">◈</span><span class="mtx"><b>Condensed Matter &amp; Semiconductors</b><i>Fermi sea · bands · doping · the p–n junction</i></span></button>
@@ -290,7 +296,7 @@
      something has actually happened. -->
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
-<!-- Command palette: one search box over all twenty wings and every guided
+<!-- Command palette: one search box over every wing and every guided
      experiment in them. This is the fastest way to reach anything. -->
 <div class="palette" id="palette" role="dialog" aria-modal="true" aria-label="Search wings and experiments">
   <div class="palette-box">
@@ -315,7 +321,7 @@
     <div class="home-head">
       <div class="home-glyphs"><span>∫</span><span>∂</span><span>∇</span><span>⚡</span><span>ψ</span><span>⚛</span></div>
       <h1>Calculus, Fields &amp; the Atom</h1>
-      <p class="home-tag">One laboratory, forty floors, and they are laid out in the order you should
+      <p class="home-tag">One laboratory, forty-six floors, and they are laid out in the order you should
       climb them: the seven sections below are the seven menus in the top bar, left to right, and every
       wing's prerequisites are already behind it. Start on the precalculus floor and the quadratic
       formula gets derived rather than recited; finish on the top floor and a black hole's microstates
@@ -328,6 +334,18 @@
     </div>
     <h2 class="home-sec">Precalculus  ·  the floor everything else stands on</h2>
     <div class="home-cards">
+      <button class="home-card" data-w="proof">
+        <span class="hc-glyph" style="color:var(--c-grad)">⇒</span>
+        <span class="hc-title">Proof, Logic &amp; Sets</span>
+        <span class="hc-desc">Every other wing here states theorems and proves them, and this is the one
+        that teaches you to read them. Truth settled by exhaustion, then decided again by a clause form
+        that evaluates nothing. ∀x∃y against ∃y∀x on a grid where the counterexample is outlined. An
+        induction whose step is flawless and whose base fails, so the claim is false at every n; and a
+        pattern confirmed forty times that dies at the forty-first. Then a search for a rational √2 doing
+        exactly what a search can do — one preset is a ratio of integers it cannot tell from an
+        irrational — before four lines of descent settle it.</span>
+        <span class="hc-foot">30031 = 59 × 509, so the usual misstatement of Euclid dies here · Cantor, run</span>
+      </button>
       <button class="home-card" data-w="algebra">
         <span class="hc-glyph" style="color:var(--c-grad)">x²</span>
         <span class="hc-title">Algebra</span>
@@ -356,6 +374,15 @@
         what lets angles exceed 90°, go negative and keep going — and it turns sin² + cos² = 1 into
         Pythagoras rather than a fourth thing to memorise. Unroll the circle and the sine wave appears.</span>
         <span class="hc-foot">why every oscillation later is a circle seen edge-on · identities, shown</span>
+      </button>
+      <button class="home-card" data-w="cnum">
+        <span class="hc-glyph" style="color:var(--c-grad)">i</span>
+        <span class="hc-title">Complex Numbers</span>
+        <span class="hc-desc">i as a quarter turn rather than a square root, so that i² = −1 becomes the
+        observation that two quarter turns face you backwards. Multiplication stretches and rotates, with
+        both halves measured; Euler’s formula is summed term by term rather than quoted; and every number
+        turns out to have exactly n n-th roots, arranged in a regular polygon.</span>
+        <span class="hc-foot">the fundamental theorem of algebra, checked · phasors as triangles</span>
       </button>
     </div>
     <h2 class="home-sec">Single-variable calculus  ·  AP Calculus AB &amp; BC</h2>
@@ -435,6 +462,17 @@
         with no real eigenvector at all, and the shear that refuses to diagonalise. Then the spectral
         theorem, definiteness decided two independent ways, and the SVD — which always exists.</span>
         <span class="hc-foot">the circle always maps to an ellipse · σ₁/σₙ · A = UΣVᵀ, rebuilt</span>
+      </button>
+      <button class="home-card" data-w="discrete">
+        <span class="hc-glyph" style="color:var(--c-curl)">C</span>
+        <span class="hc-title">Discrete Maths &amp; Combinatorics</span>
+        <span class="hc-desc">The one branch where the second route is not an approximation to the
+        answer but is the answer: every closed form is drawn beside a list of the objects it claims to
+        count, built one at a time. Four counting problems that are one two-by-two table. Pascal's
+        triangle built by the recurrence alone, its identities measured rather than asserted, and
+        Sierpinski's gasket appearing exactly. Then inclusion–exclusion, whose alternating signs turn
+        out to be forced by one of those identities.</span>
+        <span class="hc-foot">the mass cannot matter, and you can count why · a shuffle fixes nothing with probability 1/e · exact is not the same as computable</span>
       </button>
       <button class="home-card" data-w="prob">
         <span class="hc-glyph" style="color:var(--c-pos)">P</span>
@@ -518,6 +556,16 @@
         multipliers as tangency, and the Jacobian as an area scale.</span>
         <span class="hc-foot">symbolic partials · the discriminant test · λ as a shadow price</span>
       </button>
+      <button class="home-card" data-w="coords">
+        <span class="hc-glyph" style="color:var(--c-curl)">∂(x,y)</span>
+        <span class="hc-title">Coordinate Systems &amp; Jacobians</span>
+        <span class="hc-desc">A coordinate system is a map, a map has a derivative, and the r in r dr dθ
+        is that derivative's determinant. Drag one cell of the grid and watch its area change by
+        exactly that factor. The change-of-variables theorem is then checked by three routes that
+        share nothing — and a map that folds makes all three disagree, in three different, correct
+        ways.</span>
+        <span class="hc-foot">√(EG − F²) · scale factors · why ρ²sin φ vanishes on the axis</span>
+      </button>
       <button class="home-card" data-w="vector">
         <span class="hc-glyph" style="color:var(--c-grad)">∇</span>
         <span class="hc-title">Vector Calculus — the Integral Theorems</span>
@@ -548,6 +596,17 @@
     </div>
     <h2 class="home-sec">Classical physics  ·  AP Physics 1, 2 &amp; C</h2>
     <div class="home-cards">
+      <button class="home-card" data-w="units">
+        <span class="hc-glyph" style="color:var(--c-warn)">±</span>
+        <span class="hc-title">Units, Dimensions &amp; Uncertainty</span>
+        <span class="hc-desc">Every wing below this one prints eight digits and none of them says which
+        digits mean anything. A dimension turns out to be a vector of seven exponents, and this wing
+        computes it twice — once by adding exponents, once by giving the base units numbers and reading
+        the answer out of logarithms. Then Buckingham's theorem, which is rank–nullity in disguise: it
+        gets the size of a hydrogen atom exactly right with no quantum mechanics at all, and reads the
+        yield of the Trinity device off published photographs.</span>
+        <span class="hc-foot">the mass cannot matter, and that is a proof · one subtraction destroys six figures · a linear error bar against a Monte Carlo</span>
+      </button>
       <button class="home-card" data-w="mechanics">
         <span class="hc-glyph" style="color:var(--c-grad)">⇉</span>
         <span class="hc-title">Mechanics</span>
@@ -661,6 +720,17 @@
         uncertainty, sampling and aliasing, the FFT timed against the definition it replaces, and the
         convolution theorem that makes filtering easy.</span>
         <span class="hc-foot">orthogonality · Nyquist &amp; leakage · N² → ½N log₂N · x ∗ h ⟷ X · H</span>
+      </button>
+      <button class="home-card" data-w="signal">
+        <span class="hc-glyph" style="color:var(--c-curl)">Ш</span>
+        <span class="hc-title">Signal Processing</span>
+        <span class="hc-desc">A computer never has a signal — it has a list of numbers read at instants,
+        over a record that started and stopped. Watch the folding map turn a 19 Hz tone into a 13 Hz one and
+        find out why doubling the record tells you which kind of error you have. Then seven windows trading a
+        wider main lobe against lower sidelobes, with every number computed twice; filters whose response is
+        measured by <i>running</i> them, and whose stability is the root finder from the complex wing; and the
+        spectrogram, whose resolution cell changes shape and keeps its area.</span>
+        <span class="hc-foot">the fold, drawn · Δt·Δf = ENBW · B(z)/A(z), and the recursion that means it</span>
       </button>
       <button class="home-card" data-w="quantum">
         <span class="hc-glyph" style="color:var(--c-curl)">ψ</span>

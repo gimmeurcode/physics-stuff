@@ -61,47 +61,24 @@ STAGES.rlEB = {
   },
   dockLegend: true,
   enter(st, o){
-    st.E = o.E === undefined ? 1 : o.E;
-    st.B = o.B === undefined ? 0 : o.B;
-    st.ang = o.ang === undefined ? 0 : o.ang;   // 0° = E ⊥ B, 90° = E ∥ B
+    st.fkey = o.fkey || 'pureE';
     st.beta = o.beta === undefined ? 0.6 : o.beta;
   },
-  fields(st){
-    const a = st.ang * Math.PI / 180;
-    return { E: v3(0, st.E, 0), B: v3(0, st.B * Math.sin(a), st.B * Math.cos(a)) };
-  },
-  controls(){
-    const st = ST;
-    return rlSeg('rlEbP', 'custom', [['pureE','pure E'],['pureB','pure B'],['wave','a light wave'],
-                                      ['skew','E·B ≠ 0']]) +
-      ctlRow('|E|', ctlSlider('rlEbE', 0, 2, 0.02, st.E)) +
-      ctlRow('|B|', ctlSlider('rlEbB', 0, 2, 0.02, st.B)) +
-      ctlRow('angle E,B', ctlSlider('rlEbA', 0, 90, 1, st.ang)) +
-      ctlRow('boost β (along x)', ctlSlider('rlEbV', -0.98, 0.98, 0.005, st.beta)) +
-      `<p class="help">Set any field on the left; the right shows what an observer moving along <b>x</b>
-      measures. Components <i>along</i> the boost are untouched; the perpendicular ones mix:
-      <b>E′⊥ = γ(E + v×B)⊥</b> and <b>B′⊥ = γ(B − v×E/c²)⊥</b>. The lower plot sweeps β and draws the
-      two invariants — they are flat lines, which is the entire point. Those two numbers decide what
-      kind of field you have, and no observer can argue with them: if <b>E·B = 0</b> and
-      <b>E² &gt; c²B²</b> there is a frame with no magnetic field at all, and the "magnetism" was never
-      more than a change of viewpoint.</p>`;
-  },
-  wire(){
-    rlWireSeg('rlEbP', v => {
-      if(v === 'pureE'){ ST.E = 1; ST.B = 0; ST.ang = 0; }
-      else if(v === 'pureB'){ ST.E = 0; ST.B = 1; ST.ang = 0; }
-      else if(v === 'wave'){ ST.E = 1; ST.B = 1; ST.ang = 0; }
-      else { ST.E = 1; ST.B = 0.8; ST.ang = 55; }
-    });
-    wireSlider('rlEbE', () => ST.E, v => { ST.E = v; }, v => fmtNum(+v, 3));
-    wireSlider('rlEbB', () => ST.B, v => { ST.B = v; }, v => fmtNum(+v, 3));
-    wireSlider('rlEbA', () => ST.ang, v => { ST.ang = v; }, v => fmtNum(+v, 3) + '°  (0 = ⊥, 90 = ∥)');
-    wireSlider('rlEbV', () => ST.beta, v => { ST.beta = v; }, rlBetaFmt, RL_BETA_LIM);
-  },
+  /* the accessor is the whole retrofit: every `this.fields(st)` below is
+     unchanged and now reads a typed field as happily as a preset */
+  fields(st){ const C = rlEbCur(st); return { E:C.E, B:C.B }; },
+  controls(){ return rlEbControls(ST); },
+  wire(){ rlEbWire(); },
   frame(st, dt, ctx, W, H){
     const f = this.fields(st);
     const F = relTransformEB(f.E, f.B, v3(st.beta, 0, 0));
-    const top = H * 0.46, s = Math.min(W * 0.10, top * 0.30);
+    /* s and the row spacing below are chosen so the two component read-outs
+       clear the plot's title: at the old s = 0.30·top they landed within a
+       pixel of it and the right-hand block was printed straight through
+       "Sweeping every boost". Text over text on a canvas is invisible to every
+       gate here — auditticks reads duplicate TICKS and headings under the
+       chip, not two labels colliding — so it is a screenshot finding. */
+    const top = H * 0.46, s = Math.min(W * 0.09, top * 0.26);
     const panel = (ox, oy, E, B, title, tint) => {
       const o = { x: ox, y: oy };
       rlText(ctx, ox, oy - s * 1.9, title, rgbCss(tint), '600 12px ' + FONT_UI, 'center');
@@ -114,7 +91,7 @@ STAGES.rlEB = {
         ['E', E, TH.warn], ['B', B, TH.neg]
       ];
       rows.forEach(([nm, v, col], i) => {
-        rlText(ctx, ox - s * 1.6, oy + s * 1.5 + i * 16,
+        rlText(ctx, ox - s * 1.6, oy + s * 1.35 + i * 15,
           nm + ' = (' + fmtNum(v.x, 3) + ', ' + fmtNum(v.y, 3) + ', ' + fmtNum(v.z, 3) + ')',
           rgbCss(col), '10.5px ' + FONT_MONO);
       });
@@ -149,9 +126,12 @@ STAGES.rlEB = {
     const f = this.fields(st);
     const F = relTransformEB(f.E, f.B, v3(st.beta, 0, 0));
     const I0 = relFieldInvariants(f.E, f.B), I1 = relFieldInvariants(F.E, F.B);
-    const drift = relDriftVelocity(f.E, f.B);
-    const canKill = Math.abs(I0.dot) < 1e-9 * Math.max(1e-9, vdot(f.E, f.E) + vdot(f.B, f.B));
-    const vd = vlen(drift);
+    /* Both invariants legitimately VANISH — E·B = 0 for crossed fields, E² − c²B² = 0
+       for a null one — and then fmtAgree's derived scale IS the round-off, so a
+       perfect result prints as a 100% disagreement. The gross is what the
+       cancellation came from, taken in whichever frame is larger. */
+    const gDot = Math.max(vlen(f.E) * vlen(f.B), vlen(F.E) * vlen(F.B));
+    const gDif = Math.max(vdot(f.E, f.E), vdot(f.B, f.B), vdot(F.E, F.E), vdot(F.B, F.B));
     const c3 = v => '(' + fmtNum(v.x, 4) + ',  ' + fmtNum(v.y, 4) + ',  ' + fmtNum(v.z, 4) + ')';
     return `<div class="card tight"><div class="ttl">The six components, before and after</div>
       ${kv('E   (lab)', c3(f.E))}
@@ -168,17 +148,12 @@ STAGES.rlEB = {
       ${kv("E′·B′   (moving)", fmtNear(I1.dot))}
       ${kv('E² − c²B²  (lab)', fmtNum(I0.diff, 6))}
       ${kv("E′² − c²B′²  (moving)", fmtNum(I1.diff, 6))}
-      ${kv('residuals', fmtAgree(I1.dot, I0.dot) + '  /  ' + fmtAgree(I1.diff, I0.diff))}
+      ${kv('residuals', fmtAgreeGross(I1.dot, I0.dot, gDot) + '  /  ' + fmtAgreeGross(I1.diff, I0.diff, gDif))}
       ${kv('this field is', relFieldCharacter(f.E, f.B))}
-      ${canKill && vd < 1 ? kv('the boost that removes one of them', fmtNum(vd, 5) + ' c') : ''}
-      <p class="help">${canKill
-        ? (I0.diff > 0
-          ? 'Because <b>E·B = 0</b> and <b>E² &gt; c²B²</b>, there is a frame with <b>no magnetic field at all</b> — ride at the E×B drift velocity above and the magnetism vanishes. It was never a separate substance; it was the electric field of these charges, catalogued by an observer moving with respect to them.'
-          : I0.diff < 0
-          ? 'Because <b>E·B = 0</b> and <b>c²B² &gt; E²</b>, there is a frame with <b>no electric field</b> — the reverse of the usual story, and just as real. What you call the field depends on how you are moving.'
-          : 'Both invariants vanish: this is a <b>null</b> field, a light wave. No frame can make it purely electric or purely magnetic, and none can make it stand still. This is exactly the obstruction the "chasing a light beam" stage runs into.')
-        : 'Because <b>E·B ≠ 0</b>, <i>no</i> boost can remove either field. What you can always do is find a frame in which E and B are parallel — and after that they stay parallel, in every frame reachable from it.'}</p>
-    </div>`;
+      <p class="help">Neither number moves, at any boost, in any direction. They are what the field
+      <i>is</i>, as against what a particular observer measures — and the card below takes the
+      classification they produce and goes to the frame it names.</p>
+    </div>` + rlEbDriftCard(st);
   },
   chip(st){
     const f = this.fields(st);
@@ -186,7 +161,7 @@ STAGES.rlEB = {
     return `<div class="k">Field boost</div>
       <div style="color:var(--c-warn)">|E′| = ${fmtNum(vlen(F.E), 4)}</div>
       <div style="color:var(--c-neg)">|B′| = ${fmtNum(vlen(F.B), 4)}</div>
-      <div style="color:var(--c-grad)">E²−B² = ${fmtNum(relFieldInvariants(F.E, F.B).diff, 4)}</div>`;
+      <div style="color:var(--c-grad)">E²−B² = ${fmtNear(relFieldInvariants(F.E, F.B).diff)}</div>`;
   },
   legend(){ return [['var(--c-warn)', 'E, and |E| against β'], ['var(--c-neg)', 'B, and |B| against β'],
                     ['var(--c-grad)', 'E² − c²B² — invariant'],
@@ -239,11 +214,19 @@ STAGES.rlWire = {
     st.bv = o.bv === undefined ? 0.6 : o.bv;     // test charge speed
     st.d = 0.02;                                  // 2 cm from the wire
     st.lam0 = 1e-6;                               // C/m of each lattice
+    /* the sheet mode's own state — its own units (c = 1), so it keeps its own
+       keys rather than reinterpreting the SI ones above */
+    st.wkeyw = o.wkeyw || 'neutral';
+    st.wsheet = o.wsheet !== undefined ? o.wsheet : (RL_WIRES[st.wkeyw] || RL_WIRES.neutral).text;
+    st.wvt = o.wvt === undefined ? (RL_WIRES[st.wkeyw] || RL_WIRES.neutral).vt : o.wvt;
   },
   controls(){
     const st = ST;
-    return rlSeg('rlWiM', st.mode, [['cartoon','cartoon speeds — you can see the effect'],
-                                     ['real','real speeds — you cannot']]) +
+    const head = rlSeg('rlWiM', st.mode, [['cartoon','cartoon speeds — you can see the effect'],
+                                     ['real','real speeds — you cannot'],
+                                     ['sheet','build the wire yourself']]);
+    if(st.mode === 'sheet') return head + rlWireSheetControls(st);
+    return head +
       ctlRow('electron drift', ctlSlider('rlWiD', 0.05, 0.9, 0.01, st.bd)) +
       ctlRow('test charge v', ctlSlider('rlWiV', -0.9, 0.9, 0.01, st.bv)) +
       rlClockCtl() +
@@ -258,6 +241,7 @@ STAGES.rlWire = {
   },
   wire(){
     rlWireSeg('rlWiM', v => { ST.mode = v; });
+    if(ST.mode === 'sheet'){ rlWireSheetWire(); return; }
     wireSlider('rlWiD', () => ST.bd, v => { ST.bd = v; }, v => fmtNum(+v, 3) + ' c  (cartoon only)', RL_BETA_LIM);
     wireSlider('rlWiV', () => ST.bv, v => { ST.bv = v; }, rlBetaFmt, RL_BETA_LIM);
     rlWireClock();
@@ -269,6 +253,7 @@ STAGES.rlWire = {
     return { vd, v, w: relWireFrames(st.lam0, vd, v, st.d, 1.602176634e-19), real };
   },
   frame(st, dt, ctx, W, H){
+    if(st.mode === 'sheet') return rlWireSheetFrame(st, ctx, W, H);
     const f = this.facts(st);
     const bd = f.vd / C_SI, bv = f.v / C_SI;
     const gd = relGamma(bd), gv = relGamma(bv);
@@ -344,6 +329,7 @@ STAGES.rlWire = {
       : 'the ions crowd together, the electrons spread out, and what was magnetism becomes electrostatics', W, H);
   },
   readout(st){
+    if(st.mode === 'sheet') return rlWireSheetReadout(st);
     const f = this.facts(st), w = f.w;
     return `<div class="card tight"><div class="ttl">The lab frame: a magnetic force</div>
       ${kv('lattice density λ₀', fmtNum(st.lam0, 4) + ' C/m  (each sign)')}
@@ -387,15 +373,22 @@ STAGES.rlWire = {
     </div>`;
   },
   chip(st){
+    if(st.mode === 'sheet') return rlWireSheetChip(st);
     const w = this.facts(st).w;
     return `<div class="k">Magnetism from motion</div>
       <div style="color:var(--c-grad)">F = ${fmtNum(w.Flab, 4)} N</div>
       <div style="color:var(--c-pos)">F′ = ${fmtNum(w.Fprime, 4)} N</div>
       <div style="color:var(--c-neg)">λ′/λ₊ = ${fmtNum(Math.abs(w.lamNet / w.lamPlus), 3)}</div>`;
   },
-  legend(){ return [['var(--c-pos)', 'the positive lattice'], ['var(--c-neg)', 'the drifting electrons, and B'],
-                    ['var(--c-curl)', 'the test charge and its velocity'],
-                    ['var(--c-grad)', 'the force on it — same in both frames']]; }
+  legend(st){
+    if(st && st.mode === 'sheet')
+      return [['var(--c-pos)', 'a species with positive density'], ['var(--c-neg)', 'a negative one'],
+              ['var(--c-warn)', 'the test charge and its motion'],
+              ['var(--c-curl)', 'the force on it — the same in both frames'],
+              ['var(--mid)', 'which way each species drifts']];
+    return [['var(--c-pos)', 'the positive lattice'], ['var(--c-neg)', 'the drifting electrons, and B'],
+            ['var(--c-curl)', 'the test charge and its velocity'],
+            ['var(--c-grad)', 'the force on it — same in both frames']]; }
 };
 
 /* ---- 15 · the field tensor -------------------------------------------------
@@ -438,31 +431,23 @@ STAGES.rlTensor = {
   },
   dockLegend: true,
   enter(st, o){
-    st.E = o.E || v3(0.6, 0.9, -0.3);
-    st.B = o.B || v3(-0.4, 0.2, 0.8);
+    st.tkey = o.tkey || 'general';
+    st.tsheet = o.tsheet !== undefined ? o.tsheet
+              : (RL_TENSORS[st.tkey] || RL_TENSORS.general).text;
     st.beta = o.beta === undefined ? 0.7 : o.beta;
   },
-  controls(){
-    const st = ST;
-    return ctlRow('boost β', ctlSlider('rlTnB', -0.97, 0.97, 0.005, st.beta)) +
-      ctlRow('Ex', ctlSlider('rlTnEx', -1.5, 1.5, 0.02, st.E.x)) +
-      ctlRow('Ey', ctlSlider('rlTnEy', -1.5, 1.5, 0.02, st.E.y)) +
-      ctlRow('Bz', ctlSlider('rlTnBz', -1.5, 1.5, 0.02, st.B.z)) +
-      `<p class="help">The matrix on the left is <b>F<sup>μν</sup></b>: six independent numbers, three of
-      them E and three of them B, arranged antisymmetrically. The boost is the matrix
-      <b>Λ<sup>μ</sup><sub>ν</sub></b> in the middle, and the field in the new frame is nothing more
-      exotic than <b>F′ = Λ F Λᵀ</b>. Every component formula in the previous stage falls out of that one
-      line of matrix algebra — the readout does the multiplication and the vector transformation
-      separately and reports the difference, which is zero.</p>`;
+  /* the sixteen numbers come first here, and E and B are read OFF them —
+     which is the opposite of the stage before, where the tensor was built */
+  cur(st){
+    const C = rlTnCur(st);
+    const F = C.F && C.F.length === 4 ? C.F : rlTensorParse(RL_TN_SHEET, null).F;
+    const K = rlTensorCheck(F);
+    return { C, F, E:K.E, B:K.B, K };
   },
-  wire(){
-    wireSlider('rlTnB', () => ST.beta, v => { ST.beta = v; }, rlBetaFmt, RL_BETA_LIM);
-    wireSlider('rlTnEx', () => ST.E.x, v => { ST.E = v3(v, ST.E.y, ST.E.z); }, v => fmtNum(+v, 3));
-    wireSlider('rlTnEy', () => ST.E.y, v => { ST.E = v3(ST.E.x, v, ST.E.z); }, v => fmtNum(+v, 3));
-    wireSlider('rlTnBz', () => ST.B.z, v => { ST.B = v3(ST.B.x, ST.B.y, v); }, v => fmtNum(+v, 3));
-  },
+  controls(){ return rlTnControls(ST); },
+  wire(){ rlTnWire(); },
   frame(st, dt, ctx, W, H){
-    const F = relFieldTensor(st.E, st.B);
+    const F = this.cur(st).F;
     const L = relLorentzMatrix(st.beta);
     const Fp = relBoostTensor(F, st.beta);
     /* draw a 4x4 matrix as a coloured grid with its numbers in the cells */
@@ -497,7 +482,7 @@ STAGES.rlTensor = {
 
     /* the invariants, as bars that do not move */
     const by = top + cell * 4 + 56;
-    const I0 = relFieldInvariants(st.E, st.B);
+    const I0 = relFieldInvariants(relTensorE(F), relTensorB(F));
     const bars = [
       ['F_μν F^μν = 2(B² − E²)', relTensorInvariant1(F), relTensorInvariant1(Fp), TH.grad],
       ['F_μν F̃^μν = −4 E·B', relTensorInvariant2(F), relTensorInvariant2(Fp), TH.curl]
@@ -523,13 +508,14 @@ STAGES.rlTensor = {
     stageNote(ctx, 'four vector equations become two tensor ones, and the fact that they are the same in every frame becomes obvious', W, H);
   },
   readout(st){
-    const F = relFieldTensor(st.E, st.B);
+    const cur = this.cur(st);
+    const F = cur.F;
     const Fp = relBoostTensor(F, st.beta);
-    const V = relTransformEB(st.E, st.B, v3(st.beta, 0, 0));
+    const V = relTransformEB(cur.E, cur.B, v3(st.beta, 0, 0));
     const Et = relTensorE(Fp), Bt = relTensorB(Fp);
     const dE = vlen(vsub(Et, V.E)), dB = vlen(vsub(Bt, V.B));
     const row = M => '<tr>' + M.map(v => `<td>${fmtNum(v, 4)}</td>`).join('') + '</tr>';
-    return `<div class="card tight"><div class="ttl">Two routes to the same field</div>
+    return rlTnCard(st) + `<div class="card tight"><div class="ttl">Two routes to the same field</div>
       ${kv("E′ from ΛFΛᵀ", '(' + fmtNum(Et.x, 5) + ', ' + fmtNum(Et.y, 5) + ', ' + fmtNum(Et.z, 5) + ')')}
       ${kv("E′ from the vector formula", '(' + fmtNum(V.E.x, 5) + ', ' + fmtNum(V.E.y, 5) + ', ' + fmtNum(V.E.z, 5) + ')')}
       ${kv("B′ from ΛFΛᵀ", '(' + fmtNum(Bt.x, 5) + ', ' + fmtNum(Bt.y, 5) + ', ' + fmtNum(Bt.z, 5) + ')')}
@@ -569,10 +555,10 @@ STAGES.rlTensor = {
     </div>`;
   },
   chip(st){
-    const F = relFieldTensor(st.E, st.B), Fp = relBoostTensor(F, st.beta);
+    const F = this.cur(st).F, Fp = relBoostTensor(F, st.beta);
     return `<div class="k">F^μν</div>
-      <div style="color:var(--c-grad)">F·F = ${fmtNum(relTensorInvariant1(Fp), 5)}</div>
-      <div style="color:var(--c-curl)">F·F̃ = ${fmtNum(relTensorInvariant2(Fp), 5)}</div>`;
+      <div style="color:var(--c-grad)">F·F = ${fmtNear(relTensorInvariant1(Fp))}</div>
+      <div style="color:var(--c-curl)">F·F̃ = ${fmtNear(relTensorInvariant2(Fp))}</div>`;
   },
   legend(){ return [['var(--c-warn)', 'positive tensor entries (and the E block)'],
                     ['var(--c-neg)', 'negative entries (and the B block)'],

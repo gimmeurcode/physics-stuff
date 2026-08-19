@@ -1815,3 +1815,180 @@ function igSolidCurv(st, own, kind){
   IG_SOL_CACHE.set(ck, made);
   return made;
 }
+
+/* ---- your own worldline, and your own chain of boosts ------------------------
+   Programme A items 10 and 11. Both are shaped so that everything the stage
+   used to read off a preset it now reads off `rlWlCur(st)` / the parsed sheet,
+   and nothing downstream knows which it is looking at. */
+const RL_WL_SLOTS  = [{ k:'x', label:'x(t) =', vars:'t — and c = 1 here, so |dx/dt| must stay under 1',
+                        def:'0.35*t + 0.3*sin(2*t)', build:pkParamBuild }];
+const RL_WL_BOUNDS = [{ k:'t0', label:'from t =', def:0 },
+                      { k:'t1', label:'to t =', def:4 }];
+function rlWlCur(st){
+  if(st.wkey !== 'custom') return RL_WORLDLINES[st.wkey] || RL_WORLDLINES.shuttle;
+  const own = pkOwn(st, 'rlwl', RL_WL_SLOTS, RL_WL_BOUNDS);
+  return { name:'your worldline', short:'yours', own:true,
+           src:own.x, ex:'x(t) = ' + pkPretty(own.x),
+           t0:+own.t0, t1:+own.t1,
+           vmax:null, tau:null,
+           why:'Your worldline. Nothing about it is assumed — the top speed is <b>scanned</b> for and ' +
+                'refused if it reaches c, the proper time is integrated rather than looked up, and the ' +
+                'moving observer re-measures it from the boosted events alone. The one thing that cannot ' +
+                'be typed around is the reverse triangle inequality: whatever you write, the straight ' +
+                'worldline between your two endpoints ages more.' };
+}
+
+/* ---- your own electromagnetic field, and your own field tensor ---------------
+   Programme A relativity items 7 and 8. Both return an object shaped like one
+   of the wing's own table entries, so the stages read `rlEbCur(st)` /
+   `rlTnCur(st)` and nothing downstream knows which it is looking at. */
+const RL_EB_BOUNDS = [{ k:'Ex', label:'Eₓ =', def:0 }, { k:'Ey', label:'E_y =', def:1 },
+                      { k:'Ez', label:'E_z =', def:0 },
+                      { k:'Bx', label:'Bₓ =', def:0 }, { k:'By', label:'B_y =', def:0 },
+                      { k:'Bz', label:'B_z =', def:0.5 }];
+function rlEbCur(st){
+  if(st.fkey !== 'custom'){
+    const P = RL_FIELDS[st.fkey] || RL_FIELDS.pureE;
+    return { name:P.name, short:P.short, E:rlFieldVec(P.E), B:rlFieldVec(P.B),
+             character:P.character, removes:P.removes, why:P.why };
+  }
+  const own = pkOwn(st, 'rleb', [], RL_EB_BOUNDS);
+  return { name:'your own field', short:'yours', own:true,
+           E:v3(+own.Ex, +own.Ey, +own.Ez), B:v3(+own.Bx, +own.By, +own.Bz),
+           character:null, removes:null,
+           why:'Your six numbers. Nothing about them is assumed: the two invariants are computed, ' +
+                'the field is <b>classified from them</b>, and then the panel goes to the frame that ' +
+                'classification promises and measures what is left there. Set E·B ≠ 0 and no frame ' +
+                'removes either field — but one still makes them parallel, and that one is found too.' };
+}
+
+const RL_TN_SHEET = '0 -0.4 -0.9 -0.2\n0.4 0 -0.7 0.5\n0.9 0.7 0 -0.3\n0.2 -0.5 0.3 0';
+function rlTnCur(st){
+  if(st.tkey !== 'custom'){
+    const P = RL_TENSORS[st.tkey] || RL_TENSORS.general;
+    const R = rlTensorParse(P.text, null);
+    return { name:P.name, short:P.short, F:R.F, errs:R.errs, anti:P.anti, why:P.why };
+  }
+  const R = rlTensorParse(st.tsheet === undefined ? RL_TN_SHEET : st.tsheet,
+                          rlTensorParse(RL_TN_SHEET, null).F);
+  return { name:'your own tensor', short:'yours', own:true, F:R.F, errs:R.errs, anti:null,
+           why:'Your sixteen numbers. <b>Antisymmetry is measured rather than imposed</b> — type ' +
+                'something that is not antisymmetric and the panel says so and says where, because a ' +
+                'symmetric part is not a field at all and silently deleting it would teach the ' +
+                'opposite of the lesson.' };
+}
+
+/* ---- your own charge configuration, and your own wire ------------------------
+   Programme A relativity items 6 and 9. */
+const RL_Q_SHEET = '1 0 0 0 0.9';
+function rlQCur(st){
+  const P = st.qkey !== 'custom' ? RL_CHARGES[st.qkey] : null;
+  const text = st.qkey === 'custom' ? (st.qsheet === undefined ? RL_Q_SHEET : st.qsheet)
+                                    : (P || RL_CHARGES.one).text;
+  const R = rlChargeParse(text, rlChargeParse(RL_Q_SHEET, null).charges);
+  if(P) return { name:P.name, short:P.short, charges:R.charges, errs:R.errs,
+                 cx:P.cx, cy:P.cy, cz:P.cz, R:P.R, enc:P.enc, why:P.why };
+  return { name:'your own charges', short:'yours', own:true, charges:R.charges, errs:R.errs,
+           cx:+ (st.qcx === undefined ? 0 : st.qcx), cy:0, cz:0,
+           R:+ (st.qR === undefined ? 2 : st.qR), enc:null,
+           why:'One charge per line: <b>q x y z</b>, or <b>q x y z β</b> to send it along x. ' +
+                'The flux is integrated over the sphere you set, and it must come to <b>4πq</b> for ' +
+                'whatever charge is <i>inside</i> — no matter how fast anything is moving, and no ' +
+                'matter how badly the field is distorted on the way.' };
+}
+
+const RL_W_SHEET = '1 0 lattice\n-1 0.5 electrons';
+function rlWCur(st){
+  const P = st.wkeyw !== 'custom' ? RL_WIRES[st.wkeyw] : null;
+  const text = st.wkeyw === 'custom' ? (st.wsheet === undefined ? RL_W_SHEET : st.wsheet)
+                                     : (P || RL_WIRES.neutral).text;
+  const R = rlWireParse(text, rlWireParse(RL_W_SHEET, null).species);
+  if(P) return { name:P.name, short:P.short, species:R.species, errs:R.errs,
+                 vt:P.vt, neutral:P.neutral, why:P.why };
+  return { name:'your own wire', short:'yours', own:true, species:R.species, errs:R.errs,
+           vt:+ (st.wvt === undefined ? 0.4 : st.wvt), neutral:null,
+           why:'One carrier species per line: a <b>lab</b> linear density and a drift speed. ' +
+                'Neutrality is whatever your densities sum to — it is measured, not assumed — so a ' +
+                'wire that is charged in the lab is a legal thing to build, and the two frames still agree.' };
+}
+
+/* ---- your own motion programme ----------------------------------------------
+   Programme A relativity items 12 and 13. Both stages read this; the `pk` id is
+   passed in so the two keep separate answers, and the state keys are prefixed
+   for the same reason — one dock, one document, and `auditlink` fails on a
+   duplicate id. */
+const RL_MOT_SLOTS = [{ k:'a', label:'a(τ) =',
+                        vars:'τ, written as t — your own clock, in years; a is in ly/yr², and one g is 1.0323',
+                        def:'1.0323*cos(t/2)', build:pkParamBuild }];
+const RL_MOT_BOUNDS = [{ k:'tau1', label:'for τ up to', def:8 }];
+function rlMotCur(st, pre){
+  const key = st[pre + 'key'];
+  if(key !== 'custom'){
+    const P = RL_MOTIONS[key] || RL_MOTIONS.oneg;
+    return { name:P.name, short:P.short, src:P.src, ex:P.ex, tau1:P.tau1,
+             t:P.t, x:P.x, phi:P.phi, why:P.why };
+  }
+  const own = pkOwn(st, pre, RL_MOT_SLOTS, RL_MOT_BOUNDS);
+  return { name:'your own programme', short:'yours', own:true,
+           src:own.a, ex:'a(τ) = ' + pkPretty(own.a), tau1:+own.tau1,
+           t:null, x:null, phi:null,
+           why:'Your engine, as a function of <b>your own clock</b>. What it delivers is <b>rapidity</b> ' +
+                '— dφ/dτ = a exactly — so the final speed is tanh of the area under whatever you write, ' +
+                'and no amount of area reaches c. Nothing here divides by 1 − β², so a programme that ' +
+                'gets to 0.999999999c is no harder to integrate than one that dawdles.' };
+}
+
+/* ---- the last three thought experiments -------------------------------------
+   Programme A relativity items 16, 20 and 21. Numbers rather than expressions,
+   because in all three the scenario IS the numbers — and each carries a theorem
+   the panel then goes and tests. */
+const RL_BARN_BOUNDS = [{ k:'L', label:'ladder length', def:2 },
+                        { k:'B', label:'barn length', def:1.2 },
+                        { k:'bt', label:'β', def:0.8 }];
+function rlBarnCur(st){
+  if(st.bkey !== 'custom'){
+    const P = RL_BARNS[st.bkey] || RL_BARNS.classic;
+    return { name:P.name, short:P.short, L:P.L, B:P.B, beta:P.beta,
+             fits:P.fits, doors:P.doors, why:P.why };
+  }
+  const own = pkOwn(st, 'rlbarn', [], RL_BARN_BOUNDS);
+  return { name:'your own ladder and barn', short:'yours', own:true,
+           L:+own.L, B:+own.B, beta:+own.bt, fits:null, doors:null,
+           why:'Whether it fits is a statement about the <b>barn frame</b>, and whether anyone can ' +
+                'disagree about the order of the two door-closings is a condition on your three ' +
+                'numbers: they are reorderable exactly when L/γ > B(1−β). Find the case where the two ' +
+                'closings are on each other\'s light cone.' };
+}
+
+const RL_ELEV_BOUNDS = [{ k:'a', label:'acceleration a', def:0.4 },
+                        { k:'w', label:'box width', def:0.5 },
+                        { k:'h', label:'box height', def:0.5 }];
+function rlElevCur(st){
+  if(st.gkey !== 'custom'){
+    const P = RL_ELEVATORS[st.gkey] || RL_ELEVATORS.strong;
+    return { name:P.name, short:P.short, a:P.a, w:P.w, h:P.h, why:P.why };
+  }
+  const own = pkOwn(st, 'rlelev', [], RL_ELEV_BOUNDS);
+  return { name:'your own box', short:'yours', own:true,
+           a:+own.a, w:+own.w, h:+own.h,
+           why:'The equivalence principle says a box accelerating at <b>a</b> and a uniform field of ' +
+                'strength <b>a</b> are indistinguishable from inside. The panel computes the light ' +
+                'deflection in the box by <b>integrating</b> the floor\'s rise, and in the field from ' +
+                'the closed form — two different calculations that must land on the same number.' };
+}
+
+const RL_DISK_BOUNDS = [{ k:'R', label:'radius R', def:1 },
+                        { k:'om', label:'ω', def:0.5 },
+                        { k:'ell', label:'ruler length', def:0.01 }];
+function rlDiskCur(st){
+  if(st.dkey !== 'custom'){
+    const P = RL_DISKS[st.dkey] || RL_DISKS.fast;
+    return { name:P.name, short:P.short, R:P.R, omega:P.omega, ell:P.ell, why:P.why };
+  }
+  const own = pkOwn(st, 'rldisk', [], RL_DISK_BOUNDS);
+  return { name:'your own disk', short:'yours', own:true,
+           R:+own.R, omega:+own.om, ell:+own.ell,
+           why:'C/2R is computed two ways: the closed form πγ, and a <b>count</b> — how many contracted ' +
+                'rulers of your length it takes to get round the rim. The count is what a surveyor on ' +
+                'the disk would actually do, and shrinking the rulers is what makes the two agree.' };
+}

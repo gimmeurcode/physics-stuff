@@ -113,7 +113,11 @@ foreach($k in ($m.Keys | Sort-Object)){ Write-Host ("  {0,-12} {1}" -f $k, $m[$k
 # MAP.md is deliberately absent: it is generated, and checked for freshness below.
 $live = @(
   'CLAUDE.md', 'AI-GUIDE.md', 'MASTER-PLAN.md', 'README.md', 'SITE-RULES.md',
-  'src/js/CLAUDE.md'
+  'src/js/CLAUDE.md',
+  # The home page and the nav title are prose too, and they are the prose a
+  # READER sees rather than a maintainer. Both carried "forty-five wings" after
+  # the forty-sixth was built, while this gate reported bad=0.
+  'src/shell.html'
 ) | Where-Object { Test-Path (Join-Path $dir $_) }
 
 # Each claim: a regex whose first group is the number, and the measured key it
@@ -152,6 +156,33 @@ $claims = @(
   @{ key='seelinks';    rx='\bseelinks=(\d+)';                                   what='see-links' },
   @{ key='mkplot';      rx='\b(\d+)\s+call sites\**\s+in\b';                     what='mkPlot call sites' },
   @{ key='mkplot';      rx='\b(\d+)\s+calls to it\b';                            what='mkPlot call sites' }
+)
+
+# SPELLED-OUT TOTALS. Every pattern above matches digits, and on 2026-08-19 the
+# five claims written as words -- "forty-five wings" in README twice, in
+# MASTER-PLAN's section heading, and in shell.html's nav title and home tagline
+# -- were all wrong while this gate printed bad=0. A gate blind to half the ways
+# a number can be written is worse than no gate, because it is believed.
+#
+# "floors" is included because the home page calls them that, and the metaphor
+# does not exempt the count.
+$wordTens  = @{ 'twenty'=20; 'thirty'=30; 'forty'=40; 'fifty'=50; 'sixty'=60; 'seventy'=70; 'eighty'=80; 'ninety'=90 }
+$wordUnits = @{ 'one'=1; 'two'=2; 'three'=3; 'four'=4; 'five'=5; 'six'=6; 'seven'=7; 'eight'=8; 'nine'=9 }
+function ConvertFrom-SpelledNumber($s){
+  $t = ([string]$s).ToLower().Trim()
+  if($t -match '^([a-z]+)-([a-z]+)$'){
+    if($wordTens.ContainsKey($Matches[1]) -and $wordUnits.ContainsKey($Matches[2])){
+      return $wordTens[$Matches[1]] + $wordUnits[$Matches[2]]
+    }
+    return -1
+  }
+  if($wordTens.ContainsKey($t)){ return $wordTens[$t] }
+  return -1
+}
+$tensRx = '(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)'
+$unitRx = '(?:one|two|three|four|five|six|seven|eight|nine)'
+$wordClaims = @(
+  @{ key='wings'; rx=('\b(' + $tensRx + '(?:-' + $unitRx + ')?)\s+(?:wings|floors)\b'); what='wings (spelled out)' }
 )
 
 # Volatile: reported with drift, bad only past this fraction. "bytes/s" is
@@ -203,6 +234,27 @@ foreach($rel in $live){
             # -Fix needs the exact span of the DIGITS, not of the whole match,
             # so the surrounding words are never touched.
             pos=$hit.Groups[1].Index; len=$hit.Groups[1].Length; fixable=$true
+          }
+        } elseif($Verbose_){
+          Write-Host ("  ok  {0}:{1}  {2} = {3}" -f $rel,($i+1),$c.what,$said)
+        }
+      }
+    }
+
+    # the same claims, written as words. Not -Fix-able: replacing "forty-five"
+    # with "46" would be worse than leaving it, so these are reported only and
+    # the sentence is rewritten by hand.
+    foreach($c in $wordClaims){
+      if(-not $m.ContainsKey($c.key)){ continue }
+      foreach($hit in [regex]::Matches($line, $c.rx, 'IgnoreCase')){
+        $said = ConvertFrom-SpelledNumber $hit.Groups[1].Value
+        if($said -lt 0){ continue }
+        $nChecked++
+        if($said -ne $m[$c.key]){
+          $bad += [pscustomobject]@{
+            file=$rel; line=($i+1); kind=$c.what
+            said=$said; actual=$m[$c.key]; text=$hit.Value
+            pos=$hit.Groups[1].Index; len=$hit.Groups[1].Length; fixable=$false
           }
         } elseif($Verbose_){
           Write-Host ("  ok  {0}:{1}  {2} = {3}" -f $rel,($i+1),$c.what,$said)

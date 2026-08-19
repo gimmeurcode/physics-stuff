@@ -11,20 +11,28 @@ const WING_SECTIONS = {
      this wing inherits their panels */
   partial: ['secDisplay','secField','secProbe','secDir','secDeriv','secDesc'],
   /* every other calculus and AP wing is entirely stage-driven */
-  vectors:  [], curves:   [], integral: [], ode:      [],
+  vectors:  [], curves:   [], integral: [], ode:      [], coords:   [],
   limits:   [], deriv:    [], series:   [],
-  algebra:  [], functions:[], trig:     [],
+  /* every proof-wing demo is a stage, so no field-engine panel applies */
+  proof:    [],
+  algebra:  [], functions:[], trig:     [], cnum:     [],
+  /* every discrete-maths demo is a stage, so no field-engine panel applies */
+  discrete: [],
   prob:     [], numer:    [],
   nuclear:  [], solid:    [], statmech: [], string:   [],
   linsys:   [], vecspace: [], eigen:    [],
   laplace:  [], systems:  [], phase:    [], complex: [],
   forms:    [], potential:[], thermo:   [], rotenergy:[],
+  /* every units demo is a stage, so no field-engine panel applies */
+  units:    [],
   mechanics:[], rotation: [], waves:    [], fluids:   [], optics:   [],
   em:      ['secDisplay','secField','secPhys','secProbe','secDeriv','secFlux','secCirc','secPart'],
   /* every relativity demo is a stage, so the field-engine panels never apply */
   relativity: [],
   circuit: ['secDisplay','secProbe'],
   fourier: ['secDisplay'],
+  /* every signal-processing demo is a stage, so no field-engine panel applies */
+  signal:  [],
   quantum: ['secDisplay','secField','secPhys','secProbe','secDir','secDeriv','secFlux','secCirc'],
   atom:    ['secDisplay','secField','secPhys','secProbe','secDeriv','secFlux']
 };
@@ -186,9 +194,13 @@ function updateStageLegend(){
 /* One long-form essay per wing. The table is a plain lookup so adding a wing is
    one line rather than another arm of a conditional chain. */
 const THEORY_BY_WING = {
+  proof:    () => [THEORY_PROOF,    'Proof, logic & sets — the mathematics, in full'],
   algebra:  () => [THEORY_ALGEBRA,  'Algebra — the mathematics, in full'],
   functions:() => [THEORY_FUNCTIONS,'Functions — the mathematics, in full'],
   trig:     () => [THEORY_TRIG,     'Trigonometry — the mathematics, in full'],
+  coords:   () => [THEORY_COORDS,   'Coordinate systems & Jacobians — the mathematics, in full'],
+  cnum:     () => [THEORY_CNUM,     'Complex numbers — the mathematics, in full'],
+  discrete: () => [THEORY_DISCRETE, 'Discrete mathematics & combinatorics — the mathematics, in full'],
   prob:     () => [THEORY_PROB,    'Probability & statistics — the mathematics, in full'],
   numer:    () => [THEORY_NUMER,   'Numerical methods — the mathematics, in full'],
   nuclear:  () => [THEORY_NUCLEAR, 'Nuclear physics — the mathematics, in full'],
@@ -209,6 +221,7 @@ const THEORY_BY_WING = {
   limits:   () => [THEORY_LIMITS,   'Limits & continuity — the mathematics, in full'],
   deriv:    () => [THEORY_DERIV,    'Derivatives & their applications — the mathematics, in full'],
   series:   () => [THEORY_SERIES,   'Sequences & series — the mathematics, in full'],
+  units:    () => [THEORY_UNITS,    'Units, dimensions & uncertainty — the mathematics, in full'],
   mechanics:() => [THEORY_MECH,     'Mechanics — the physics, in full'],
   rotation: () => [THEORY_ROT,      'Rotation — the physics, in full'],
   waves:    () => [THEORY_WAVES,    'Oscillations & waves — the physics, in full'],
@@ -224,6 +237,7 @@ const THEORY_BY_WING = {
   em:       () => [THEORY_EM,       "Maxwell's equations — the mathematics, in full"],
   circuit:  () => [THEORY_CIRCUIT,  'Circuit analysis — the mathematics, in full'],
   fourier:  () => [THEORY_FOURIER,  'Fourier analysis — the mathematics, in full'],
+  signal:   () => [THEORY_SIGNAL,   'Signal processing — the mathematics, in full'],
   relativity:() => [THEORY_REL,     'Relativity — the mathematics, in full']
 };
 function openTheory(){

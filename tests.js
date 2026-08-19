@@ -39,6 +39,26 @@ throws('rejects unbalanced paren', ()=>parse('sin(x'));
 throws('rejects unknown symbol',   ()=>parse('q+1'));
 throws('rejects bad arity',        ()=>parse('atan2(x)'));
 
+/* ---- mathNum: what counts as a number the reader typed --------------------
+   The shared implementation behind ctlParse and every engine that parses a
+   typed scenario. It must accept an expression and REFUSE a variable: the
+   engine's own x, y, z, r and rho all parse, and evaluated at the origin they
+   came back as a confident 0 — a numeric box silently reading a variable name
+   as zero, which reached every ctlParse site until 2026-08-19. */
+close('mathNum reads a plain number', mathNum('2.5'), 2.5);
+close('  a negative one with a real minus sign', mathNum('−0.75'), -0.75);
+close('  an expression', mathNum('pi/4'), Math.PI / 4, 1e-15);
+close('  with a unicode times', mathNum('2×3'), 6);
+close('  sqrt(2)', mathNum('sqrt(2)'), Math.SQRT2, 1e-15);
+close('  and scientific notation', mathNum('3e-4'), 3e-4, 1e-18);
+ok('mathNum refuses a bare variable', Number.isNaN(mathNum('x')));
+ok('  and every other one the engine knows', ['y','z','r','rho','t'].every(v => Number.isNaN(mathNum(v))));
+ok('  and an expression that depends on one', Number.isNaN(mathNum('2x+1')));
+ok('  and a word that is not a symbol at all', Number.isNaN(mathNum('bananas')));
+ok('  and an empty string', Number.isNaN(mathNum('')));
+ok('  and something that evaluates to infinity', Number.isNaN(mathNum('1/0')));
+ok('ctlParse is mathNum', typeof ctlParse === 'undefined' || ctlParse('pi') === mathNum('pi'));
+
 /* ============ supify: the display layer, and what it must not touch ============
    supify() is the single point where "^" and "_" become real notation, so every
    readout, chip, legend, control label, derivation rung and essay depends on it.
@@ -3600,6 +3620,1815 @@ ok('scalar mode div is the Laplacian', sf('x^2+y^2+z^2').laplacian !== null);
     const o = gwDisplace(0, 0, h, h);
     ok('the centre of the ring does not move', o.x === 0 && o.y === 0);
   })();
+
+  /* ---- 7 · a metric the reader supplies, and its geodesics (46a) ----------
+     Everything above this point knows in advance that it is looking at
+     Schwarzschild: rs, the photon sphere and the ISCO are written down. These
+     tests hand the engine arbitrary A and B and require it to LOCATE each of
+     them, then check the located answer against the formula it replaced.
+     Units throughout: G = c = 1, lengths in GM/c², so Schwarzschild is
+     A = 1 − 2/r with its horizon at exactly r = 2. */
+  (function(){
+    const SA = r => 1 - 2 / r, SB = r => 1 / (1 - 2 / r);
+
+    /* --- the numerical derivative the Christoffels rest on. Measured, because
+           everything downstream inherits its error and a balance argument that
+           was never run is a guess. --- */
+    (function(){
+      let worst = 0, at = 0;
+      for(const r of [2.5, 4, 10, 37, 120]){
+        const e = Math.abs(rlDeriv(SA, r) - 2 / (r * r)) / (2 / (r * r));
+        if(e > worst){ worst = e; at = r; }
+      }
+      ok('rlDeriv on 1 - 2/r is good to 1e-10 relative', worst < 1e-10, worst + ' at r=' + at);
+      ok('and it is exact on a constant', rlDeriv(() => 1, 7) === 0, rlDeriv(() => 1, 7));
+    })();
+
+    /* --- THE HORIZON, located rather than quoted. This is item 1's acceptance
+           test: Schwarzschild must give rs = 2GM/c², which in these units is
+           r = 2, to 1e-9. Bisection gets it to the last bit. --- */
+    (function(){
+      const H = rlHorizons(SA, 0.05, 60);
+      ok('Schwarzschild has exactly one horizon', H.count === 1, H.count);
+      close('and it is at r = 2, which is 2GM/c^2', H.outer, 2, 1e-14);
+      ok('the located horizon beats the 1e-9 acceptance by five orders',
+         Math.abs(H.outer - 2) < 1e-9, Math.abs(H.outer - 2));
+      /* and it is the same number the old engine writes down, for a real body */
+      close('rescaled to the Sun it is grRs to the last digit',
+         H.outer * GM_SUN / C2, grRs(GM_SUN), grRs(GM_SUN) * 1e-14);
+      /* flat spacetime has none, and saying so is the point of the control */
+      ok('Minkowski has no horizon at all', rlHorizons(() => 1, 0.05, 60).count === 0);
+      /* a charged hole has two, at 1 +/- sqrt(1 - Q^2) */
+      const q2 = 0.64, RN = r => 1 - 2 / r + q2 / (r * r);
+      const HR = rlHorizons(RN, 0.05, 60);
+      ok('Reissner-Nordstrom has two horizons', HR.count === 2, HR.count);
+      close('the inner at 1 - sqrt(1 - Q^2)', HR.inner, 1 - Math.sqrt(1 - q2), 1e-13);
+      close('the outer at 1 + sqrt(1 - Q^2)', HR.outer, 1 + Math.sqrt(1 - q2), 1e-13);
+      /* push the charge to extremality and the two merge: A = (1 - 1/r)^2 has a
+         DOUBLE root, which never changes sign. A scan looking for a crossing
+         would report no horizon at all, so the degenerate case is detected
+         separately — and this is the one an over-charged hole turns into. */
+      const EX = rlHorizons(r => 1 - 2 / r + 1 / (r * r), 0.05, 60);
+      ok('an extremal hole has no SIGN CHANGE anywhere', EX.count === 0, EX.count);
+      ok('but its degenerate horizon is still detected', EX.touch.length > 0,
+         EX.touch.length ? EX.touch[0].r : 'none');
+      if(EX.touch.length){
+        close('and it is located at r = 1, the double root', EX.touch[0].r, 1, 1e-6);
+        ok('where A is zero to round-off, not merely small', EX.touch[0].val < 1e-12, EX.touch[0].val);
+      }
+      /* over-charge it and there is no horizon of either kind — a naked
+         singularity, which is what cosmic censorship says cannot form */
+      const NK = rlHorizons(r => 1 - 2 / r + 2 / (r * r), 0.05, 60);
+      ok('and an over-charged hole has neither: the singularity is naked',
+         NK.count === 0 && NK.touch.every(t => t.val > 1e-6));
+      /* Schwarzschild's static band runs from the horizon out to infinity, and
+         Minkowski's is everything */
+      const bS = rlStaticBand(SA, 0.05, 60);
+      close('the static band of Schwarzschild starts at the horizon', bS.lo, 2, 1e-13);
+      ok('and is open at the far end', bS.open && bS.hi === 60);
+      ok('Minkowski is static everywhere', rlStaticBand(() => 1, 0.05, 60).lo === 0.05);
+    })();
+
+    /* --- Schwarzschild-de Sitter: two horizons of entirely different kinds,
+           checked against the closed-form trigonometric solution of the cubic
+           lam*r^3 - r + 2 = 0, which shares nothing with a bisection. --- */
+    (function(){
+      const lam = 1e-4, DS = r => 1 - 2 / r - lam * r * r;
+      const H = rlHorizons(DS, 0.05, 300);
+      ok('Schwarzschild-de Sitter has two horizons', H.count === 2, H.count);
+      /* r^3 + Pr + Q = 0 with three real roots: r_k = 2 sqrt(-P/3) cos(theta/3 - 2 pi k/3) */
+      const P = -1 / lam, Q = 2 / lam;
+      const m = 2 * Math.sqrt(-P / 3);
+      const th = Math.acos(3 * Q / (2 * P) * Math.sqrt(-3 / P)) / 3;
+      const rBH = m * Math.cos(th - 2 * Math.PI / 3), rC = m * Math.cos(th);
+      close('the black-hole horizon matches the closed-form cubic root', H.inner, rBH, 1e-11);
+      close('and so does the cosmological one', H.outer, rC, 1e-11);
+      ok('the black-hole horizon is pushed just outside 2 by Lambda',
+         H.inner > 2 && H.inner < 2.001, H.inner);
+      ok('and the cosmological one sits near sqrt(3/Lambda)', Math.abs(H.outer - 100) < 2, H.outer);
+      /* and the region a static observer can occupy is BETWEEN them, which is
+         the one place "outside the outermost horizon" is not */
+      const band = rlStaticBand(DS, 0.05, 300);
+      close('the static band starts at the black-hole horizon', band.lo, H.inner, 1e-11);
+      close('and ends at the cosmological one', band.hi, H.outer, 1e-11);
+      ok('so it is bounded on both sides, unlike Schwarzschild', !band.open);
+      ok('and A really is positive in the middle of it', DS(Math.sqrt(band.lo * band.hi)) > 0);
+    })();
+
+    /* --- THE PHOTON SPHERE, from A'r = 2A. The old engine writes 1.5 rs. --- */
+    (function(){
+      const P = rlPhotonR(SA, 0.05, 60);
+      close('the photon sphere of Schwarzschild is at r = 3', P.outer, 3, 1e-11);
+      close('which is the 1.5 rs the old engine quotes',
+         P.outer * GM_SUN / C2, grPhotonSphere(grRs(GM_SUN)), grPhotonSphere(grRs(GM_SUN)) * 1e-11);
+      /* and it does NOT move when a cosmological constant is added: the Lambda
+         terms cancel out of A'r - 2A exactly. Worth a test because it is not
+         obvious and the panel prints it. */
+      const lam = 1e-4;
+      close('adding Lambda leaves the photon sphere at exactly 3',
+         rlPhotonR(r => 1 - 2 / r - lam * r * r, 0.05, 200).outer, 3, 1e-9);
+      /* charge does move it, to [3 + sqrt(9 - 8Q^2)]/2 */
+      const q2 = 0.64;
+      close('but charge moves it inward',
+         rlPhotonR(r => 1 - 2 / r + q2 / (r * r), 0.05, 60).outer,
+         (3 + Math.sqrt(9 - 8 * q2)) / 2, 1e-10);
+      ok('Minkowski has no photon sphere', !Number.isFinite(rlPhotonR(() => 1, 0.05, 60).outer));
+    })();
+
+    /* --- THE ISCO. Route 1 is the minimum of L^2(r) over circular orbits.
+           Route 2 does not differentiate anything: it puts a circular orbit
+           down, nudges it, INTEGRATES, and asks whether the wobble stays
+           bounded. The two share only A. --- */
+    (function(){
+      const I = rlIscoR(SA, 2.05, 60);
+      close('the ISCO of Schwarzschild is at r = 6', I.r, 6, 1e-6);
+      ok('which is the 3 rs the old engine quotes',
+         Math.abs(I.r * GM_SUN / C2 - grISCO(grRs(GM_SUN))) < grISCO(grRs(GM_SUN)) * 1e-6);
+      close('and the circular orbit there has L^2 = 12', rlCircularEL(SA, 6, 1).Lsq, 12, 1e-9);
+      ok('Schwarzschild has no OUTER stability edge', !Number.isFinite(I.rOut), I.rOut);
+
+      /* route 2 — stability by integration. A circular orbit perturbed by 1e-6
+         either oscillates (stable) or runs away (unstable); the epicyclic
+         frequency is sqrt((1 - 6/r)/r^3), so it VANISHES at the ISCO itself.
+         That is what "marginally stable" means, and it is why this route can
+         only ever bracket the ISCO rather than locate it — the thing being
+         measured has infinite period exactly where the answer is. */
+      const wobble = r => {
+        const c = rlCircularEL(SA, r, 1);
+        const y = rlGeoInit(SA, SB, r * (1 + 1e-6), c.E, c.L, 1, 1);
+        const g = rlGeoRun(SA, SB, y, 0.05, 14000, { rStop: 2.05, rEsc: 400 });
+        return Math.max(Math.abs(g.rMax - r), Math.abs(g.rMin - r)) / r;
+      };
+      const inside = wobble(5.5), outside = wobble(6.5);
+      ok('a circular orbit inside the ISCO runs away when nudged', inside > 1e-3, inside);
+      ok('and one outside it merely oscillates', outside < 1e-4, outside);
+      ok('so the two routes bracket the same radius', 5.5 < I.r && I.r < 6.5);
+
+      /* Schwarzschild-de Sitter has BOTH edges: far enough out the cosmological
+         term destabilises orbits again, so the stable band is bounded. Taking
+         "the outermost stationary point of L^2" would have returned that outer
+         edge and called it the ISCO. */
+      const lam = 1e-4, DS = r => 1 - 2 / r - lam * r * r;
+      const ID = rlIscoR(DS, 2.05, 90);
+      ok('Schwarzschild-de Sitter has an inner AND an outer stability edge',
+         ID.mins.length === 1 && ID.maxs.length === 1, ID.mins.length + ' min, ' + ID.maxs.length + ' max');
+      ok('and the ISCO is the inner one', ID.r < ID.rOut, ID.r + ' < ' + ID.rOut);
+      /* both against the algebraic condition r A A" + 3 A A' = 2 r A'^2, whose
+         Lambda form is the quartic 15 lam r^3 - 4 lam r^4 + r - 6 = 0 */
+      const quart = r => -4 * lam * r * r * r * r + 15 * lam * r * r * r + r - 6;
+      const bis = (f, a, b) => { let fa = f(a); for(let i = 0; i < 200; i++){ const m = 0.5 * (a + b); if(m <= a || m >= b) break; const fm = f(m); if((fm < 0) === (fa < 0)){ a = m; fa = fm; } else b = m; } return 0.5 * (a + b); };
+      close('the ISCO matches the algebraic condition', ID.r, bis(quart, 6, 7), 1e-5);
+      close('and so does the outer edge', ID.rOut, bis(quart, 10, 80), 1e-5);
+      /* Lambda pushes the ISCO OUT, which is the sign of a repulsive term */
+      ok('Lambda pushes the ISCO outward from 6', ID.r > 6, ID.r);
+      /* B does not enter a circular orbit at all: only A does */
+      close('deleting the space curvature leaves the ISCO where it was',
+         rlIscoR(SA, 2.05, 60).r, I.r, 1e-12);
+      ok('Minkowski has no circular orbit anywhere',
+         !Number.isFinite(rlCircularEL(() => 1, 10, 1).L));
+    })();
+
+    /* --- A*B = 1: the caption this wing has printed since it was written, now
+           a measurement. True of every vacuum and electrovacuum solution,
+           false the moment you invent a metric. --- */
+    (function(){
+      ok('A*B = 1 for Schwarzschild, to round-off',
+         rlABGap(SA, SB, 2.1, 60).gap < 1e-14, rlABGap(SA, SB, 2.1, 60).gap);
+      ok('and for Reissner-Nordstrom, which is also a vacuum of its own kind',
+         rlABGap(r => 1 - 2 / r + 0.64 / (r * r), r => 1 / (1 - 2 / r + 0.64 / (r * r)), 1.7, 60).gap < 1e-13);
+      /* keep the time curvature and flatten space, and the product is 1 - 2/r */
+      const G = rlABGap(SA, () => 1, 2.1, 60);
+      ok('but not when space is flattened by hand', G.gap > 0.01, G.gap);
+      close('the gap is exactly 2/r at the innermost sample', G.gap, 2 / G.r, 1e-12);
+    })();
+
+    /* --- the embedding, against Flamm's closed form. rs = 2 in these units,
+           so grFlammZ's 2 sqrt(rs (r - rs)) is 2 sqrt(2(r-2)). --- */
+    (function(){
+      const E = rlEmbedZ(SB, 2, 42, 800);
+      let worst = 0, at = 0, absw = 0, outer = 0;
+      for(let i = 1; i < E.r.length; i++){
+        const want = grFlammZ(E.r[i], 2);
+        const e = Math.abs(E.z[i] - want) / Math.max(1e-9, want);
+        absw = Math.max(absw, Math.abs(E.z[i] - want));
+        if(E.r[i] > 2.01) outer = Math.max(outer, e);
+        if(e > worst){ worst = e; at = E.r[i]; }
+      }
+      ok('the embedded profile matches Flamm to 1e-8 absolute, everywhere', absw < 1e-8, absw);
+      ok('and to 1e-9 relative away from the horizon itself', outer < 1e-9, outer);
+      /* The whole discrepancy is ONE constant offset picked up in the endpoint
+         panel: every INCREMENT of z matches Flamm's to round-off, which is the
+         sharper statement and the one that says the quadrature is right. */
+      let inc = 0;
+      for(let i = 2; i < E.r.length; i++){
+        const want = grFlammZ(E.r[i], 2) - grFlammZ(E.r[i - 1], 2);
+        inc = Math.max(inc, Math.abs((E.z[i] - E.z[i - 1]) - want) / want);
+      }
+      ok('and every increment of it is exact to 1e-12 relative', inc < 1e-12, inc);
+      /* The worst relative error is at the FIRST sample and is round-off, not
+         truncation: B = 1/(1-2/r) is evaluated a hair outside its own pole, and
+         1 - 2/r there is a difference of two numbers near 1, so it keeps only
+         the digits the cancellation leaves. Nudging the endpoint by delta costs
+         eps/delta in cancellation and delta in the limit, which balance at
+         sqrt(eps) -- and sqrt(eps) is what this is. More panels cannot move it;
+         only more precision could. */
+      ok('with a sqrt(eps) floor at the endpoint, which panels cannot lower',
+         worst < 1e-7 && at < 2.001, worst + ' at r=' + at);
+      ok('no sample of it was imaginary', E.imag === 0 && E.bad === 0);
+      /* a metric that squeezes rather than stretches has no Euclidean
+         embedding, and the count says so instead of drawing zeros */
+      const F = rlEmbedZ(r => 0.5, 1, 20, 200);
+      ok('a metric with B < 1 reports that it cannot be embedded', F.imag > 0, F.imag);
+      /* flat space embeds as a flat disc */
+      const P = rlEmbedZ(() => 1, 1, 20, 200);
+      ok('and Minkowski embeds as a plane', P.z[P.z.length - 1] === 0);
+    })();
+
+    /* --- the two routes to a bound orbit's turning points. rlApsidesEL picks
+           E and L from the apsides; rlTurnPoints recovers the apsides from E
+           and L through the potential, with no integration in either. --- */
+    (function(){
+      const el = rlApsidesEL(SA, 20, 40, 1);
+      ok('a bound orbit between r = 20 and r = 40 exists', el.E > 0 && el.E < 1, el.E);
+      const T = rlTurnPoints(SA, el.E, el.L, 1, 2.05, 200);
+      /* THREE roots, not two, and the third is not an error. V² rises to the
+         centrifugal barrier and then falls back to zero at the horizon, so
+         every bound orbit has an inner turning point on the far side of the
+         barrier as well — the plunge branch, which the orbit cannot reach
+         because it would have to cross the barrier to get there. The two the
+         orbit actually uses are the outer pair. */
+      ok('the potential returns three turning points, the barrier splitting them',
+         T.length === 3, T.length);
+      close('the pericentre is the middle one', T[1], 20, 1e-9);
+      close('and the apocentre the outermost', T[2], 40, 1e-9);
+      ok('with the third stranded inside the centrifugal barrier',
+         T[0] > 2 && T[0] < 20, T[0]);
+      ok('and E < 1, which is what BOUND means', el.E < 1, el.E);
+      /* flat spacetime binds nothing, and the engine must say so rather than
+         return a number: A is constant, so the numerator of L^2 vanishes */
+      ok('Minkowski has no bound orbit and returns NaN, not a number',
+         !Number.isFinite(rlApsidesEL(() => 1, 20, 40, 1).E));
+      /* nor is an apsis pair inside the horizon a bound orbit */
+      ok('and neither does a pair of radii inside the horizon',
+         !Number.isFinite(rlApsidesEL(SA, 1.2, 1.8, 1).E));
+      /* THE BARRIER. V²(r₁) = V²(r₂) = E² is necessary and not sufficient: the
+         same two conditions hold when the radii bracket a barrier rather than a
+         well, and then the region between is forbidden. Schwarzschild cannot
+         produce it — which is why the formula looked finished — but adding a
+         cosmological term does, and the engine returned a plausible E and L for
+         one until 2026-08-18, whereupon the "orbit" escaped to r = 80. */
+      (function(){
+        const lam = 1e-4, DS = r => 1 - 2 / r - lam * r * r;
+        const bad = rlApsidesEL(DS, 14, 20, 1);
+        ok('two radii bracketing a barrier are refused, not integrated',
+           !Number.isFinite(bad.E), bad.E);
+        ok('and the refusal names the shape that was found', bad.why === 'barrier', bad.why);
+        /* the necessary condition really does hold there, or this would be
+           passing for the wrong reason: build V² from the L the old formula
+           would have returned and check both ends agree */
+        const den = DS(14) / 196 - DS(20) / 400, L = Math.sqrt((DS(20) - DS(14)) / den);
+        close('while V² really does match at both of them',
+           rlVsq(DS, 14, L, 1), rlVsq(DS, 20, L, 1), 1e-12);
+        ok('and rises above that value in between, which is what forbids it',
+           rlVsq(DS, 17, L, 1) > rlVsq(DS, 14, L, 1),
+           rlVsq(DS, 17, L, 1) + ' vs ' + rlVsq(DS, 14, L, 1));
+        /* the same metric DOES have bound orbits lower down, so the guard has
+           not simply refused everything */
+        const good = rlApsidesEL(DS, 8, 12, 1);
+        ok('but a well in the same metric is still an orbit', Number.isFinite(good.E), good.why);
+        ok('and Schwarzschild is unaffected by the guard',
+           Number.isFinite(rlApsidesEL(SA, 20, 40, 1).E));
+      })();
+    })();
+
+    /* --- ROUTE A: the geodesic equation itself, and item 1's second
+           acceptance test. E and L are NEVER imposed by rlGeoRun; their drift
+           over ten orbits is therefore a measurement of the integration. --- */
+    (function(){
+      const el = rlApsidesEL(SA, 20, 40, 1);
+      const y0 = rlGeoInit(SA, SB, 40, el.E, el.L, 1, -1);
+      const g = rlGeoRun(SA, SB, y0, 0.25, 56000, { rStop: 2.05, rEsc: 400 });
+      const per = rlPeriShift(g);
+      ok('the track completes at least ten orbits', per.orbits >= 10, per.orbits);
+      ok('E drifts by less than 1e-8 over them', g.driftE < 1e-8, g.driftE);
+      ok('and L by less than 1e-8', g.driftL < 1e-8, g.driftL);
+      ok('and the normalisation, which is not imposed either', g.driftNorm < 1e-8, g.driftNorm);
+      /* the turning points the integration WENT to, against the ones the
+         potential predicted. Two routes, sharing only A. rMin is a minimum over
+         SAMPLES, so it can only ever sit at or outside the true turn — the
+         inequality is exact and the gap is the step size, not an error. */
+      ok('the track never goes inside the pericentre the potential predicted',
+         g.rMin >= 20 - 1e-12, g.rMin);
+      close('and reaches it to within the sample spacing', g.rMin, 20, 1e-3);
+      close('and turns at the apocentre it started from', g.rMax, 40, 1e-9);
+      /* WHICH error is this? J9's rule: halve h. Truncation falls by 2^4 for
+         RK4; round-off does not move. Both regimes are visible here, and the
+         test asserts both — the drift is truncation down to about h = 1, and
+         below h = 0.5 it has hit a floor that more steps cannot lower. */
+      const runAt = h => rlGeoRun(SA, SB, y0, h, Math.round(4000 / h), { rStop: 2.05, rEsc: 400 }).driftE;
+      const d4 = runAt(4), d2 = runAt(2), d1 = runAt(1), dh = runAt(0.5), dq = runAt(0.25);
+      ok('halving the step cuts the drift like h^4, so it is truncation',
+         d4 / d2 > 8 && d4 / d2 < 32 && d2 / d1 > 8 && d2 / d1 < 32,
+         'ratios ' + (d4 / d2).toFixed(2) + ', ' + (d2 / d1).toFixed(2));
+      ok('and below h = 0.5 it stops falling, which is the round-off floor',
+         dh / dq < 8, 'ratio ' + (dh / dq).toFixed(2) + ' at drift ' + dq);
+      /* and the orbit does NOT close, which is the whole of Mercury */
+      ok('the orbit does not close: it precesses forward', per.precession > 0, per.precession);
+      ok('and every orbit precesses by the same amount', per.spread < 1e-4 * per.apsidal,
+         per.spread / per.apsidal);
+    })();
+
+    /* --- the precession, against the two engines that already compute it: the
+           first-order closed form, and the u-equation integrator in 46, which
+           uses different variables and a different independent parameter. --- */
+    (function(){
+      const r1 = 20, r2 = 60, a = 0.5 * (r1 + r2), e = (r2 - r1) / (r2 + r1);
+      const el = rlApsidesEL(SA, r1, r2, 1);
+      const y0 = rlGeoInit(SA, SB, r2, el.E, el.L, 1, -1);
+      const g = rlGeoRun(SA, SB, y0, 0.1, 60000, { rStop: 2.05, rEsc: 400 });
+      const per = rlPeriShift(g);
+      ok('the orbit precesses through at least two perihelia', per.orbits >= 2, per.orbits);
+      /* The first-order formula 6 pi GM / c^2 a(1-e^2) is 6 pi / a(1-e^2) in
+         these units. At a = 40 the integrated answer is 18% LARGER, and that is
+         not an error in either: the formula keeps one term of an expansion in
+         GM/c^2 a(1-e^2), which here is 0.1. The test is that the discrepancy
+         SHRINKS with the orbit, so it is the expansion and not a mistake --
+         measured at two sizes rather than tolerated at one. */
+      const first = 6 * Math.PI / (a * (1 - e * e));
+      const dev = Math.abs(per.precession - first) / first;
+      ok('the first-order closed form is within 20% at a = 40', dev < 0.2, dev);
+      (function(){
+        const R1 = 200, R2 = 600, aw = 400, ew = 0.5;
+        const ew2 = rlApsidesEL(SA, R1, R2, 1);
+        const gw = rlGeoRun(SA, SB, rlGeoInit(SA, SB, R2, ew2.E, ew2.L, 1, -1),
+                            2, 120000, { rStop: 2.05, rEsc: 4000 });
+        const pw = rlPeriShift(gw);
+        const fw = 6 * Math.PI / (aw * (1 - ew * ew));
+        const devw = Math.abs(pw.precession - fw) / fw;
+        ok('and a ten-times wider orbit is inside 3% of it', devw < 0.03, devw);
+        ok('so the gap is the expansion, and it shrinks with the orbit',
+           devw < dev / 3, dev + ' at a=40, ' + devw + ' at a=400');
+      })();
+      /* the u-equation engine in 46, in SI, with GM chosen so that GM/c^2 = 1
+         and the metre IS the geometric mass unit. Its L is r^2 dphi/dtau in SI,
+         which is L_geometric * GM / c = L * c for this GM. */
+      const GM = C2, LSI = el.L * C_SI;
+      const res = grOrbitIntegrate(GM, LSI, 1 / r2, 0, 2 * Math.PI / 20000, 60000, true);
+      const swept = grPeriapsisAngle(res) - 2 * Math.PI;
+      close('and it agrees with the u-equation engine to 1e-4 relative',
+         per.precession, swept, Math.abs(swept) * 1e-4);
+      /* Flatten space and keep the time curvature, and part of the precession
+         goes with it — the same deletion that halves the light deflection. No
+         FRACTION is asserted: the split between the time and space parts of a
+         metric is coordinate-dependent (the textbook 1/3 is a statement about
+         ISOTROPIC coordinates, and these are Schwarzschild's), so what is
+         claimed is the sign and the size, and the ratio is printed. */
+      const gN = rlGeoRun(SA, () => 1, rlGeoInit(SA, () => 1, r2, el.E, el.L, 1, -1),
+                          0.1, 60000, { rStop: 2.05, rEsc: 400 });
+      const perN = rlPeriShift(gN);
+      ok('with space flattened the precession is smaller, but still there',
+         perN.precession > 0 && perN.precession < 0.8 * per.precession,
+         'ratio ' + (perN.precession / per.precession).toFixed(4));
+    })();
+
+    /* ======================= ITEM 2 · rlOrbit ==============================
+       The apsidal angle by QUADRATURE, the control that proves the quadrature
+       does not manufacture an advance, and the two guards that were missing
+       from rlApsidesEL until the measurement went looking. ------------------ */
+
+    /* --- ROUTE B, and its agreement with ROUTE A. rlApsidalQuad integrates
+           dφ/dr between the apsides; rlGeoRun marches the geodesic equation and
+           rlPeriShift reads pericentres out of the track. They share A, B, E
+           and L and nothing else — no quadrature rule, no independent variable,
+           no stopping condition. Tolerance is 3e-9 relative, which is the
+           WORST measured over these four (2026-08-18); the best is 1e-12. --- */
+    (function(){
+      const cases = [[20, 41.538461538461540], [8, 32], [6.5, 12.071428571428571],
+                     [400, 2800]];
+      for(const [r1, r2] of cases){
+        const el = rlApsidesEL(SA, r1, r2, 1);
+        ok('rlApsidalQuad: apsides ' + r1 + '/' + fmtSig(r2, 6) + ' admit an orbit',
+           Number.isFinite(el.E) && Number.isFinite(el.L), el.why);
+        const B2 = 2 * rlApsidalQuad(SA, SB, r1, r2, el.E, el.L, 1, 64);
+        const plan = rlOrbitPlan(r1, r2, el.L, 6, 1400);
+        const g = rlGeoRun(SA, SB, rlGeoInit(SA, SB, r2, el.E, el.L, 1, -1),
+                           plan.h, plan.steps, { rStop: 2.001, rEsc: r2 * 1.25 });
+        const per = rlPeriShift(g);
+        ok('and the geodesic reaches several pericentres there', per.orbits >= 2, per.orbits);
+        close('quadrature and integrated track agree on the apsidal angle at r1 = ' + r1,
+           per.apsidal, B2, Math.abs(B2) * 3e-9);
+        ok('and both say the orbit does not close', per.precession > 0 && B2 - 2 * Math.PI > 0,
+           per.precession + ' / ' + (B2 - 2 * Math.PI));
+      }
+      /* the substitution is what makes this converge at all: the integrand has
+         an inverse-square-root singularity at BOTH ends, and after r = c + b
+         sin θ it is analytic. Sixteen panels is already converged — so the test
+         is that MORE panels change nothing, which is the signature of spectral
+         convergence rather than a rule that is still improving. */
+      const el = rlApsidesEL(SA, 20, 41.538461538461540, 1);
+      const q16 = rlApsidalQuad(SA, SB, 20, 41.538461538461540, el.E, el.L, 1, 16);
+      const q64 = rlApsidalQuad(SA, SB, 20, 41.538461538461540, el.E, el.L, 1, 64);
+      const q256 = rlApsidalQuad(SA, SB, 20, 41.538461538461540, el.E, el.L, 1, 256);
+      close('16 panels is already converged to 1e-9', q16, q64, 1e-9);
+      ok('and 256 does not improve on 64 — past convergence it accumulates round-off',
+         Math.abs(q256 - q64) > 0 && Math.abs(q256 - q64) < 1e-8,
+         Math.abs(q256 - q64));
+      ok('apsides in the wrong order return NaN rather than a signed area',
+         !Number.isFinite(rlApsidalQuad(SA, SB, 40, 20, 1, 1, 1)));
+      ok('and so does a null geodesic, which has no L to divide by',
+         !Number.isFinite(rlApsidalQuad(SA, SB, 20, 40, 1, 0, 0)));
+    })();
+
+    /* --- THE CONTROL. Everything above is a small difference from 2π, so the
+           question that cannot be answered from inside is whether the machinery
+           MANUFACTURES one. The Newtonian orbit's apsidal angle is exactly π
+           for every pair of apsides — the inverse square is one of only two
+           force laws whose bound orbits close — so run the identical quadrature
+           on it and the answer must be π.
+
+           And WHICH error is left? J9's rule is to halve h: truncation falls,
+           round-off does not. More panels do not improve this, so what is left
+           is the endpoint cancellation in E² − V² and nothing else. The test
+           asserts both halves, because a floor that was never measured is a
+           guess. --- */
+    (function(){
+      for(const [r1, r2] of [[20, 40], [200, 300], [5, 7], [1, 100], [400, 2800]]){
+        const a = rlKeplerApsidal(r1, r2);
+        close('the Newtonian orbit closes exactly: apsidal angle at ' + r1 + '/' + r2 + ' is π',
+           a, Math.PI, 1e-10);
+      }
+      const k64 = rlKeplerApsidal(20, 40, 64), k256 = rlKeplerApsidal(20, 40, 256);
+      const e64 = Math.abs(k64 - Math.PI), e256 = Math.abs(k256 - Math.PI);
+      ok('and quadrupling the panels does NOT reduce the error, so it is round-off',
+         e256 > e64 / 4, 'e64 = ' + e64.toExponential(2) + ', e256 = ' + e256.toExponential(2));
+      ok('and the residue is under a billionth of the smallest precession the sliders reach',
+         e64 / rlPrecessWeak(600, 3400) < 1e-9,
+         e64.toExponential(2) + ' against ' + rlPrecessWeak(600, 3400).toExponential(2));
+      ok('reversed apsides are refused rather than integrated backwards',
+         !Number.isFinite(rlKeplerApsidal(40, 20)));
+    })();
+
+    /* --- the first-order formula, which is item 2's acceptance test. It is an
+           EXPANSION in GM/c²p, so the claim is not that it is right: it is that
+           the gap shrinks like 1/p and is inside 1% by p = 700. Both ends are
+           measured. --- */
+    (function(){
+      close('p = a(1−e²) = 2r₁r₂/(r₁+r₂), computed both ways',
+         rlSemiLatus(20, 60), 40 * (1 - 0.5 * 0.5), 1e-13);
+      close('and 6π/p is the first-order precession in these units',
+         rlPrecessWeak(20, 60), 6 * Math.PI / 30, 1e-15);
+      const meas = (r1, e) => {
+        const r2 = r1 * (1 + e) / (1 - e);
+        const el = rlApsidesEL(SA, r1, r2, 1);
+        return { got: 2 * rlApsidalQuad(SA, SB, r1, r2, el.E, el.L, 1, 64) - 2 * Math.PI,
+                 want: rlPrecessWeak(r1, r2), p: r1 * (1 + e) };
+      };
+      const w = meas(400, 0.75), m = meas(20, 0.35);
+      ok('Schwarzschild at p = 700 matches 6πGM/c²a(1−e²) to better than 1%',
+         Math.abs(w.got / w.want - 1) < 0.01, (w.got / w.want - 1));
+      ok('and at p = 27 it is out by more than 20%, which is the expansion failing',
+         m.got / m.want > 1.2, m.got / m.want);
+      ok('the true precession is always the LARGER — the formula is a lower bound here',
+         w.got > w.want && m.got > m.want);
+      /* the gap falls like 1/p: quadruple p and the deviation should quarter */
+      const a1 = meas(150, 0.3), a4 = meas(600, 0.3);
+      const d1 = a1.got / a1.want - 1, d4 = a4.got / a4.want - 1;
+      ok('and the deviation falls like 1/p, so it is the next order and not a mistake',
+         d1 / d4 > 3 && d1 / d4 < 5, 'ratio ' + (d1 / d4).toFixed(3) +
+         ' for a ' + (a4.p / a1.p).toFixed(1) + '× wider orbit');
+    })();
+
+    /* --- THE TWO GUARDS. V²(r₁) = V²(r₂) = E² with a well between them is
+           STILL not a bound orbit, and the two ways it fails are local — they
+           are statements about the slope at each apsis, invisible to any amount
+           of sampling in between, which is why the 2026-08-18 interior scan
+           caught neither. Both were found by driving route A against route B
+           and asking why the integrator disagreed. --- */
+    (function(){
+      const DS = r => 1 - 2 / r - r * r / 10000;
+      /* (a) the apocentre AT THE TOP of the outer barrier. Every condition the
+             engine tested before the wall guard is satisfied here, and the test
+             checks that explicitly — otherwise it would be passing for the
+             wrong reason and would still pass with the guard removed. */
+      const esc = rlApsidesEL(DS, 10, 13.529411764705882, 1);
+      ok('an apocentre at the top of the outer barrier is refused',
+         !Number.isFinite(esc.E), esc.E);
+      ok('and the refusal names it', esc.why === 'escape', esc.why);
+      ok('and reports how far the wall was from rising', esc.wallOut < 0, esc.wallOut);
+      (function(){
+        /* rebuild E and L the way the pre-guard engine did, and show that every
+           old condition passes — this is the corrupt-once check, written as an
+           assertion rather than an edit */
+        const r1 = 10, r2 = 13.529411764705882;
+        const den = DS(r1) / (r1 * r1) - DS(r2) / (r2 * r2);
+        const Lsq = (DS(r2) - DS(r1)) / den, L = Math.sqrt(Lsq);
+        const Esq = DS(r1) * (1 + Lsq / (r1 * r1));
+        ok('...though L² is positive there, so the old L-guard would have passed it', Lsq > 0, Lsq);
+        close('...and V² really does equal E² at both apsides',
+           rlVsq(DS, r1, L, 1), rlVsq(DS, r2, L, 1), 1e-12);
+        let vmin = Infinity;
+        for(let i = 1; i < 24; i++) vmin = Math.min(vmin, rlVsq(DS, r1 + (r2 - r1) * i / 24, L, 1));
+        ok('...and the interior IS a well, so the barrier guard would have passed it too',
+           vmin < Esq, vmin + ' vs ' + Esq);
+        ok('...while the potential outside the apocentre FALLS, which is the whole defect',
+           rlVsq(DS, r2 * 1.02, L, 1) < Esq, rlVsq(DS, r2 * 1.02, L, 1) - Esq);
+      })();
+      /* (b) a pericentre with no wall under it. This half is not exotic:
+             SCHWARZSCHILD does it for every pericentre inside the unstable
+             circular orbit of that L, and rlMetric's own slider reached it. */
+      const plunge = rlApsidesEL(SA, 5.5, 6.7222222222222222, 1);
+      ok('a pericentre inside the unstable circular orbit is refused', !Number.isFinite(plunge.E), plunge.E);
+      ok('and that refusal is named separately, being different physics',
+         plunge.why === 'plunge', plunge.why);
+      ok('and it is Schwarzschild doing it, not some invented metric',
+         5.5 < rlIscoR(SA, 2.05, 60).r, rlIscoR(SA, 2.05, 60).r);
+      /* (c) the guards have not simply refused everything */
+      for(const [A, r1, r2, nm] of [[SA, 20, 41.538461538461540, 'Schwarzschild'],
+                                    [SA, 8, 32, 'Schwarzschild, deep'],
+                                    [DS, 8, 12, 'Schwarzschild–de Sitter'],
+                                    [DS, 7, 13, 'Schwarzschild–de Sitter, wider']]){
+        const el = rlApsidesEL(A, r1, r2, 1);
+        ok('a genuine well is still an orbit: ' + nm + ' at ' + r1 + '/' + r2,
+           Number.isFinite(el.E) && el.wallOut > 0 && el.wallIn > 0, el.why);
+      }
+      /* (d) and the margins are ordered: the deeper into the well, the further
+             from marginal. dS 12/12.49 is 3e-8 from being marginally bound. */
+      const tight = rlApsidesEL(DS, 12, 12.489795918367347, 1);
+      ok('an orbit within 1e-7 of marginally bound is refused rather than integrated',
+         !Number.isFinite(tight.E), tight.wallOut);
+    })();
+
+    /* --- the step rule. Sizing h by the Newtonian radial period alone is what
+           let four presets through with a plunging or escaping track while
+           route B reported a perfectly good precession: a relativistic orbit
+           spends most of its ANGLE at pericentre, and that is where the
+           sampling has to be. rlOrbitPlan bounds both, and the test is that the
+           angular bound is the one that binds on a whirl and that route A then
+           agrees with route B. --- */
+    (function(){
+      const DS = r => 1 - 2 / r - r * r / 10000, DSB = r => 1 / DS(r);
+      const el = rlApsidesEL(DS, 8, 12, 1);
+      const plan = rlOrbitPlan(8, 12, el.L, 6, 1400);
+      const T = 2 * Math.PI * Math.pow(10, 1.5);
+      ok('on a whirl orbit the ANGULAR bound is the one that binds',
+         plan.h < T / 1400, plan.h + ' vs the radial rule ' + (T / 1400));
+      const g = rlGeoRun(DS, DSB, rlGeoInit(DS, DSB, 12, el.E, el.L, 1, -1),
+                         plan.h, plan.steps, { rStop: 2.001, rEsc: 15 });
+      const per = rlPeriShift(g);
+      ok('and the track then stays bound instead of dropping through the horizon',
+         g.stop === '' && per.orbits >= 2, g.stop + ' / ' + per.orbits);
+      close('and lands on the quadrature to 1e-8 relative',
+         per.apsidal, 2 * rlApsidalQuad(DS, DSB, 8, 12, el.E, el.L, 1, 64),
+         Math.abs(per.apsidal) * 1e-8);
+      ok('this orbit whirls: it advances by more than a full turn between pericentres',
+         per.precession > 2 * Math.PI, per.precession);
+    })();
+
+    /* --- deleting B, in these coordinates, costs exactly a third. What is
+           asserted is the LIMIT for the metric A = 1−2/r, B = 1 — a different
+           spacetime, whose orbits are compared at the same AREAL semi-latus
+           rectum, so the ratio is a fact about the two geometries and not about
+           a choice of chart. What is NOT asserted, here or in the panel, is
+           that two-thirds of Schwarzschild's precession is "caused by" curved
+           time: that split is coordinate-dependent, and in isotropic
+           coordinates the same deletion leaves a third instead. --- */
+    (function(){
+      const TB = () => 1;
+      const ratio = (r1, e) => {
+        const r2 = r1 * (1 + e) / (1 - e);
+        const s = rlApsidesEL(SA, r1, r2, 1), n = rlApsidesEL(SA, r1, r2, 1);
+        return (2 * rlApsidalQuad(SA, TB, r1, r2, n.E, n.L, 1, 64) - 2 * Math.PI) /
+               (2 * rlApsidalQuad(SA, SB, r1, r2, s.E, s.L, 1, 64) - 2 * Math.PI);
+      };
+      const near = ratio(50, 0.3), far = ratio(20000, 0.3);
+      ok('flattening space leaves two-thirds of the precession, in the weak-field limit',
+         Math.abs(far - 2 / 3) < 2e-4, far);
+      ok('and it approaches that limit from above as the orbit widens',
+         near > far && far > 2 / 3, near + ' → ' + far);
+      /* and it takes an ECCENTRIC orbit to see any of this. A circular one is
+         identical in the two metrics — not by an argument about which
+         coefficient appears in rlCircularEL, but measured through rlGeoRun,
+         which consumes B and would notice. */
+      (function(){
+        const c = rlCircularEL(SA, 12, 1);
+        for(const [Bf, nm] of [[SB, 'Schwarzschild'], [TB, 'with space flattened']]){
+          const g = rlGeoRun(SA, Bf, rlGeoInit(SA, Bf, 12, c.E, c.L, 1, 1),
+                             0.2, 40000, { rStop: 2.05, rEsc: 400 });
+          ok('a circular orbit at r = 12 stays circular ' + nm,
+             Math.abs(g.rMax - 12) < 1e-6 && Math.abs(g.rMin - 12) < 1e-6,
+             g.rMin + ' … ' + g.rMax);
+        }
+      })();
+    })();
+
+    /* --- the control that matters most: a geodesic of Minkowski is a STRAIGHT
+           LINE, and the integrator has no way of knowing that in advance. --- */
+    (function(){
+      const F = () => 1;
+      const E = 1.4, L = 12;
+      const y0 = rlGeoInit(F, F, 30, E, L, 1, -1);
+      const g = rlGeoRun(F, F, y0, 0.2, 20000, { rStop: 0.5, rEsc: 500 });
+      ok('the flat-space track runs', g.n > 1000, g.n);
+      ok('E is conserved exactly, there being nothing to get wrong', g.driftE < 1e-13, g.driftE);
+      /* collinearity: cross((P_i - P_0), (P_end - P_0)) / |P_end - P_0| is the
+         perpendicular distance of each sample from the chord */
+      const px = i => g.r[i] * Math.cos(g.ph[i]), py = i => g.r[i] * Math.sin(g.ph[i]);
+      const n = g.n, x0 = px(0), y0p = py(0), dx = px(n) - x0, dy = py(n) - y0p;
+      const len = Math.hypot(dx, dy);
+      let worst = 0;
+      for(let i = 1; i < n; i++) worst = Math.max(worst, Math.abs((px(i) - x0) * dy - (py(i) - y0p) * dx) / len);
+      ok('and every sample of it lies on one straight line, to 1e-10 of its length',
+         worst / len < 1e-10, worst + ' over a chord of ' + len);
+      /* the closest approach is the impact parameter L / sqrt(E^2 - 1). rMin is
+         a sampled minimum, so it sits at or outside the true one — an exact
+         inequality, and the gap is the step size */
+      const b = L / Math.sqrt(E * E - 1);
+      ok('whose closest approach never dips below the impact parameter', g.rMin >= b - 1e-12, g.rMin - b);
+      close('and reaches it within the sample spacing', g.rMin, b, 1e-3);
+    })();
+
+    /* --- the reader's own metric: what the parser does with it, and what
+           happens when it is nonsense. --- */
+    (function(){
+      const f = rlFnR('1 - 2/r');
+      ok('the parser reads r as the radius, so "1 - 2/r" means what it says',
+         f && Math.abs(f(4) - 0.5) < 1e-15, f ? f(4) : 'null');
+      const gx = rlFnR('1 - 2/x');
+      ok('and x means the same thing, for anyone who prefers it',
+         gx && Math.abs(gx(4) - 0.5) < 1e-15);
+      ok('an unbalanced bracket is rejected, not guessed at', rlFnR('1 - 2/(r') === null);
+      ok('so is an unknown name', rlFnR('1 - 2/qq') === null);
+      ok('and so is an empty box', rlFnR('') === null);
+      ok('a formula that is never a number is rejected too', rlFnR('sqrt(0 - r)') === null);
+      ok('but a legitimate exotic one is not', rlFnR('1 - 2/r + 0.3/r^2') !== null);
+    })();
+
+    /* --- the preset table declares horizons, photon spheres and ISCOs. Each is
+           recomputed here from the SOURCE STRING beside it, so a table edited
+           without its numbers cannot pass. (./auditclaims.ps1 does it again in
+           the booted bundle by other routes.) --- */
+    (function(){
+      for(const k of Object.keys(RL_METRICS)){
+        const M = RL_METRICS[k];
+        const A = rlFnR(M.A), B = rlFnR(M.B);
+        ok('RL_METRICS.' + k + ' has an A and a B that compile', !!A && !!B);
+        if(!A || !B) continue;
+        const H = rlHorizons(A, 0.05, M.rMax);
+        ok('RL_METRICS.' + k + ' declares the right number of horizons',
+           H.count === M.rh.length, H.count + ' found, ' + M.rh.length + ' declared');
+        for(let i = 0; i < Math.min(H.count, M.rh.length); i++)
+          close('RL_METRICS.' + k + ' horizon ' + i, H.roots[i], M.rh[i], Math.abs(M.rh[i]) * 1e-9 + 1e-12);
+        /* the band a static observer can occupy. NOT "outside the outermost
+           horizon": the de Sitter entry's outermost horizon is cosmological,
+           and beyond it A < 0 and every quantity below is NaN. This test asked
+           for that band the wrong way round on its first run and reported four
+           false failures, which is the trap rlStaticBand now exists to close. */
+        const band = rlStaticBand(A, 0.05, M.rMax);
+        const lo = band.lo * 1.02, hi = Math.min(M.rMax, band.hi * 0.98);
+        const P = rlPhotonR(A, 0.05, M.rMax).outer;
+        if(M.ph === null) ok('RL_METRICS.' + k + ' has no photon sphere, as declared', !Number.isFinite(P), P);
+        else close('RL_METRICS.' + k + ' photon sphere', P, M.ph, M.ph * 1e-8);
+        const I = rlIscoR(A, lo, hi);
+        if(M.isco === null) ok('RL_METRICS.' + k + ' has no ISCO, as declared', !Number.isFinite(I.r), I.r);
+        else close('RL_METRICS.' + k + ' ISCO', I.r, M.isco, M.isco * 1e-5);
+        if(M.iscoOut !== undefined) close('RL_METRICS.' + k + ' outer stability edge', I.rOut, M.iscoOut, M.iscoOut * 1e-5);
+        const G = rlABGap(A, B, lo, hi);
+        ok('RL_METRICS.' + k + ' declares vac = ' + M.vac + ' and A*B says so',
+           M.vac ? G.gap < 1e-12 : G.gap > 1e-3, G.gap);
+        ok('RL_METRICS.' + k + ' echoes its sources without a caret',
+           M.exA.indexOf('^') < 0 && M.exB.indexOf('^') < 0, M.exA + ' | ' + M.exB);
+      }
+      /* the ISCO of the de Sitter entry is NOT the outermost stationary point,
+         and the table is the only place that would show it if that regressed */
+      ok('the de Sitter entry declares its ISCO inside its outer edge',
+         RL_METRICS.desitter.isco < RL_METRICS.desitter.iscoOut);
+    })();
+  })();
+})();
+
+/* ============================================================================
+   THE RADIAL FALL — 46b-gr-infall.js, Programme A item 3 (2026-08-18)
+   The acceptance test in MASTER-PLAN §3.1 is "∫dτ finite and matches the closed
+   form; ∫dt → ∞ as r → r_s". Both halves are measured here, and the second one
+   is the interesting half: a divergence cannot be checked by evaluating it, so
+   it is checked by the RATE, which is predicted locally and measured globally
+   by two routes that share no arithmetic.
+   ============================================================================ */
+(function(){
+  const SA = r => 1 - 2 / r, SB = r => 1 / (1 - 2 / r);
+  const R0 = 20, Efall = rlInfallE(SA, R0);
+
+  /* the cycloid, MTW §25.5: r = (r₀/2)(1 + cos η) and τ = √(r₀³/8M)(η + sin η).
+     Geometric units with M = 1, so the horizon is at r = 2. */
+  const tauCycloid = (r0, r) => {
+    const eta = Math.acos(Math.max(-1, Math.min(1, 2 * r / r0 - 1)));
+    return Math.sqrt(r0 * r0 * r0 / 8) * (eta + Math.sin(eta));
+  };
+  /* and the coordinate time, MTW Box 25.4 — the closed form that exists exactly
+     because the naive quadrature of this integrand cannot be trusted near the
+     pole, which is the whole subject of the module being tested */
+  const tMTW = (r0, r) => {
+    const eta = Math.acos(Math.max(-1, Math.min(1, 2 * r / r0 - 1)));
+    const a = Math.sqrt(Math.max(0, r0 / 2 - 1)), T = Math.sqrt(Math.max(0, r0 / r - 1));
+    return 2 * Math.log(Math.abs((a + T) / (a - T))) +
+           2 * a * (eta + (r0 / 4) * (eta + Math.sin(eta)));
+  };
+
+  /* --- the energy, and what it means --- */
+  close('a particle dropped from rest at r has E = sqrt(A(r))', Efall, Math.sqrt(1 - 2 / R0), 1e-15);
+  ok('and there is no rest to fall from inside a horizon', !Number.isFinite(rlInfallE(SA, 1.5)));
+
+  /* --- PROPER TIME: finite, and equal to the closed form --- */
+  (function(){
+    const run = rlInfallRun(SA, SB, R0, 2, 1600, {});
+    const want = tauCycloid(R0, 2);
+    ok('the proper time to the horizon is finite', Number.isFinite(run.tauEnd), run.tauEnd);
+    ok('and it matches the cycloid to 1e-10 relative',
+       Math.abs(run.tauEnd - want) < want * 1e-10, run.tauEnd + ' vs ' + want);
+    ok('while the coordinate clock is flagged divergent on the same run', run.tDiv === true);
+    /* and the proper time does not stop at the horizon: the cycloid runs on to
+       the centre, and so does the quadrature — A and B both change sign there
+       and their PRODUCT does not, which is what keeps the integrand real */
+    const toZero = rlInfallRun(SA, SB, R0, 0, 1600, {});
+    ok('the fall continues to r = 0 in finite proper time',
+       Math.abs(toZero.tauEnd - tauCycloid(R0, 0)) < tauCycloid(R0, 0) * 1e-10,
+       toZero.tauEnd + ' vs ' + tauCycloid(R0, 0));
+    ok('and reaching the centre takes longer than reaching the horizon',
+       toZero.tauEnd > run.tauEnd);
+  })();
+
+  /* --- ORDER, measured by halving h rather than asserted. Simpson in the
+         substituted variable is fourth order, and it runs into a ROUND-OFF
+         FLOOR at about 3e-12 relative — E² − A at the first interior sample is
+         a difference between two numbers agreeing to eight digits, and no
+         number of panels improves that. The two regimes are asserted
+         separately, because they need opposite cures (SITE-RULES J9). --- */
+  (function(){
+    const want = tauCycloid(R0, 2);
+    const err = n => Math.abs(rlInfallRun(SA, SB, R0, 2, n, {}).tauEnd - want) / want;
+    const e200 = err(200), e400 = err(400), e3200 = err(3200);
+    ok('halving h once cuts the proper-time error by more than 4x', e200 / e400 > 4,
+       e200 + ' -> ' + e400 + '  ratio ' + (e200 / e400));
+    ok('and by 3200 panels it has reached a floor below 1e-11', e3200 < 1e-11, e3200);
+    ok('which does NOT improve with more panels, so it is round-off, not truncation',
+       Math.abs(err(6400) - e3200) < 1e-11, err(6400) + ' vs ' + e3200);
+  })();
+
+  /* --- COORDINATE TIME above the horizon, against MTW's closed form --- */
+  (function(){
+    for(const rEnd of [10, 4, 2.5, 2.01]){
+      const run = rlInfallRun(SA, SB, R0, rEnd, 1600, { rh: 2 });
+      const want = tMTW(R0, rEnd);
+      ok('coordinate time down to r = ' + rEnd + ' matches MTW to 1e-10',
+         Math.abs(run.tEnd - want) < Math.abs(want) * 1e-10, run.tEnd + ' vs ' + want);
+    }
+    /* the same integral a hair above the horizon, where the pole is: this is
+       what the log substitution exists for, and an even grid in r gets it wrong
+       by more than the whole remaining contribution */
+    const near = rlInfallRun(SA, SB, R0, 2.000001, 1600, { rh: 2 });
+    ok('and it still matches to 1e-9 at r_h + 1e-6, where the integrand is 2e6',
+       Math.abs(near.tEnd - tMTW(R0, 2.000001)) < tMTW(R0, 2.000001) * 1e-9,
+       near.tEnd + ' vs ' + tMTW(R0, 2.000001));
+  })();
+
+  /* --- THE DIVERGENCE. A divergent integral cannot be checked by evaluating
+         it, so what is checked is the RATE. The prediction is local — √P/A′ at
+         the horizon, with no integral in it — and the measurement is a sequence
+         of quadratures over successive halvings of the remaining gap. --- */
+  (function(){
+    const L = rlInfallLogRate(SA, SB, 2);
+    close('A·B tends to 1 at a Schwarzschild horizon', L.P, 1, 1e-9);
+    close('and the ratio at ten times the offset says it is a genuine limit', L.pRatio, 1, 1e-6);
+    ok('so the pole is simple and the coordinate time diverges', L.simple === true);
+    close("A'(r_h) = 1/2 for r_h = 2", L.ap, 0.5, 1e-9);
+    close('the surface gravity is 1/4M', L.kappa, 0.25, 1e-9);
+    close('so every halving of the gap costs 2·ln2 of coordinate time',
+       L.perHalving, 2 * Math.LN2, 1e-9);
+
+    const H = rlInfallHalvings(SA, SB, Efall, 2, 0.01, 12, 200);
+    ok('twelve halvings all integrate', H.steps === 12, H.steps);
+    ok('the increments do not shrink — that is what divergence looks like',
+       H.dt[11] > 0.99 * H.dt[0], H.dt[0] + ' ... ' + H.dt[11]);
+    ok('successive increments approach a ratio of 1', Math.abs(H.settled - 1) < 1e-5, H.settled);
+    ok('and the measured increment agrees with the local prediction to 1e-5',
+       Math.abs(H.dt[11] - L.perHalving) < L.perHalving * 1e-5,
+       H.dt[11] + ' vs ' + L.perHalving);
+    /* the approach is FIRST ORDER in the remaining gap — the next term of the
+       expansion of A about the horizon — and that order is measured, not
+       assumed, because it is the reason the agreement above is 1e-5 and not
+       1e-12 and a reader is owed the distinction */
+    const gapAt = i => Math.abs(H.dt[i] - L.perHalving) / L.perHalving;
+    ok('and the shortfall falls by about 2 per halving, so it is O(gap)',
+       Math.abs(gapAt(7) / gapAt(11) - 16) < 3, gapAt(7) / gapAt(11));
+    /* the proper time over those same halvings converges, on the same nodes */
+    ok('while the PROPER time over the same steps collapses geometrically',
+       H.dtau[11] < H.dtau[0] * 1e-3, H.dtau[0] + ' ... ' + H.dtau[11]);
+  })();
+
+  /* --- AND THE FREEZING IS g_rr, NOT g_tt. Keep A and flatten B and the pole
+         in t softens from 1/(r−r_h) to 1/√(r−r_h), which is integrable: the
+         coordinate time to the horizon becomes FINITE and the frozen star
+         disappears. Nothing about A has changed, so no argument about time
+         dilation can account for it. --- */
+  (function(){
+    const NA = r => 1 - 2 / r, NB = () => 1;
+    const L = rlInfallLogRate(NA, NB, 2);
+    ok('with B = 1 the limit of A·B at the horizon is zero, not one', L.P < 1e-5, L.P);
+    close('and it falls off linearly, so the ten-times offset gives ten times', L.pRatio, 10, 1e-3);
+    ok('so the pole is NOT simple', L.simple === false);
+    const E2 = rlInfallE(NA, R0);
+    const H = rlInfallHalvings(NA, NB, E2, 2, 0.01, 14, 200);
+    ok('and the coordinate-time increments now fall by 1/√2 each halving',
+       Math.abs(H.settled - 1 / Math.SQRT2) < 1e-4, H.settled);
+    /* which sums to something finite, and the panel can print it */
+    const a = rlInfallRun(NA, NB, R0, 2.000001, 2000, { rh: 2 });
+    const b = rlInfallRun(NA, NB, R0, 2.00000000001, 2000, { rh: 2 });
+    ok('so the coordinate time to the horizon converges as the gap closes',
+       Math.abs(b.tEnd - a.tEnd) < 0.01 * a.tEnd, a.tEnd + ' -> ' + b.tEnd);
+    /* the contrast that makes it a measurement rather than a remark: the same
+       two radii in Schwarzschild, where the gap between them is NOT small */
+    const sa = rlInfallRun(SA, SB, R0, 2.000001, 2000, { rh: 2 });
+    const sb = rlInfallRun(SA, SB, R0, 2.00000000001, 2000, { rh: 2 });
+    /* those two radii are a factor of 1e5 apart in the gap, and Schwarzschild's
+       rate is 2 per e-fold, so the coordinate clock must gain 2·ln(1e5) = 23.03
+       between them — which is the divergence stated as a number rather than as
+       an arrow */
+    ok('while in Schwarzschild the same two radii differ by 2·ln(10⁵)',
+       Math.abs((sb.tEnd - sa.tEnd) - 2 * Math.log(1e5)) < 0.01,
+       (sb.tEnd - sa.tEnd) + ' vs ' + (2 * Math.log(1e5)));
+    ok('and the PROPER time is barely affected by flattening B',
+       Math.abs(rlInfallRun(NA, NB, R0, 2, 1600, {}).tauEnd - 89.41) < 0.01,
+       rlInfallRun(NA, NB, R0, 2, 1600, {}).tauEnd);
+  })();
+
+  /* --- ROUTE B: the same fall by RK4 on the second-order geodesic equation,
+         which is told neither E nor the first integral. The quadrature and the
+         integrator share no arithmetic at all — one is Simpson on a substituted
+         radial variable, the other is a Runge–Kutta march in proper time
+         through Christoffel symbols. --- */
+  (function(){
+    const target = 5;
+    const y0 = rlGeoInit(SA, SB, R0, Efall, 0, 1, -1);
+    const g = rlGeoRun(SA, SB, y0, 0.002, 60000, { rStop: target, rEsc: 1e9 });
+    ok('the radial track reaches the target radius', g.stop !== '' && g.rMin <= target * 1.001, g.rMin);
+    ok('and E holds along it to 1e-11', g.driftE < 1e-11, g.driftE);
+    ok('with L identically zero, which is what radial means',
+       Math.abs(g.L0) < 1e-15, g.L0);
+    /* interpolate both clocks to the target radius, linearly in r between the
+       last two samples — the step is 0.002 and dr/dτ is order 1, so the
+       interpolation error is far below the agreement being claimed */
+    const n = g.n;
+    const f = (g.r[n - 1] - target) / (g.r[n - 1] - g.r[n]);
+    const tauB = g.tau[n - 1] + f * (g.tau[n] - g.tau[n - 1]);
+    const tB = g.t[n - 1] + f * (g.t[n] - g.t[n - 1]);
+    const A1 = rlInfallRun(SA, SB, R0, target, 2000, { rh: 2 });
+    ok('the two routes agree on the proper time to 1e-8 relative',
+       Math.abs(tauB - A1.tauEnd) < A1.tauEnd * 1e-8, tauB + ' vs ' + A1.tauEnd);
+    ok('and on the coordinate time to 1e-8 relative',
+       Math.abs(tB - A1.tEnd) < A1.tEnd * 1e-8, tB + ' vs ' + A1.tEnd);
+    ok('and both agree with the cycloid, which is a third route',
+       Math.abs(A1.tauEnd - tauCycloid(R0, target)) < 1e-7, A1.tauEnd);
+  })();
+
+  /* --- WHAT A FALL CANNOT DO. Each of these is a correct answer the panel has
+         to print as a sentence, and each was reachable from a preset. --- */
+  (function(){
+    const F = () => 1;
+    const flat = rlInfallRun(F, F, 20, 2, 400, {});
+    ok('nothing falls in Minkowski, and the run says why rather than returning 0',
+       flat.stop.indexOf('does not fall inward') >= 0, flat.stop);
+    /* Schwarzschild–de Sitter beyond the maximum of A: released at rest there,
+       the particle is carried OUT by the cosmological term. Not an error — and
+       not something Schwarzschild can produce, which is why only a preset sweep
+       would ever have found it (SITE-RULES, 'necessary is not sufficient'). */
+    const DA = r => 1 - 2 / r - r * r / 10000, DB = r => 1 / DA(r);
+    ok("A' changes sign at about 21.5 in Schwarzschild–de Sitter",
+       rlDeriv(DA, 21) > 0 && rlDeriv(DA, 22) < 0,
+       rlDeriv(DA, 21) + ' , ' + rlDeriv(DA, 22));
+    const out1 = rlInfallRun(DA, DB, 25, 2.001, 800, { rh: 2.0008009615388218 });
+    ok('so a particle released at r = 25 there does not fall inward',
+       out1.stop.indexOf('does not fall inward') >= 0, out1.stop);
+    const in1 = rlInfallRun(DA, DB, 15, 2.001, 800, { rh: 2.0008009615388218 });
+    ok('while one released at r = 15 does', in1.stop === '' && in1.tauEnd > 0, in1.tauEnd);
+    ok('and there is no fall from inside the black-hole horizon',
+       rlInfallRun(SA, SB, 1.5, 1.0, 200, {}).stop.indexOf('no static observer') >= 0);
+  })();
+
+  /* --- THE REDSHIFT, and the cancellation it is written to avoid. The two
+         forms are algebraically identical; one of them stops being a number. --- */
+  (function(){
+    for(const r of [10, 3, 2.1]){
+      const v = SA(r), vLoc = Math.sqrt(Math.max(0, 1 - v / (Efall * Efall)));
+      const textbook = Math.sqrt(v) * Math.sqrt((1 - vLoc) / (1 + vLoc));
+      ok('the redshift at r = ' + r + ' matches √A·√((1−v)/(1+v)) where both are computable',
+         Math.abs(rlInfallRedshift(SA, r, Efall) - textbook) < textbook * 1e-12,
+         rlInfallRedshift(SA, r, Efall) + ' vs ' + textbook);
+    }
+    close('at the release radius it is the pure gravitational shift √A(r₀)',
+       rlInfallRedshift(SA, R0, Efall), Math.sqrt(SA(R0)), 1e-15);
+    ok('it goes to zero at the horizon rather than to a small wrong number',
+       rlInfallRedshift(SA, 2, Efall) === 0);
+    /* the naive difference E − √(E²−A) is the same expression and loses one
+       digit for every decade closer to the horizon. This asserts the naive
+       route is WRONG, which is the form these relativity tests take. */
+    const rNear = 2 + 1e-13;
+    const good = rlInfallRedshift(SA, rNear, Efall);
+    const naive = Efall - Math.sqrt(Math.max(0, Efall * Efall - SA(rNear)));
+    ok('and the naive difference has lost three figures by r_h + 1e-13',
+       Math.abs(naive - good) > good * 1e-4, naive + ' vs ' + good);
+    ok('while the conjugate form is still linear in the gap, as it must be',
+       Math.abs(good / (SA(rNear) / (2 * Efall)) - 1) < 1e-9, good);
+  })();
+
+  /* --- THE TIDAL STRETCH. The general orthonormal-frame curvature component
+         against two closed forms it shares no algebra with. --- */
+  (function(){
+    for(const r of [3, 6, 20]){
+      ok('the radial tide of Schwarzschild at r = ' + r + ' is −2/r³',
+         Math.abs(rlTidalRadial(SA, SB, r) + 2 / (r * r * r)) < 2 / (r * r * r) * 1e-8,
+         rlTidalRadial(SA, SB, r) + ' vs ' + (-2 / (r * r * r)));
+    }
+    const q2 = 0.64, RA = r => 1 - 2 / r + q2 / (r * r), RB = r => 1 / RA(r);
+    for(const r of [3, 8]){
+      const want = -2 / (r * r * r) + 3 * q2 / (r * r * r * r);
+      ok('and of Reissner–Nordström at r = ' + r + ' is −2/r³ + 3Q²/r⁴',
+         Math.abs(rlTidalRadial(RA, RB, r) - want) < Math.abs(want) * 1e-8,
+         rlTidalRadial(RA, RB, r) + ' vs ' + want);
+    }
+    /* the tide is NOT a function of A alone: flattening B changes it, which is
+       the same lesson as the freezing above and is worth pinning because every
+       circular orbit, the horizon, the photon sphere and the ISCO are all
+       unmoved by that change */
+    const NA = r => 1 - 2 / r, NB = () => 1;
+    ok('flattening B leaves the horizon where it was but changes the tide',
+       Math.abs(rlTidalRadial(NA, NB, 6) - rlTidalRadial(SA, SB, 6)) > 0.5 * Math.abs(rlTidalRadial(SA, SB, 6)),
+       rlTidalRadial(NA, NB, 6) + ' vs ' + rlTidalRadial(SA, SB, 6));
+    ok('the tide is a stretch — negative — outside the horizon', rlTidalRadial(SA, SB, 6) < 0);
+    ok('and it grows as 1/r³, so it is 1000x stronger ten times closer in',
+       Math.abs(rlTidalRadial(SA, SB, 2) / rlTidalRadial(SA, SB, 20) - 1000) < 1e-4,
+       rlTidalRadial(SA, SB, 2) / rlTidalRadial(SA, SB, 20));
+    /* the value AT the horizon is the wing's most-quoted tidal number, and it
+       is the one the textbook grouping of this expression cannot produce */
+    close('the tide exactly at r_h = 2 is −1/4, computed not quoted',
+       rlTidalRadial(SA, SB, 2), -0.25, 1e-9);
+
+    /* WHY it is grouped in Q = A·B. This asserts the textbook grouping is
+       WRONG near a horizon, so that nobody "simplifies" it back: A′B′/2AB needs
+       B′, and rlDeriv's five-point stencil at h = 1e-3·r straddles B's pole
+       there, so the derivative is not an approximation to anything. */
+    const textbook = (Af, Bf, r) => {
+      const a = Af(r), b = Bf(r);
+      const ap = rlDeriv(Af, r), bp = rlDeriv(Bf, r), app = rlDeriv2(Af, r);
+      return (1 / (2 * b)) * (app / a - ap * ap / (2 * a * a) - ap * bp / (2 * a * b));
+    };
+    ok('the two groupings agree far from the horizon',
+       Math.abs(textbook(SA, SB, 20) / rlTidalRadial(SA, SB, 20) - 1) < 1e-8,
+       textbook(SA, SB, 20) + ' vs ' + rlTidalRadial(SA, SB, 20));
+    ok('but the textbook grouping is out by 5 orders at r_h + 1e-6',
+       Math.abs(textbook(SA, SB, 2.000001) / (-0.249999625)) > 1e4,
+       textbook(SA, SB, 2.000001));
+    ok('and returns nothing at all at the horizon itself',
+       !Number.isFinite(textbook(SA, SB, 2)), textbook(SA, SB, 2));
+    ok('while this one is right there to 1e-9',
+       Math.abs(rlTidalRadial(SA, SB, 2.000001) + 0.249999625) < 1e-9,
+       rlTidalRadial(SA, SB, 2.000001));
+
+    /* and a vanishing Q is a real divergence, not a gap in the function: with
+       B = 1 the metric has a naked curvature singularity where Schwarzschild
+       has a smooth horizon, and the tide runs away as that radius is approached */
+    ok('with B = 1 the tide diverges towards r = 2 instead of settling',
+       Math.abs(rlTidalRadial(NA, NB, 2.001)) > 1e4 * Math.abs(rlTidalRadial(SA, SB, 2.001)),
+       rlTidalRadial(NA, NB, 2.001) + ' vs ' + rlTidalRadial(SA, SB, 2.001));
+    /* and it grows a HUNDREDFOLD per decade, not tenfold: the leading term of
+       (A″ − A′²/2A)/2A is −(A′)²/4A², so with A vanishing linearly the tide
+       goes like 1/(r−2)². Measured, after the test asserting 1/A failed. */
+    ok('growing 100x for each 10x closer, so the pole is second order',
+       Math.abs(rlTidalRadial(NA, NB, 2.0001) / rlTidalRadial(NA, NB, 2.001) - 100) < 1,
+       rlTidalRadial(NA, NB, 2.0001) / rlTidalRadial(NA, NB, 2.001));
+    ok('so that metric is not a black hole at all — its horizon is a singularity',
+       !Number.isFinite(rlTidalRadial(NA, NB, 2)), rlTidalRadial(NA, NB, 2));
+  })();
+
+  /* --- rlDeriv2, on its own, against derivatives that are known exactly --- */
+  (function(){
+    close('the second derivative of 1 − 2/r is −4/r³', rlDeriv2(SA, 5), -4 / 125, 1e-10);
+    close('and of r² is 2 everywhere', rlDeriv2(r => r * r, 7), 2, 1e-8);
+    close('and of sin r is −sin r', rlDeriv2(Math.sin, 1.3), -Math.sin(1.3), 1e-9);
+  })();
+
+  /* --- and the SI bridge: the same fall, in seconds, against the wing's older
+         Schwarzschild-only engine, which knows nothing about A and B. --- */
+  (function(){
+    const GM = GM_SUN * 10, Mg = GM / C2, rs = grRs(GM);
+    const oldWay = grInfall(GM, 20 * rs, rs).tau;
+    const newWay = rlInfallRun(SA, SB, 40, 2, 3200, {}).tauEnd * Mg / C_SI;
+    ok('the geometric-units fall converted to seconds matches grInfall to 1e-9',
+       Math.abs(newWay - oldWay) < oldWay * 1e-9, newWay + ' vs ' + oldWay);
+  })();
+})();
+
+/* ============================================================================
+   LIGHT THROUGH A TYPED METRIC — 46c-gr-lensing.js, Programme A item 4
+   (2026-08-18)
+
+   The acceptance test in MASTER-PLAN §3.1 is "a point mass gives 4GM/c²b to
+   1e-6 — exactly twice the Newtonian value". Both halves are measured here,
+   and neither is asserted as a tolerance: the deviation from 4/b is not noise,
+   it is the second-order term 15πM²/4b², and it is checked as such over four
+   decades. The "exactly twice" half is the same quadrature run over the same A
+   with B = 1, which is the PPN parameter γ.
+
+   Everything else in this block exists because it went wrong once. The
+   turning-point locator is bisected on a bracket rather than scanned, because
+   a scan steps over the 0.0018-wide window at b/b_c − 1 = 1e-7 and reports the
+   ray that winds twice round the hole as CAPTURED. The deflection refuses on
+   the OBSERVER RADIUS rather than on its samples, because a guard returning
+   zero for a bad sample silently redefined the domain and gave a
+   Schwarzschild–de Sitter ray a deflection measured partly outside the static
+   region.
+   ============================================================================ */
+(function(){
+  const SA = r => 1 - 2 / r, SB = r => 1 / (1 - 2 / r);
+  const ONE = () => 1;
+  const inf = { rIn: 3, rOut: 1e12, rObs: Infinity, panels: 64 };
+  const bend = (A, B, b, o) => rlBend(A, B, b, o || inf).defl;
+
+  /* ---- the photon sphere and its critical impact parameter, LOCATED ---- */
+  (function(){
+    const C = rlCritB(SA, SB, 2.0001, 60, 3000);
+    close('Schwarzschild photon sphere located at r = 3', C.rph, 3, 1e-9);
+    close('and its critical impact parameter is 3√3', C.b, 3 * Math.sqrt(3), 1e-8);
+    close('rlPhotonB(A, 3) is the same number by hand', rlPhotonB(SA, 3), 3 / Math.sqrt(1 / 3), 1e-13);
+    /* the Lyapunov exponent, from A, B and W″ — analytic value 1 for
+       Schwarzschild, and √3 once B is flattened, because the winding rate
+       carries √(A·B) */
+    close('Lyapunov exponent of the Schwarzschild photon sphere is 1', C.lam, 1, 1e-6);
+    close('  and √3 with B = 1 — the same rays, wound a third less far',
+          rlCritB(SA, ONE, 2.0001, 60, 3000).lam, Math.sqrt(3), 1e-6);
+    ok('Minkowski has no photon sphere and says so', !rlCritB(ONE, ONE, 0.05, 60, 3000).has);
+  })();
+
+  /* ---- THE ACCEPTANCE TEST, and the residual it leaves ----------------- */
+  (function(){
+    /* At b = 3×10⁶ the second-order term 15π/16b has fallen to 9.8×10⁻⁷ and
+       the quadrature's own floor is ~2×10⁻¹⁴ rad, eight orders below. */
+    const b = 3e6, d = bend(SA, SB, b, { rIn: 3, rOut: 1e14, rObs: Infinity, panels: 64 });
+    ok('a point mass gives 4GM/c²b to better than 1e-6 at b = 3e6',
+       Math.abs(d - 4 / b) / (4 / b) < 1e-6, 'rel = ' + (d - 4 / b) / (4 / b));
+    /* AND THE RESIDUAL IS NOT A TOLERANCE. Δφ = 4/b + 15π/4b² + 128/3b³, so
+       (Δφ·b/4 − 1)·b → 15π/16 = 2.9452. Measured over four decades. */
+    for(const bb of [1e3, 1e4, 1e5, 1e6]){
+      const dd = bend(SA, SB, bb, { rIn: 3, rOut: 1e14, rObs: Infinity, panels: 64 });
+      const relb = ((dd - 4 / bb) / (4 / bb)) * bb;
+      close('the deviation from 4/b at b = ' + bb + ' is 15π/16b, measured',
+            relb, 15 * Math.PI / 16, bb <= 1e4 ? 0.012 : 0.006);
+    }
+    /* the two-term expansion itself, which is a sharper statement than the
+       ratio above because it does not divide by a small number */
+    for(const bb of [1e4, 1e6]){
+      const dd = bend(SA, SB, bb, { rIn: 3, rOut: 1e14, rObs: Infinity, panels: 64 });
+      const two = 4 / bb + 15 * Math.PI / (4 * bb * bb);
+      ok('two-term expansion at b = ' + bb + ' agrees to 1e-6 relative',
+         Math.abs(dd - two) / two < 1e-6, 'rel = ' + (dd - two) / two);
+    }
+  })();
+
+  /* ---- EXACTLY TWICE NEWTON: the same A, with B = 1 -------------------- */
+  (function(){
+    for(const bb of [1e3, 1e5, 1e7]){
+      const o = { rIn: 3, rOut: 1e14, rObs: Infinity, panels: 64 };
+      const full = bend(SA, SB, bb, o), time = bend(SA, ONE, bb, o);
+      close('γ = Δφ/Δφ(B=1) − 1 is 1 at b = ' + bb, full / time - 1, 1,
+            bb <= 1e3 ? 4e-3 : 1e-4);
+    }
+    /* and the strong field is where it stops being 2, which is the point of
+       measuring rather than asserting */
+    const near = bend(SA, SB, 12) / bend(SA, ONE, 12);
+    ok('at b = 12 the ratio is NOT 2 — it is ' + near, Math.abs(near - 2) > 0.03);
+  })();
+
+  /* ---- THE MINKOWSKI CONTROL ------------------------------------------- */
+  (function(){
+    const o = { rIn: 0.05, rOut: 1e10, rObs: Infinity, panels: 64 };
+    for(const bb of [3, 12, 400]){
+      const R = rlBend(ONE, ONE, bb, o);
+      close('flat space turns a ray at exactly b = ' + bb, R.r0, bb, 1e-12);
+      ok('and bends it by nothing at all', Math.abs(R.defl) < 1e-11, R.defl);
+    }
+  })();
+
+  /* ---- TWO ROUTES: the quadrature against the geodesic integrator ------ */
+  (function(){
+    const rObs = 200;
+    for(const bb of [5.3, 6, 8, 12, 20, 60]){
+      const q = rlDeflect(SA, SB, rlTurnR(SA, bb, 3, rObs).r, rObs, 64);
+      const g = rlBendRay(SA, SB, bb, rObs, rObs / 3000, 40000, { rStop: 2.001 });
+      ok('routes agree at b = ' + bb + ' to 1e-7 relative',
+         Number.isFinite(g.defl) && Math.abs(g.defl - q) < 1e-7 * Math.abs(q),
+         'quad ' + q + ' geo ' + g.defl);
+      ok('  and the two turning points agree to 1e-8',
+         Math.abs(g.rmin - rlTurnR(SA, bb, 3, rObs).r) < 1e-8 * g.rmin,
+         g.rmin + ' vs ' + rlTurnR(SA, bb, 3, rObs).r);
+    }
+    /* THE ORDER, MEASURED BY HALVING h — not asserted. RK4 is fourth order, so
+       the error should fall 16× per halving until it reaches a floor. */
+    const bb = 10, q = rlDeflect(SA, SB, rlTurnR(SA, bb, 3, rObs).r, rObs, 128);
+    const e = [];
+    for(const n of [1500, 3000, 6000, 12000]){
+      const g = rlBendRay(SA, SB, bb, rObs, rObs / n, 200000, { rStop: 2.001 });
+      e.push(Math.abs(g.defl - q));
+    }
+    const r1 = e[0] / e[1], r2 = e[1] / e[2];
+    ok('halving the geodesic step cuts the error about 16× — fourth order',
+       r1 > 8 && r1 < 32 && r2 > 8 && r2 < 32, e.join(', ') + '  ratios ' + r1 + ', ' + r2);
+    ok('and by 12 000 steps it has reached a floor below 1e-10 rad',
+       e[3] < 1e-10, e[3]);
+  })();
+
+  /* ---- THE PANELS: converged, and past that it gets worse -------------- */
+  (function(){
+    const r0 = rlTurnR(SA, 12, 3, 1e12).r;
+    const ref = rlDeflect(SA, SB, r0, Infinity, 256);
+    close('16 panels is already good to 1e-9', rlDeflect(SA, SB, r0, Infinity, 16), ref, 1e-9);
+    close('32 panels to 1e-11', rlDeflect(SA, SB, r0, Infinity, 32), ref, 1e-11);
+    close('64 panels — what the stage uses — to 1e-11',
+          rlDeflect(SA, SB, r0, Infinity, 64), ref, 1e-11);
+  })();
+
+  /* ---- THE NEAR-CRITICAL RAY, and the two ways of losing it -------------
+     rlTurnR's inner bracket must be where W is LARGEST, which is the photon
+     sphere. That is an existence argument and not an optimisation: the turning
+     point is the largest r with W(r) = 1/b², so if the maximum of W is below
+     1/b² there is no such r anywhere and the ray really is captured. Bracket
+     anywhere else and both of its answers become guesses. Below, the right
+     bracket is checked and BOTH wrong methods are asserted to be wrong, so
+     neither can come back by accident.                                        */
+  (function(){
+    const C = rlCritB(SA, SB, 2.0001, 60, 3000);
+    for(const eps of [1e-3, 1e-5, 1e-7, 1e-9]){
+      const T = rlTurnR(SA, C.b * (1 + eps), C.rph, 1e6);
+      ok('a ray at b_c(1 + ' + eps + ') still has a turning point',
+         Number.isFinite(T.r) && T.r > C.rph, T.r + ' ' + T.why);
+      /* and the located radius really solves W = 1/b², to the last bit */
+      close('  and W(r₀) = 1/b² there', SA(T.r) / (T.r * T.r),
+            1 / (C.b * C.b * (1 + eps) * (1 + eps)), 1e-17);
+    }
+    const d = bend(SA, SB, C.b * (1 + 1e-9), { rIn: C.rph, rOut: 1e6, rObs: Infinity, panels: 128 });
+    ok('and it winds more than three full turns', d / (2 * Math.PI) > 3, d / (2 * Math.PI));
+    /* below b_c there IS no turning point, and the reason is named */
+    const cap = rlTurnR(SA, C.b * 0.999, C.rph, 1e6);
+    ok('below b_c the ray is captured, and it says so', !Number.isFinite(cap.r) && cap.why === 'captured');
+
+    /* WRONG METHOD ONE: bracket from the horizon rather than from the peak of
+       W. W(2.0001) = 1.2e-5 is far below 1/b² = 0.037, so rlTurnR concludes —
+       correctly, for the bracket it was given — that the ray is captured. It is
+       not: it winds two and a half times and comes back out. */
+    const wrongBracket = rlTurnR(SA, C.b * (1 + 1e-7), 2.0001, 1e6);
+    ok('bracketing from the horizon calls a winding ray CAPTURED — the trap',
+       !Number.isFinite(wrongBracket.r) && wrongBracket.why === 'captured',
+       wrongBracket.r + ' ' + wrongBracket.why);
+    /* the same ray, bracketed at the peak, turns just outside the photon
+       sphere — and the offset goes as √ε, which is what an expansion about a
+       quadratic maximum says it must */
+    (function(){
+      const r7 = rlTurnR(SA, C.b * (1 + 1e-7), C.rph, 1e6).r;
+      const r9 = rlTurnR(SA, C.b * (1 + 1e-9), C.rph, 1e6).r;
+      ok('  while the same ray, bracketed at the peak, turns just outside r_ph',
+         r7 > 3 && r7 - 3 < 0.01, r7);
+      close('  and the offset from r_ph falls like √ε', (r7 - 3) / (r9 - 3), 10, 0.02);
+    })();
+
+    /* WRONG METHOD TWO: a logarithmic scan for the sign change. At ε = 1e-7 the
+       window where W > 1/b² is 0.0018 wide and a 2000-point scan of [2, 1e5]
+       has cells of 0.02 at r = 3, so it never sees the crossing at all. */
+    (function(){
+      const b = C.b * (1 + 1e-7), f = r => SA(r) / (r * r) - 1 / (b * b);
+      let crossings = 0, vp = NaN;
+      rlScan(2.0001, 1e5, 2000, r => {
+        const v = f(r);
+        if(Number.isFinite(v) && Number.isFinite(vp) && vp !== 0 && v !== 0 && (vp < 0) !== (v < 0)) crossings++;
+        vp = v;
+      });
+      ok('a 2000-point log scan of [2, 1e5] finds NO crossing for that ray',
+         crossings === 0, 'crossings = ' + crossings);
+      /* and it is not that the scan is merely coarse — the window is real */
+      ok('  though W really does exceed 1/b² over a window 0.0018 wide',
+         f(3) > 0 && f(3 - 0.002) < 0 && f(3 + 0.002) < 0,
+         [f(3 - 0.002), f(3), f(3 + 0.002)].join(', '));
+    })();
+  })();
+
+  /* ---- THE WINDING RATE: local prediction against global measurement ---- */
+  (function(){
+    for(const cse of [['Schwarzschild', SA, SB], ['B = 1', SA, ONE]]){
+      const A = cse[1], B = cse[2];
+      const C = rlCritB(A, B, 2.0001, 60, 3000);
+      const Wd = rlWindRate(A, B, C, 6, { rIn: C.rph, rOut: 1e6, rObs: Infinity, panels: 128 });
+      close(cse[0] + ': the predicted radians per decade is ln10/λ',
+            Wd.pred, Math.LN10 / C.lam, 1e-12);
+      ok(cse[0] + ': and the measured increment lands on it to 1e-4',
+         Number.isFinite(Wd.last) && Math.abs(Wd.last - Wd.pred) < 1e-4 * Wd.pred,
+         'measured ' + Wd.last + ' predicted ' + Wd.pred);
+      ok(cse[0] + ': the increments never shrink — the deflection has no limit',
+         Wd.inc.every(function(v){ return v > 0.9 * Wd.pred; }), Wd.inc.join(', '));
+    }
+    /* the photon ring's demagnification, which is the observational form of λ */
+    const C = rlCritB(SA, SB, 2.0001, 60, 3000);
+    const Wd = rlWindRate(SA, SB, C, 4, { rIn: C.rph, rOut: 1e6, rObs: Infinity, panels: 128 });
+    close('each extra turn round a Schwarzschild hole costs e^(−2π) in brightness',
+          Wd.dim, Math.exp(-2 * Math.PI), 1e-9);
+    ok('  which is one part in about 535', Math.abs(1 / Wd.dim - 535.49) < 0.1, 1 / Wd.dim);
+  })();
+
+  /* ---- WHERE A DEFLECTION IS NOT DEFINED -------------------------------
+     Schwarzschild–de Sitter has a cosmological horizon at r ≈ 99, so there is
+     no asymptotic observer. The FIRST version of rlDeflect let its integrand
+     guard return 0 for the samples beyond it and reported 0.2193 for a ray
+     whose honest answer, measured inside the static band, is 0.2170. */
+  (function(){
+    const DA = r => 1 - 2 / r - r * r / 10000, DB = r => 1 / DA(r);
+    const band = rlStaticBand(DA, 0.05, 200);
+    ok('the de Sitter static band is bounded above', band.hi < 100 && band.hi > 98, band.hi);
+    const r0 = rlTurnR(DA, 20, 3, 90).r;
+    ok('a ray at b = 20 turns inside the band', Number.isFinite(r0) && r0 < 90, r0);
+    ok('the deflection to infinity is REFUSED, not approximated',
+       !Number.isFinite(rlDeflect(DA, DB, r0, Infinity, 64)));
+    ok('and so is one to an observer outside the band',
+       !Number.isFinite(rlDeflect(DA, DB, r0, 120, 64)));
+    const good = rlDeflect(DA, DB, r0, 90, 64);
+    ok('inside the band it is a number', Number.isFinite(good) && good > 0, good);
+    /* Schwarzschild, which IS asymptotically flat, must not be refused */
+    ok('Schwarzschild is not refused at infinity',
+       Number.isFinite(rlDeflect(SA, SB, rlTurnR(SA, 20, 3, 1e12).r, Infinity, 64)));
+    /* THE THIRD LINE OF DEFENCE, and the only one the two guards above cannot
+       cover: a metric whose A dips negative BETWEEN the turning point and the
+       observer. Both endpoints are then perfectly good — A(10) = 0.770 and
+       A(40) = 0.943 — and there is no path from one to the other, because the
+       band [18, 22] is not static. Only counting the samples that could not be
+       evaluated catches it; a guard that returns zero for them integrates
+       across the gap and hands back a confident number. */
+    (function(){
+      const GA = rlFnR('1 - 2/r - 3/(1 + (r - 20)^2)');
+      ok('the pathological A compiles', !!GA);
+      ok('  and it really is negative in the middle and positive at both ends',
+         GA(10) > 0 && GA(20) < 0 && GA(40) > 0, GA(10) + ' ' + GA(20) + ' ' + GA(40));
+      ok('a deflection integrated across a non-static band is refused',
+         !Number.isFinite(rlDeflect(GA, r => 1 / GA(r), 10, 40, 64)));
+    })();
+  })();
+
+  /* ---- A MASS PROFILE IS A METRIC -------------------------------------- */
+  (function(){
+    /* A conical spacetime: M = kr makes A the constant 1 − 2k, and the
+       deflection is π(1/√(1−2k) − 1) at EVERY impact parameter. Closed form,
+       derived from the metric, checked against the quadrature. */
+    for(const k of [1 / 24, 1 / 12, 1 / 6]){
+      const P = rlMassAB(String(k));
+      ok('M(r) = ' + k + ' compiles', !!P);
+      const P2 = rlMassAB(k + '*r');
+      const closed = rlConeDefl(k);
+      for(const bb of [4, 40, 400]){
+        close('a halo M = ' + k + 'r bends b = ' + bb + ' by π(1/√(1−2k) − 1)',
+              rlBend(P2.A, P2.B, bb, { rIn: 0.05, rOut: 1e9, rObs: Infinity, panels: 64 }).defl,
+              closed, 1e-10);
+      }
+    }
+    /* BIRKHOFF, MEASURED: outside a uniform sphere the deflection is identical
+       to that of a point mass of the same total, to the last bit. */
+    const U = rlMassAB('min(1, (r/8)^3)'), Pt = rlMassAB('1');
+    ok('the uniform-sphere profile compiles', !!U && !!Pt);
+    /* b must be large enough that the whole PATH stays outside R: the closest
+       approach is r₀, not b, and at b = 9 a Schwarzschild ray turns at 7.75,
+       which is inside the sphere. The threshold is b = 8/√(1−2/8) = 9.238, and
+       the first version of this test used b = 9 and failed for that reason. */
+    for(const bb of [10, 20, 100]){
+      const du = rlBend(U.A, U.B, bb, { rIn: 0.05, rOut: 1e9, rObs: Infinity, panels: 64 }).defl;
+      const dp = rlBend(Pt.A, Pt.B, bb, { rIn: 3, rOut: 1e9, rObs: Infinity, panels: 64 }).defl;
+      ok('outside R = 8 the sphere bends exactly like a point mass, b = ' + bb,
+         Math.abs(du - dp) < 1e-13 * Math.abs(dp), du + ' vs ' + dp);
+    }
+    /* and INSIDE it does not — otherwise the row above would be vacuous. b = 6
+       turns at 5.62 inside the sphere and at 4.45 outside a point mass, and is
+       above the point mass's capture threshold of 5.196; b = 5 is below it, so
+       the point-mass route returned NaN and the comparison meant nothing. */
+    const dIn = rlBend(U.A, U.B, 6, { rIn: 0.05, rOut: 1e9, rObs: Infinity, panels: 64 }).defl;
+    const dPt = rlBend(Pt.A, Pt.B, 6, { rIn: 3, rOut: 1e9, rObs: Infinity, panels: 64 }).defl;
+    ok('but a ray passing INSIDE the sphere is bent differently',
+       Math.abs(dIn - dPt) > 0.05 * Math.abs(dPt), dIn + ' vs ' + dPt);
+    /* the presets are three profiles in one family */
+    const rn = rlMassAB('1 - 0.32/r');
+    close('M = 1 − Q²/2r reproduces Reissner–Nordström A(5)',
+          rn.A(5), 1 - 2 / 5 + 0.64 / 25, 1e-14);
+    ok('a profile that is not a formula returns null rather than throwing',
+       rlMassAB('1 +') === null);
+  })();
+
+  /* ---- THE LENS EQUATION, SOLVED --------------------------------------- */
+  (function(){
+    const MPC = 1e6 * PARSEC, Mg = GM_SUN * 1e12 / C2;
+    const DL = 1000 * MPC, DS = 2000 * MPC;
+    const alpha = bm => rlBend(SA, SB, bm / Mg, { rIn: 3, rOut: 1e14, rObs: Infinity, panels: 48 }).defl;
+    const R = rlLensSolve(alpha, 0, DL, DS, 1e-9, 1e-3);
+    const W = rlRingWeak(Mg, DL, DS);
+    ok('the Einstein ring solves', Number.isFinite(R.th), R.why);
+    ok('and matches the weak-field closed form to 1e-5 relative',
+       Math.abs(R.th - W) < 1e-5 * W, R.th + ' vs ' + W);
+    ok('a source in front of the lens has no ring',
+       !Number.isFinite(rlLensSolve(alpha, 0, DS, DL, 1e-9, 1e-3).th));
+    /* a non-zero β puts the image OUTSIDE the ring, which is the check that
+       the solver is solving rather than returning its own bracket */
+    const off = rlLensSolve(alpha, 0.5 * W, DL, DS, W * 0.5, 1e-3);
+    ok('a source offset by half a ring radius images outside the ring',
+       Number.isFinite(off.th) && off.th > W, off.th + ' vs ' + W);
+  })();
+
+  /* ---- THE 1919 NUMBER, from the quadrature and not from 4GM/c²b ------- */
+  (function(){
+    const bLimb = R_SUN * C2 / GM_SUN;
+    const d = bend(SA, SB, bLimb, { rIn: 3, rOut: 1e14, rObs: Infinity, panels: 64 });
+    close('starlight grazing the Sun is deflected by 1.7512 arcseconds',
+          d * ARCSEC, 1.7512, 1e-4);
+    close('  and the Newtonian corpuscle answer is half of it',
+          bend(SA, ONE, bLimb, { rIn: 3, rOut: 1e14, rObs: Infinity, panels: 64 }) * ARCSEC,
+          0.8756, 1e-4);
+  })();
+})();
+
+
+/* ============================================================================
+   GRAVITATIONAL WAVES FROM A BINARY THE READER SUPPLIES (46d)
+   Programme A item 5. Everything above in section 6 knows it is looking at
+   GW150914: the chirp mass is written down and the frequency comes out of a
+   formula. These tests hand the engine two masses and a separation and require
+   it to INTEGRATE the quadrupole balance, MEASURE the sweep rate off the track
+   it produced, and return a chirp mass nobody told it.
+   Units: G = c = 1 with everything in seconds (a solar mass is 4.925 μs).
+   ============================================================================ */
+(function(){
+  const MS = GW_MSUN_S;
+  const m1 = gwMs(35.6), m2 = gwMs(30.6), M = m1 + m2;
+  const Mc = gwChirpMassS(m1, m2);
+
+  /* ---- the units, and the two conversions ------------------------------- */
+  close('a solar mass is 4.9255 microseconds', MS * 1e6, 4.925490947, 1e-8);
+  close('and gwSolar inverts gwMs', gwSolar(gwMs(12.75)), 12.75, 1e-13);
+  close('a light-second is 299 792.458 km', gwSm(1) / 1000, 299792.458, 1e-9);
+  close('c^5/G is 3.6283e52 W', GW_LUM_W / 1e52, 3.62831, 1e-4);
+  /* the chirp mass is homogeneous of degree one, so seconds and solar masses
+     are the same expression — the reason 46d does not carry a second formula */
+  close('the chirp mass is the same in seconds as in solar masses',
+        gwSolar(gwChirpMassS(m1, m2)), gwChirpMass(35.6, 30.6), 1e-12);
+
+  /* ---- Kepler, and the factor of two ------------------------------------ */
+  (function(){
+    const a = gwSepOfFgw(M, 35);
+    close('the separation at 35 Hz inverts back to 35 Hz', gwFgwOf(M, a), 35, 1e-12);
+    close('GW150914 was 899 km apart when it entered the band', gwSm(a) / 1000, 899.038, 0.01);
+    close('the wave frequency is exactly twice the orbital one',
+          gwFgwOf(M, a) / (gwOmegaOf(M, a) / (2 * Math.PI)), 2, 1e-14);
+    /* The ISCO row against the SI routine in 46, which reaches the same number
+       through a different constant. It did NOT agree when this was first run —
+       6.5×10⁻⁸ apart — because that routine turned a solar mass into a time
+       through M☉×G rather than through the measured product GM☉, and M_SUN_KG
+       carries only the six figures G supports. The fix went into 46; this row
+       is what would catch it coming back. */
+    close('the ISCO frequency agrees with the SI gwISCOFreq', gwFgwIsco(M),
+          gwISCOFreq(35.6 + 30.6), 1e-12);
+    close('and the ISCO separation is 6GM/c^2', gwSm(gwSepIsco(M)) / 1000, 586.515, 0.01);
+    close('Kepler both ways round', gwSepOfPeriod(M, gwPeriodOf(M, a)), a, 1e-15 * a);
+  })();
+
+  /* ---- the energy balance IS the closed form ---------------------------- */
+  (function(){
+    /* ȧ = −L/(dE/da), with dE/da differentiated numerically. If the closed form
+       had been copied out of a book with a wrong coefficient this is what would
+       catch it, and it is the only test here that recomputes the 64/5. */
+    for(const aKm of [700, 2000, 50000]){
+      const a = gwLs(aKm * 1000);
+      const bal = gwAdotBalance(m1, m2, a), cf = gwAdotOf(m1, m2, a);
+      ok('a = ' + aKm + ' km: the quadrupole/energy balance reproduces −(64/5)m₁m₂M/a³',
+         Math.abs(bal - cf) < 1e-9 * Math.abs(cf), bal + ' vs ' + cf);
+    }
+    /* and the luminosity is a power: watts, for a system whose answer is known
+       from the other direction. The Earth radiates about 200 W. */
+    const S = GW_BINARIES.sunearth;
+    const es = gwMs(S.m1), ee = gwMs(S.m2), aE = gwSepOfPeriod(es + ee, S.pbDays * 86400);
+    close('the Earth radiates about 200 watts of gravitational waves',
+          gwLumOf(es, ee, aE) * GW_LUM_W, 196.26, 0.5);
+    ok('which is 24 orders of magnitude below the Sun\'s light',
+       gwLumOf(es, ee, aE) * GW_LUM_W / GW_LSUN_W < 1e-23);
+  })();
+
+  /* ---- the closed forms, checked against each other --------------------- */
+  (function(){
+    const a0 = gwSepOfFgw(M, 35);
+    const tc = gwTcoalOf(m1, m2, a0);
+    close('GW150914 had 0.1833 s left at 35 Hz', tc, 0.183308, 1e-5);
+    /* the time-to-merge written in a and written in f are the same statement */
+    close('τ(a) and τ(f) agree', gwTauOfFgw(Mc, gwFgwOf(M, a0)), tc, 1e-12 * tc);
+    close('and gwFgwOfTau inverts gwTauOfFgw', gwFgwOfTau(Mc, gwTauOfFgw(Mc, 42)), 42, 1e-11);
+    /* a(t) at half the coalescence time, both ways */
+    close('a(t) = a₀(1−t/tc)^(1/4)', gwSepAtT(m1, m2, a0, tc / 2),
+          a0 * Math.pow(0.5, 0.25), 1e-15 * a0);
+    close('and the separation vanishes at coalescence', gwSepAtT(m1, m2, a0, tc), 0, 0);
+    /* the SI chirp formula in 46 and the geometric one here are the same curve */
+    close('gwFgwOfTau reproduces the SI gwChirpFreq', gwFgwOfTau(Mc, 0.1),
+          gwChirpFreq(0.1, gwChirpMass(35.6, 30.6)), 1e-9);
+    /* the sweep rate, differentiated from τ(f) rather than quoted */
+    const f0 = 60, h = 1e-6;
+    const fdotNum = -1 / ((gwTauOfFgw(Mc, f0 + h) - gwTauOfFgw(Mc, f0 - h)) / (2 * h));
+    close('ḟ = (96/5)π^(8/3)Mc^(5/3)f^(11/3) is dτ/df inverted',
+          gwFdotOf(Mc, f0), fdotNum, 1e-6 * fdotNum);
+    /* and the inversion a detector performs */
+    close('the chirp mass comes back out of (f, ḟ)',
+          gwMcFromFdot(f0, gwFdotOf(Mc, f0)), Mc, 1e-14 * Mc);
+    ok('a negative sweep rate has no chirp mass', !Number.isFinite(gwMcFromFdot(60, -1)));
+    /* cycles: the closed form against the integral it came from */
+    const N = gwCyclesOf(Mc, 35, gwFgwIsco(M));
+    ok('GW150914 made about 8 wave cycles in band', N > 6 && N < 12, N);
+  })();
+
+  /* ---- ROUTE A · the integrated inspiral, and the mass it gives back ----- */
+  (function(){
+    const a0 = gwSepOfFgw(M, 35);
+    const R = gwInspiralRun(m1, m2, a0, { frac: 0.004 });
+    ok('the inspiral integrates', R.ok && R.n > 100, R.n);
+    ok('and it lands exactly on the ISCO rather than past it',
+       Math.abs(R.a[R.n] - R.aEnd) < 1e-12 * R.aEnd, R.a[R.n] + ' vs ' + R.aEnd);
+    /* the track against the closed form a(t) — RK4 on ȧ ∝ a⁻³ */
+    let worstA = 0;
+    for(let i = 0; i <= R.n; i++){
+      const want = gwSepAtT(m1, m2, a0, R.t[i]);
+      worstA = Math.max(worstA, Math.abs(R.a[i] - want) / a0);
+    }
+    /* 1.2×10⁻¹⁰ measured, at frac = 0.004 — RK4's own truncation on this grid,
+       and the tolerance is set from it rather than guessed */
+    ok('the integrated separation matches a₀(1−t/tc)^(1/4) to 1e-9',
+       worstA < 1e-9, worstA);
+    close('and the elapsed time is the coalescence time less what is left at the ISCO',
+          R.tEnd, gwTcoalOf(m1, m2, a0) - gwTcoalOf(m1, m2, R.aEnd), 1e-8 * R.tEnd);
+
+    /* THE ACCEPTANCE TEST (MASTER-PLAN §3.1 item 5): the chirp mass measured
+       off the track, by the operation a detector performs, against the
+       algebraic one. Route A knows m₁ and m₂ separately and never forms Mc. */
+    const D = gwTrackFdot(R);
+    ok('a chirp mass is recovered at every interior sample', D.ok);
+    ok('and it matches (m₁m₂)^(3/5)/M^(1/5) to better than 1e-6',
+       D.worst < 1e-6, 'worst relative ' + D.worst);
+    ok('  in fact to 6.5×10⁻⁸ at frac = 0.004', D.worst < 1e-7, D.worst);
+
+    /* THE ORDER OF THE DERIVATIVE, MEASURED. The five-point Lagrange form on
+       this geometric grid is fourth order in the step, so halving frac must cut
+       the error sixteenfold — and the three-point central difference it
+       replaced is second order and would cut it four. Both are asserted,
+       because "we used a better stencil" is a claim like any other. */
+    const worstAt = fr => gwTrackFdot(gwInspiralRun(m1, m2, a0, { frac: fr })).worst;
+    const e1 = worstAt(0.008), e2 = worstAt(0.004);
+    const order = Math.log2(e1 / e2);
+    ok('halving the step cuts the recovered-mass error like h⁴',
+       order > 3.5 && order < 4.6, 'measured order ' + order + '  (' + e1 + ' → ' + e2 + ')');
+    /* the three-point stencil, run on the same track, to show the difference is
+       the stencil and not the integration */
+    const R2 = gwInspiralRun(m1, m2, a0, { frac: 0.004 });
+    let worst3 = 0;
+    for(let i = 3; i <= R2.n - 3; i++){
+      const fd = gwLagrangeD1(R2.t, R2.f, i, 1);
+      const mc = gwMcFromFdot(R2.f[i], fd);
+      worst3 = Math.max(worst3, Math.abs(mc - Mc) / Mc);
+    }
+    ok('a three-point derivative on the same track is a hundred times worse',
+       worst3 > 30 * D.worst, 'three-point ' + worst3 + ' vs five-point ' + D.worst);
+
+    /* the sweep rate itself, against route B at every sample */
+    let worstF = 0;
+    for(let i = 2; i <= R.n - 2; i++)
+      worstF = Math.max(worstF, Math.abs(D.fdot[i] - gwFdotOf(Mc, R.f[i])) / gwFdotOf(Mc, R.f[i]));
+    /* 1.1×10⁻⁷ — the recovered mass's 6.5×10⁻⁸ times 5/3, which is what the
+       exponent in Mc ∝ ḟ^(3/5) demands, so the two rows are one measurement */
+    ok('the measured ḟ matches the closed-form chirp relation everywhere',
+       worstF < 1e-6, worstF);
+    ok('  and the two errors are related by the 3/5 exponent',
+       Math.abs(worstF / D.worst - 5 / 3) < 0.2, worstF / D.worst);
+  })();
+
+  /* ---- A LONG INSPIRAL, and the array that cannot carry it -------------
+     The compact binaries above run for a fifth of a second and hide this
+     entirely. Hulse–Taylor runs for 5×10¹⁶ s and finishes in steps of 2×10⁻⁵ s,
+     and one ulp of float64 at 5×10¹⁶ is EIGHT SECONDS: the last stretch of the
+     elapsed-time array is one repeated float. Differentiating against it
+     returned a chirp mass 33% wrong on every long inspiral while every short
+     one passed at 10⁻⁸ — found by ./runstagetests.ps1, not by reading. The cure
+     is to accumulate the time REMAINING backwards from the end, where each
+     step is comparable with the running sum. Both halves are pinned here: that
+     the fix works, and that the thing it replaced does not. */
+  (function(){
+    const p1 = gwMs(1.438), p2 = gwMs(1.390), P = p1 + p2;
+    const a0 = gwSepOfPeriod(P, 0.322997448918 * 86400);
+    const R = gwInspiralRun(p1, p2, a0, { frac: 0.004 });
+    const Mc2 = gwChirpMassS(p1, p2);
+    ok('a 20-decade inspiral integrates to its ISCO', R.ok && R.hitEnd, R.n);
+    /* THE MECHANISM, asserted rather than described: the elapsed-time array
+       genuinely stops changing near the end */
+    ok('  and its elapsed-time array has run out of digits by then',
+       R.t[R.n] === R.t[R.n - 1], R.t[R.n] - R.t[R.n - 1]);
+    ok('  while the remaining-time array has not',
+       R.tau[R.n - 1] > 0 && R.tau[R.n - 1] < 1e-3, R.tau[R.n - 1]);
+    const D2 = gwTrackFdot(R);
+    ok('  so the chirp mass still comes back to better than 1e-6', D2.worst < 1e-6, D2.worst);
+    /* THE CONTROL: the same track, differentiated against the elapsed time it
+       used to use. If this passed, the row above would be measuring nothing. */
+    let bad = 0;
+    for(let i = 2; i <= R.n - 2; i++){
+      const fd = gwLagrangeD1(R.t, R.f, i, 2);
+      const mc = gwMcFromFdot(R.f[i], fd);
+      if(Number.isFinite(mc)) bad = Math.max(bad, Math.abs(mc - Mc2) / Mc2);
+    }
+    ok('  and differentiating against the elapsed time does NOT — the control',
+       bad > 0.01, bad);
+  })();
+
+  /* ---- the degeneracy: two different pairs, one chirp ------------------- */
+  (function(){
+    /* GW150914's own masses are nearly equal, so its twin is nearly itself and
+       the row below would be vacuous — the test uses a 4:1 pair instead, where
+       the twin's total mass is 12% away and the point is visible. */
+    const u1 = gwMs(60), u2 = gwMs(15), U = u1 + u2, Uc = gwChirpMassS(u1, u2);
+    const T = gwEqualTwin(u1, u2);
+    close('the equal-mass twin has the same chirp mass',
+          gwChirpMassS(T.m1, T.m2), Uc, 1e-14 * Uc);
+    ok('but a different total mass', Math.abs(T.M - U) > 0.05 * U,
+       gwSolar(T.M) + ' vs ' + gwSolar(U));
+    /* the two chirps coincide as functions of time to merger, and part company
+       only at the ISCO, which the total mass sets */
+    for(const tau of [1, 0.3, 0.05])
+      close('at τ = ' + tau + ' s the two binaries radiate at the same frequency',
+            gwFgwOfTau(gwChirpMassS(T.m1, T.m2), tau), gwFgwOfTau(Uc, tau), 1e-12);
+    ok('while their ISCO frequencies differ by more than a per cent',
+       Math.abs(gwFgwIsco(T.M) / gwFgwIsco(U) - 1) > 0.01,
+       gwFgwIsco(T.M) + ' vs ' + gwFgwIsco(U));
+    /* and the same statement made through the integrated track rather than the
+       closed form: the two inspirals sweep the same frequencies at the same
+       times, to the accuracy of the integration */
+    const RA = gwInspiralRun(u1, u2, gwSepOfFgw(U, 20), { frac: 0.004 });
+    const RB = gwInspiralRun(T.m1, T.m2, gwSepOfFgw(T.M, 20), { frac: 0.004 });
+    let worst = 0;
+    for(let i = 0; i <= Math.min(RA.n, RB.n); i++){
+      const tt = RA.t[i];
+      if(tt > RB.t[RB.n]) break;
+      worst = Math.max(worst, Math.abs(RA.f[i] - gwFgwOfTau(Uc, gwTcoalOf(u1, u2, RA.a0) - tt)) / RA.f[i]);
+    }
+    /* 1.0×10⁻⁹ measured — RK4's truncation over a run that starts at 20 Hz, and
+       f ∝ a^(−3/2) carries the separation's own 1.2×10⁻¹⁰ up by half again */
+    ok('the integrated tracks of both follow one chirp-mass curve', worst < 3e-9, worst);
+  })();
+
+  /* ---- THE WAVE ITSELF, from the quadrupole moment ---------------------- */
+  (function(){
+    const a = gwSepOfFgw(M, 35), D = gwLs(440e6 * PARSEC);
+    const W = gwQuadWave(m1, m2, a, D, 0, 400);
+    /* the amplitude, measured off a numerically twice-differentiated
+       quadrupole moment, against 4Mc^(5/3)(πf)^(2/3)/D */
+    const want = gwStrainOf(Mc, 35, D);
+    ok('the strain from the twice-differentiated quadrupole matches the closed form',
+       Math.abs(W.ampP - want) < 1e-6 * want, W.ampP + ' vs ' + want);
+    ok('and face-on the two polarisations have equal amplitude',
+       Math.abs(W.ampC - W.ampP) < 1e-9 * W.ampP, W.ampC + ' vs ' + W.ampP);
+    /* THE FACTOR OF TWO, COUNTED. Four zero crossings of h₊ in one orbit. */
+    ok('h₊ crosses zero four times per orbit', W.crossings === 4, W.crossings);
+    close('so the wave frequency is twice the orbital one, measured',
+          W.fMeas * W.T, 2, 1e-6);
+    close('  and it is the frequency Kepler gives', W.fMeas, gwFgwOf(M, a), 1e-6 * 35);
+    /* the SI strain routine, written for GW150914 alone, agrees */
+    close('and the SI gwStrain agrees with the geometric one',
+          gwStrainOf(Mc, 35, D), gwStrain(gwChirpMass(35.6, 30.6), 35, 440e6 * PARSEC), 1e-12 * want);
+
+    /* THE INCLINATION PATTERN, measured rather than asserted */
+    for(const deg of [0, 30, 60, 90]){
+      const inc = deg * Math.PI / 180;
+      const Q = gwQuadWave(m1, m2, a, D, inc, 400);
+      ok(deg + '°: h₊ follows (1+cos²ι)/2',
+         Math.abs(Q.ampP - want * gwPatternP(inc)) < 1e-6 * want, Q.ampP);
+      ok(deg + '°: h× follows cos ι',
+         Math.abs(Q.ampC - want * gwPatternC(inc)) < 1e-6 * want, Q.ampC);
+    }
+    /* Edge on there is no cross polarisation at all — and "at all" is 10⁻¹⁷ of
+       h₊ rather than a hard zero, because cos(π/2) is 6.1×10⁻¹⁷ in float64 and
+       not 0. Asserting equality here is asserting a property of π/2's
+       representation, which is why this row states the ratio instead. */
+    const E = gwQuadWave(m1, m2, a, D, Math.PI / 2, 400);
+    ok('edge-on the cross polarisation is 10⁻¹⁶ of h₊ — gone but for cos(π/2)',
+       E.ampC < 1e-15 * E.ampP, E.ampC / E.ampP);
+    ok('and h₊ is exactly half the face-on amplitude',
+       Math.abs(E.ampP - 0.5 * want) < 1e-6 * want, E.ampP);
+    /* the derivative's own convergence: doubling the samples cuts it 16× */
+    const err = n => Math.abs(gwQuadWave(m1, m2, a, D, 0, n).ampP - want) / want;
+    const o = Math.log2(err(100) / err(200));
+    ok('the twice-differentiated quadrupole converges at fourth order',
+       o > 3.5 && o < 4.5, 'order ' + o);
+  })();
+
+  /* ---- ECCENTRICITY · Peters, by quadrature and in closed form ---------- */
+  (function(){
+    const p1 = gwMs(1.438), p2 = gwMs(1.390);
+    const a = gwSepOfPeriod(p1 + p2, 0.322997448918 * 86400);
+    /* the control first: a circular orbit must return the circular luminosity,
+       so the quadrature and the (32/5) share an answer before eccentricity is
+       allowed to change it */
+    close('a circular orbit averages to the circular luminosity',
+          gwAvgPower(p1, p2, a, 0, 2048).enh, 1, 1e-13);
+    close('and gwPetersF(0) is exactly 1', gwPetersF(0), 1, 0);
+    /* THE TWO ROUTES: an orbit average by quadrature against Peters' F(e) */
+    for(const e of [0.1, 0.4, 0.6171340, 0.9]){
+      const num = gwAvgPower(p1, p2, a, e, 8192).enh;
+      ok('e = ' + e + ': the orbit-averaged power matches (1+73e²/24+37e⁴/96)/(1−e²)^(7/2)',
+         Math.abs(num - gwPetersF(e)) < 1e-9 * gwPetersF(e), num + ' vs ' + gwPetersF(e));
+    }
+    close('Hulse–Taylor\'s eccentricity multiplies the power by 11.857',
+          gwPetersF(0.6171340), 11.8568, 1e-4);
+    /* PETERS' TWO EQUATIONS ARE NOT INDEPENDENT, and this is the row that says
+       so. 1 − e² = L²/(μ²Ma), so d ln(1−e²)/dt = 2L̇/L − ȧ/a, and with
+       ⟨dL/dt⟩ carrying G(e) = (1+7e²/8)/(1−e²)² and ⟨ȧ⟩ carrying F(e) the
+       eccentricity's own equation falls out. Reproducing the 304/15 and the
+       121/304 from F and G alone is the check that all three were transcribed
+       correctly — and it is also the reason the orbit rounds: F > G/√(1−e²)
+       means a falls faster than L, and an orbit that loses size faster than
+       angular momentum is one whose eccentricity is falling. */
+    for(const e of [0.1, 0.4, 0.6171340, 0.9]){
+      const s = Math.sqrt(1 - e * e);
+      const dln = 64 / 5 * (gwPetersF(e) - gwPetersG(e) / s);      // d ln(1−e²)/dt, per m₁m₂M/a⁴
+      const fromFG = -(1 - e * e) / (2 * e) * dln;
+      const peters = -304 / 15 * e * (1 + 121 / 304 * e * e) / Math.pow(1 - e * e, 2.5);
+      close('e = ' + e + ': ė from F and G reproduces Peters\' own ė equation',
+            fromFG, peters, 1e-12 * Math.abs(peters));
+      ok('  and F(e) exceeds G(e)/√(1−e²), which is why the orbit rounds',
+         gwPetersF(e) > gwPetersG(e) / s, gwPetersF(e) + ' vs ' + gwPetersG(e) / s);
+    }
+    close('G(0) is 1, like F(0)', gwPetersG(0), 1, 0);
+    /* the trapezoid on a periodic analytic integrand converges geometrically,
+       not at h². Measured by doubling n at a moderate e — at e = 0.9 the
+       integrand's poles are close enough to the real axis that it is still
+       improving at 8192. */
+    const eT = 0.4;
+    const er = n => Math.abs(gwAvgPower(p1, p2, a, eT, n).enh - gwPetersF(eT)) / gwPetersF(eT);
+    ok('and it converges geometrically rather than at h²: 64 panels already give 1e-12',
+       er(64) < 1e-12, er(64));
+    ok('  which 64 panels of a second-order rule could not', er(16) > er(64), er(16));
+  })();
+
+  /* ---- the orbit that rounds itself out --------------------------------- */
+  (function(){
+    const p1 = gwMs(1.438), p2 = gwMs(1.390);
+    const a = gwSepOfPeriod(p1 + p2, 0.322997448918 * 86400);
+    const R = gwEccRun(p1, p2, a, 0.6171340, { frac: 0.004 });
+    ok('the eccentric decay integrates to the ISCO', R.ok && R.hitEnd, R.n);
+    ok('and the orbit circularises on the way in', R.e[R.n] < 1e-3, R.e[R.n]);
+    /* ROUTE B for the SHAPE of that decay: Peters' closed-form a(e), which has
+       no time in it and no integration behind it */
+    let worst = 0;
+    for(let i = 0; i <= R.n; i += 7){
+      if(!(R.e[i] > 1e-4)) continue;
+      const want = gwPetersAE(a, 0.6171340, R.e[i]);
+      worst = Math.max(worst, Math.abs(R.a[i] - want) / want);
+    }
+    ok('the integrated (a, e) track lies on Peters\' closed-form trajectory',
+       worst < 1e-8, worst);
+    /* Hulse–Taylor merges in about 300 million years */
+    const Myr = 1e6 * 365.25 * 86400;
+    ok('Hulse–Taylor merges in about 300 Myr', R.tMerge / Myr > 250 && R.tMerge / Myr < 350,
+       R.tMerge / Myr);
+    /* and the eccentricity is why: the circular orbit at the same separation
+       would take far longer */
+    ok('a circular orbit of the same size would take about ten times as long',
+       gwTcoalOf(p1, p2, a) / R.tMerge > 5, gwTcoalOf(p1, p2, a) / R.tMerge);
+  })();
+
+  /* ---- THE MEASUREMENT: pulsar period decay ----------------------------- */
+  (function(){
+    /* PSR B1913+16 — Weisberg & Huang 2016. The published GR prediction is
+       −2.40263e-12; the masses are quoted to four figures, and Ṗ ∝ Mc^(5/3), so
+       a prediction computed from them cannot be better than about 0.1%. It
+       lands 0.02% away, which is the check that the formula is right and the
+       honest limit on what these inputs support. */
+    const p1 = gwMs(1.438), p2 = gwMs(1.390), P = 0.322997448918 * 86400, e = 0.6171340;
+    const pd = gwPdotOf(p1, p2, P, e);
+    close('Hulse–Taylor\'s predicted period decay is −2.4026e-12 s/s',
+          pd * 1e12, -2.40263, 0.002);
+    ok('and the observed −2.398e-12 is within 0.2% of it',
+       Math.abs(-2.398e-12 / pd - 1) < 0.002, -2.398e-12 / pd);
+    /* THE TWO ROUTES: the closed form against the numerical orbit average fed
+       through Kepler's third law. No F(e) appears in the second one. */
+    close('the numerical orbit average reproduces the closed-form Ṗ',
+          gwPdotAvg(p1, p2, P, e, 8192), pd, 1e-9 * Math.abs(pd));
+    /* the double pulsar, the sharpest test there is */
+    const k1 = gwMs(1.338185), k2 = gwMs(1.248868);
+    const Pk = 0.1022515592973 * 86400, ek = 0.087777023;
+    close('the double pulsar\'s predicted decay is −1.2479e-12 s/s',
+          gwPdotOf(k1, k2, Pk, ek) * 1e12, -1.247920, 0.0002);
+    close('  and its orbit-average route agrees',
+          gwPdotAvg(k1, k2, Pk, ek, 8192), gwPdotOf(k1, k2, Pk, ek),
+          1e-9 * Math.abs(gwPdotOf(k1, k2, Pk, ek)));
+    /* the shrinkage in metres per year, which is what "the orbit decays" means */
+    const a = gwSepOfPeriod(p1 + p2, P);
+    const adot = 2 / 3 * a * (pd / P);         // ȧ/a = (2/3)Ṗ/P
+    ok('Hulse–Taylor\'s orbit shrinks by about 3.5 m per year',
+       Math.abs(gwSm(adot) * 365.25 * 86400 + 3.5) < 0.4, gwSm(adot) * 365.25 * 86400);
+    /* AND WITHOUT THE ECCENTRICITY IT WOULD BE WRONG BY AN ORDER OF MAGNITUDE.
+       This is the row that shows F(e) is load-bearing rather than decorative. */
+    ok('a circular orbit of the same period would decay 11.86 times slower',
+       Math.abs(gwPdotOf(p1, p2, P, 0) * gwPetersF(e) / pd - 1) < 1e-12,
+       gwPdotOf(p1, p2, P, 0) / pd);
+  })();
+
+  /* ---- the preset table tells the truth about itself -------------------- */
+  (function(){
+    for(const k of Object.keys(GW_BINARIES)){
+      const B = GW_BINARIES[k];
+      const b1 = gwMs(B.m1), b2 = gwMs(B.m2), BM = b1 + b2;
+      const a = gwBinarySep(B);
+      ok(k + ': its separation is positive and outside the ISCO',
+         a > gwSepIsco(BM), gwSm(a) / 1000 + ' km');
+      close(k + ': the declared separation matches the measured datum',
+            gwSm(a) / 1000, B.sepKm, Math.abs(B.sepKm) * 1e-5);
+      /* Kepler's third law, round trip through the declared period */
+      close(k + ': the period and the separation are consistent',
+            gwPeriodOf(BM, a), gwBinaryPeriod(B), 1e-9 * gwBinaryPeriod(B));
+      if(B.tc !== undefined)
+        close(k + ': the declared time to merger matches the closed form',
+              gwTcoalOf(b1, b2, a), B.tc, Math.abs(B.tc) * 1e-4);
+      if(B.fIsco !== undefined)
+        close(k + ': the declared ISCO frequency is 1/(6^(3/2)πM)',
+              gwFgwIsco(BM), B.fIsco, Math.abs(B.fIsco) * 1e-5);
+      if(B.pdot !== undefined)
+        close(k + ': the declared period decay matches the quadrupole formula',
+              gwPdotOf(b1, b2, gwBinaryPeriod(B), B.e), B.pdot, Math.abs(B.pdot) * 1e-4);
+      if(B.lumW !== undefined)
+        /* the ORBIT AVERAGE, not the circular value — the Earth's e = 0.0167
+           raises it by 0.18%, which is above this tolerance and was the one
+           row ./auditclaims.ps1 rejected when its GW_BINARIES block was first
+           run. A declared luminosity is a claim about the orbit, not about the
+           formula for a circle. */
+        close(k + ': the declared luminosity matches the orbit-averaged power',
+              gwAvgPower(b1, b2, a, B.e || 0, 8192).avg * GW_LUM_W, B.lumW,
+              Math.abs(B.lumW) * 1e-3);
+      if(B.obsRatio !== undefined)
+        ok(k + ': the observed decay is within its quoted error of the prediction',
+           Math.abs(B.pdotObs / gwPdotOf(b1, b2, gwBinaryPeriod(B), B.e) - B.obsRatio) < 0.002,
+           B.pdotObs / gwPdotOf(b1, b2, gwBinaryPeriod(B), B.e));
+    }
+    /* HM Cancri runs the inference the other way: its masses are uncertain and
+       its period decay is not, so the chirp mass comes OUT of the observation.
+       0.319 M☉ against the 0.331 the quoted masses give — four per cent, which
+       is a statement about how well those masses are known. */
+    const H = GW_BINARIES.hmcnc;
+    const McObs = Math.pow(-H.pdotObs * 5 / 96 * Math.pow(2 * Math.PI, -8 / 3) *
+                           Math.pow(H.pbSec, 5 / 3), 0.6);
+    close('HM Cancri\'s observed decay implies a chirp mass of 0.319 M☉',
+          gwSolar(McObs), 0.3189, 1e-3);
+    ok('  which is within 5% of the one its quoted masses give',
+       Math.abs(McObs / gwChirpMassS(gwMs(H.m1), gwMs(H.m2)) - 1) < 0.05,
+       gwSolar(gwChirpMassS(gwMs(H.m1), gwMs(H.m2))));
+  })();
+
+  /* ---- what the engine REFUSES ----------------------------------------- */
+  (function(){
+    const a0 = gwSepOfFgw(M, 35);
+    ok('a separation inside the ISCO is not an inspiral',
+       !gwInspiralRun(m1, m2, gwSepIsco(M) * 0.9).ok);
+    ok('and it says why', /innermost stable/.test(gwInspiralRun(m1, m2, gwSepIsco(M) * 0.9).why));
+    ok('a zero mass is refused', !gwInspiralRun(0, m2, a0).ok);
+    /* THE PHASE IS A QUADRATURE, and this is the row that says so. φ̇ = ω(a)
+       is smooth on the inspiral timescale, so the cycle count rides the same
+       geometric grid and needs no resolving of individual orbits — including
+       for a binary pulsar with 3×10¹¹ of them left. The first version of this
+       module bounded the step by the orbital period and then refused the phase
+       when that became impossible; GW170817 hit the step cap under that rule
+       and its count came out 571 cycles short. */
+    const p1 = gwMs(1.438), p2 = gwMs(1.390);
+    const aP = gwSepOfPeriod(p1 + p2, 0.322997448918 * 86400);
+    const RP = gwInspiralRun(p1, p2, aP);
+    const McP = gwChirpMassS(p1, p2);
+    ok('a binary pulsar with 10¹¹ orbits left still gets an integrated phase', RP.phase);
+    close('  and it matches ∫f dt in closed form',
+          RP.cycles, gwCyclesOf(McP, gwFgwOf(p1 + p2, aP), gwFgwOf(p1 + p2, RP.aEnd)),
+          1e-7 * RP.cycles);
+    /* GW170817 is the preset the old rule truncated — 3900 cycles, and it was
+       571 short. Pinned by name so the bound cannot come back unnoticed. */
+    const n1 = gwMs(1.46), n2 = gwMs(1.27), N = n1 + n2;
+    const aN = gwSepOfFgw(N, 24);
+    const RN = gwInspiralRun(n1, n2, aN);
+    const wantN = gwCyclesOf(gwChirpMassS(n1, n2), 24, gwFgwOf(N, RN.aEnd));
+    ok('GW170817 has about 3 900 wave cycles above 24 Hz', wantN > 3000 && wantN < 5000, wantN);
+    close('  and the integrated count reaches all of them', RN.cycles, wantN, 1e-7 * wantN);
+    /* a run that DOES stop short reports no count at all rather than a short
+       one — the guard the truncation earned */
+    const RT = gwInspiralRun(m1, m2, a0, { maxSteps: 50 });
+    ok('a truncated run refuses to report a cycle count', !Number.isFinite(RT.cycles));
+    ok('  and says that it stopped short', /step limit/.test(RT.phaseWhy), RT.phaseWhy);
+    /* and the count halves when the frequency doubles: N ∝ f^(−5/3) */
+    const RG = gwInspiralRun(m1, m2, a0, { frac: 0.002 });
+    close('the integrated wave cycles match ∫f dt in closed form',
+          RG.cycles, gwCyclesOf(Mc, gwFgwOf(M, a0), gwFgwOf(M, RG.aEnd)), 1e-7 * RG.cycles);
+  })();
 })();
 
 
@@ -4422,6 +6251,302 @@ ok('scalar mode div is the Laplacian', sf('x^2+y^2+z^2').laplacian !== null);
     ok('the measured radius of convergence of the Legendre series is about 1',
        Math.abs(odSeriesRadius(odSeriesCoeffs('legendre', 0, 1, 60)) - 1) < 0.2,
        odSeriesRadius(odSeriesCoeffs('legendre', 0, 1, 60)));
+  })();
+
+  /* ==========================================================================
+     EXISTENCE AND UNIQUENESS (syllabus gap B4)
+     Every tolerance below is the measured error of the SECOND route, not a
+     guess; the figures each one is derived from are named in its comment.
+     ========================================================================== */
+  (function(){
+    /* the cumulative quadrature Picard's iteration is built on. Two Simpson
+       chains, so a defect in the odd-chain seed would show as a sawtooth here
+       and nowhere else. Measured worst error over [-1,1] at K=160: 7.13e-12. */
+    const K = 160, hh = 1 / K, M = 2 * K + 1, c = K;
+    const f = new Float64Array(M);
+    for(let j = 0; j < M; j++) f[j] = Math.cos((j - c) * hh);
+    const Y = odCumSimpson(f, hh, c);
+    let w = 0;
+    for(let j = 0; j < M; j++) w = Math.max(w, Math.abs(Y[j] - Math.sin((j - c) * hh)));
+    close('odCumSimpson integrates cos into sin, both directions', w, 0, 2e-11);
+    ok('and it is exactly zero at the centre', Y[c] === 0);
+  })();
+  (function(){
+    /* THE HYPOTHESIS, MEASURED. A single separation cannot tell the two cases
+       apart — that is the whole reason odLipScan scans a ladder — so the test
+       is on the RATIO between consecutive rows. */
+    const S = odLipScan((x, y) => y, 0, 1, 1, 1);
+    close('L = 1 for y_prime = y', S.L, 1, 1e-12);
+    ok('and the scan calls it Lipschitz', S.lip === true);
+    const C = odLipScan(OD_FIELDS.cuberoot.F, 0, 0, 1.5, 1.5);
+    ok('the cube-root field is NOT Lipschitz at the origin', C.lip === false);
+    /* quartering delta multiplies 3*delta^(-1/3) by exactly cbrt(4) for ever */
+    close('and its ladder grows by cbrt(4) per quartering', C.ratio, Math.cbrt(4), 1e-9);
+    /* the same field is perfectly well behaved away from y = 0 */
+    ok('but it IS Lipschitz once y0 is off the axis',
+       odLipScan(OD_FIELDS.cuberoot.F, 0, 1, 1.5, 0.5).lip === true);
+    /* a field with no y in it at all: the ladder is identically zero, and 0/0
+       is the strongest Lipschitz condition, not a divergence */
+    ok('a field independent of y scans as Lipschitz', odLipScan((x, y) => x, 0, 1, 1, 1).lip === true);
+    /* EVERY preset's declared flag against the scan — the same claim
+       auditclaims.ps1 checks, pinned here so a table edit fails fast */
+    for(const k of Object.keys(OD_FIELDS)){
+      const E = OD_FIELDS[k];
+      ok('OD_FIELDS.' + k + ' declares lip correctly',
+         odLipScan(E.F, E.x0, E.y0, E.a, E.b).lip === E.lip);
+    }
+  })();
+  (function(){
+    /* the rectangle and the interval it buys */
+    close('M is the largest |F| on the box', odFieldM((x, y) => y, 0, 1, 1, 1), 2, 1e-12);
+    close('h = b/M when the height binds', odPicardH(2, 1, 1), 0.5, 1e-15);
+    close('h = a when the width binds', odPicardH(0.5, 1, 1), 1, 1e-15);
+    /* y_prime = 1 + y_squared is a polynomial and still only promised 0.3 */
+    const B = OD_FIELDS.blowup;
+    close('the blow-up field is guaranteed only |x| <= 0.3',
+       odPicardH(odFieldM(B.F, B.x0, B.y0, B.a, B.b), B.a, B.b), 0.3, 1e-12);
+  })();
+  (function(){
+    /* PICARD. For y_prime = y the nth iterate is the partial sum of e^x to n
+       terms — the iteration is visibly building the exponential series. */
+    const F = (x, y) => y;
+    const M = odFieldM(F, 0, 1, 1, 1), h = odPicardH(M, 1, 1);
+    const P = odPicardRun(F, 0, 1, h, 12, 160);
+    let w = 0;
+    for(let j = 0; j < P.xs.length; j++){
+      let s = 0, t = 1;
+      for(let k = 0; k <= 6; k++){ s += t; t *= P.xs[j] / (k + 1); }
+      w = Math.max(w, Math.abs(P.iters[6][j] - s));
+    }
+    /* 5.3e-12 at K = 160 is not round-off — see the order test below, which
+       attributes it to the cumulative quadrature's own h^4 */
+    close('Picard iterate 6 IS the 6th partial sum of e^x', w, 0, 2e-11);
+    /* against a route that shares nothing: RK4 on the same nodes */
+    const ref = odRefRun(F, 0, 1, P.xs, P.c, 8);
+    let rw = 0;
+    for(let j = 0; j < P.xs.length; j++) rw = Math.max(rw, Math.abs(ref[j] - Math.exp(P.xs[j])));
+    close('the RK4 reference is exp to 1e-13', rw, 0, 1e-13);
+    close('and Picard reaches it after 12 iterates', odSupGap(P.iters[12], ref), 0, 2e-11);
+  })();
+  (function(){
+    /* WHOSE ERROR IS THE 5e-12? Halving h is the only thing that separates
+       truncation from round-off (MASTER-PLAN, the J9 rule): truncation falls by
+       2^p, round-off does not move. Measured here at 15.9, 16.0, 16.0 and 15.7
+       across four halvings of the grid — so it is the cumulative Simpson's own
+       fourth order, and adding iterates past the point where it dominates buys
+       nothing. A relative floor would have been the wrong cure; a finer grid is
+       the right one. */
+    const F = (x, y) => y;
+    const M = odFieldM(F, 0, 1, 1, 1), h = odPicardH(M, 1, 1);
+    const err = K => {
+      const P = odPicardRun(F, 0, 1, h, 12, K);
+      return odSupGap(P.iters[12], odRefRun(F, 0, 1, P.xs, P.c, 8));
+    };
+    const e1 = err(40), e2 = err(80), e3 = err(160);
+    ok('the Picard floor is TRUNCATION, not round-off: it falls 16x per halving',
+       e1 / e2 > 14 && e1 / e2 < 18 && e2 / e3 > 14 && e2 / e3 < 18,
+       (e1 / e2).toFixed(2) + ', ' + (e2 / e3).toFixed(2));
+    close('so the measured order of the cumulative quadrature is 4',
+       Math.log2(e1 / e2), 4, 0.2);
+  })();
+  (function(){
+    /* THE BOUND IS AN INEQUALITY AND MUST HOLD — for every Lipschitz preset, at
+       every iterate. Measured worst use of the bound over the whole table:
+       0.667 (newton at n = 9), so a ratio above 1 is a real failure and not a
+       tolerance question. */
+    let worst = 0, who = '';
+    for(const k of Object.keys(OD_FIELDS)){
+      const E = OD_FIELDS[k];
+      const S = odLipScan(E.F, E.x0, E.y0, E.a, E.b);
+      if(!S.lip) continue;
+      const M = odFieldM(E.F, E.x0, E.y0, E.a, E.b), h = odPicardH(M, E.a, E.b);
+      const P = odPicardRun(E.F, E.x0, E.y0, h, 10, 160);
+      for(const s of P.steps){
+        const r = s.gap / odPicardBound(M, S.L, h, s.n);
+        if(r > worst){ worst = r; who = k + ' n=' + s.n; }
+      }
+    }
+    ok('the Picard bound M L^n h^(n+1)/(n+1)! holds at every iterate of every preset',
+       worst < 1, 'worst use ' + worst.toFixed(4) + ' at ' + who);
+    ok('and it is not vacuous — the truth uses a good fraction of it', worst > 0.1, worst);
+    /* the bound itself, against the closed form of the factorial */
+    close('odPicardBound at n = 0 is M h', odPicardBound(3, 2, 0.5, 0), 1.5, 1e-15);
+    close('and at n = 3 is M L^3 h^4 / 24', odPicardBound(3, 2, 0.5, 3),
+       3 * 8 * 0.0625 / 24, 1e-15);
+  })();
+  (function(){
+    /* Picard's limit against RK4 on every preset, and the induction step the
+       proof turns on: the iterates never leave the box. */
+    for(const k of Object.keys(OD_FIELDS)){
+      const E = OD_FIELDS[k];
+      const M = odFieldM(E.F, E.x0, E.y0, E.a, E.b), h = odPicardH(M, E.a, E.b);
+      const P = odPicardRun(E.F, E.x0, E.y0, h, 12, 160);
+      const ref = odRefRun(E.F, E.x0, E.y0, P.xs, P.c, 8);
+      const scale = Math.max(M * h, 1e-300);
+      ok('Picard agrees with RK4 on ' + k, odSupGap(P.iters[12], ref) / scale < 1e-9,
+         odSupGap(P.iters[12], ref) + ' against a scale of ' + scale);
+      const stay = odSupAbs(P.iters[12].map(v => v - E.y0));
+      ok('and no iterate on ' + k + ' leaves the rectangle', stay <= E.b * (1 + 1e-9),
+         stay + ' vs b = ' + E.b);
+    }
+  })();
+  (function(){
+    /* the orders, measured by halving twice rather than read off the names */
+    const F = (x, y) => x + y, ex = 2 * Math.E - 2;
+    const e = odOrderRef(odEuler, F, 0, 1, 1, 8, ex);
+    const hn = odOrderRef(odHeun, F, 0, 1, 1, 8, ex);
+    const r4 = odOrderRef(odRK4First, F, 0, 1, 1, 8, ex);
+    /* the measured numbers approach the orders from below at these step counts
+       (0.924 then 0.961 for Euler), which is what a finite h looks like */
+    ok('Euler measures first order', e.p1 > 0.85 && e.p2 > 0.9 && e.p2 < 1.05, e.p1 + ', ' + e.p2);
+    ok('Heun measures second order', hn.p1 > 1.85 && hn.p2 < 2.05, hn.p1 + ', ' + hn.p2);
+    ok('RK4 measures fourth order', r4.p1 > 3.8 && r4.p2 < 4.05, r4.p1 + ', ' + r4.p2);
+    ok('and each order buys real accuracy', e.e1 > hn.e1 && hn.e1 > r4.e1,
+       [e.e1, hn.e1, r4.e1].join(' > '));
+  })();
+  (function(){
+    /* HOW FAR THE SOLUTION REACHES, by two routes that share nothing: marching
+       the equation in x, and integrating dx/dy = 1/F in y. Measured gap between
+       them: 8.77e-12, flat across four decades of the cut-off level. */
+    const F = OD_FIELDS.blowup.F;
+    for(const cap of [1e4, 1e6, 1e8]){
+      const A = odEscape(F, 0, 0, 1, cap, 20);
+      ok('the solution of y_prime = 1 + y_squared escapes at cap ' + cap, A.escaped === true);
+      close('and the two routes agree there', A.x, odEscapeQuad(F, 0, 0, A.y), 1e-10);
+      /* y = tan x exactly, so pi/2 - x IS arctan(1/y) — and it must be tested
+         against the y the marcher actually STOPPED at, not against the cut-off
+         it was aiming for. A relative step overshoots the level by ~0.4%, and
+         reading the identity off `cap` instead measured that overshoot rather
+         than the integrator. The residue left is a flat 8.77e-12 at every
+         cut-off, which is the same number the two routes differ by above —
+         i.e. the marcher's own error and nothing else. */
+      close('and pi/2 - x is exactly arctan(1/y) at the point it stopped',
+         Math.PI / 2 - A.x, Math.atan(1 / A.y), 1e-10);
+      ok('the escape time approaches pi/2 as the cut-off rises',
+         Math.PI / 2 - A.x < 1.1 / cap, Math.PI / 2 - A.x);
+    }
+    close('the declared escape of the blow-up preset', OD_FIELDS.blowup.esc, Math.PI / 2, 1e-15);
+    /* a field that does NOT escape must say so rather than run out of budget */
+    const G = odEscape(OD_FIELDS.decay.F, 0, 2, 1, 1e6, 5);
+    ok('a decaying solution reports no escape', G.escaped === false);
+    /* WHAT THIS ROUTE CANNOT SEE, pinned so nobody re-derives it. A marching
+       integrator finds a blow-up and NOT a vertical tangent. y' = -x/y from
+       (0,2) has the solution sqrt(4-x^2), which ceases to exist at x = 2 — and
+       the marcher steps straight through y = 0 onto the lower branch and
+       carries on to x = 40 with y ~ 18, reporting escaped = false the whole
+       way. A `stalled` outcome was written for this and measured never to fire,
+       even on a field built to trigger it, so it was removed; the panel says
+       "no blow-up along the path marched" instead of "the solution exists". */
+    const C = odEscape(OD_FIELDS.circle.F, 0, 2, 1, 1e6, 40);
+    ok('the circle field reports NO escape even past where its solution ends',
+       C.escaped === false && C.x > 30, 'x=' + C.x + ' y=' + C.y);
+    ok('and it has walked onto a different branch by then',
+       Math.abs(C.y) > 1 && !Number.isFinite(Math.sqrt(4 - C.x * C.x)),
+       'the true solution does not reach x = ' + C.x);
+    /* the field built to stall meets an infinite F first — h shrinks like
+       1/|F|, so the step floor is never the thing that ends the loop */
+    const St = odEscape((x, y) => 1 / Math.sqrt(Math.max(0, 1 - x)), 0, 0, 1, 1e6, 5);
+    ok('a diverging slope ends the march as an escape, not as a stalled step',
+       St.escaped === true && St.x > 0.99 && St.x < 1.01, St.x);
+    /* autonomy is measured, not declared — route B is only legitimate for a
+       field with no x in it */
+    ok('1 + y_squared is autonomous', odAutonomy(F, 0, 0, 1.6, 3).autonomous === true);
+    ok('x + y is not', odAutonomy(OD_FIELDS.nonlin.F, 0, 1, 1, 1).autonomous === false);
+  })();
+  (function(){
+    /* CONTINUOUS DEPENDENCE. The perturbation ratio must converge on the
+       variational solution, which is the exact amplification. */
+    const V = odVariational((x, y) => y, 0, 1, 1, 6000);
+    close('dy(x1)/dy0 for y_prime = y is e', V.v, Math.E, 1e-9);
+    close('and the solution it carries is e too', V.y, Math.E, 1e-12);
+    const W = odVariational(OD_FIELDS.newton.F, 0, 80, 2, 6000);
+    close('and for the cooling law it is exp(-0.8)', W.v, Math.exp(-0.8), 1e-8);
+    const S = odSensitivity((x, y) => y, 0, 1, 1, [1e-2, 1e-4, 1e-6], 8000);
+    for(const r of S.rows)
+      close('the measured amplification at eps = ' + r.eps + ' is e', r.ratio, Math.E, 1e-7);
+    close('and the base solution is e', S.base, Math.E, 1e-12);
+  })();
+  (function(){
+    /* WHERE IT FAILS. The ratio does not settle: it grows like 1/eps, because a
+       perturbation eps lifts the solution onto the branch through cbrt(eps) and
+       arrives a FINITE distance away however small eps was. */
+    const C = odSensitivity(OD_FIELDS.cuberoot.F, 0, 0, 1, [1e-2, 1e-4, 1e-6, 1e-8], 8000);
+    close('RK4 from exactly y = 0 returns y = 0 for ever', C.base, 0, 0);
+    const R = C.rows;
+    /* THE STATEMENT, in the form that carries the meaning: the SEPARATION
+       stays at about 1 while eps falls through six decades. Two initial values
+       a hundred-millionth apart end up a finite distance apart, because the
+       perturbed one lands on the branch through cbrt(eps). Measured:
+       1.7956, 1.1458, 1.0303, 1.00648 — tending to 1, not to 0. */
+    ok('the separation does not shrink with eps — it tends to 1',
+       R[3].sep > 1 && R[3].sep < 1.01 && R[0].sep > 1.7,
+       R.map(r => r.sep.toPrecision(8)).join(' | '));
+    /* so the ratio grows like 1/eps: a factor approaching 100 per two decades,
+       measured at 63.8, 89.9, 97.7 — approached from below */
+    ok('the amplification grows without bound as eps shrinks',
+       R[1].ratio / R[0].ratio > 50 && R[2].ratio / R[1].ratio > 80 &&
+       R[3].ratio / R[2].ratio > 90 && R[3].ratio > 1e7,
+       R.map(r => r.ratio.toExponential(3)).join(' | '));
+    /* THE CONTROL that gives the previous line its meaning: on a Lipschitz
+       field the same growth factor is 1 to nine figures */
+    const Ln = odSensitivity((x, y) => y, 0, 1, 1, [1e-2, 1e-4, 1e-6, 1e-8], 8000);
+    for(let i = 1; i < Ln.rows.length; i++)
+      close('and on y_prime = y the same factor is 1',
+         Ln.rows[i].ratio / Ln.rows[i - 1].ratio, 1, 1e-6);
+    /* and the numerics are trustworthy while it does it — checked against the
+       closed form of the branch the perturbation lands on */
+    for(const r of R){
+      const want = Math.pow(1 + Math.cbrt(r.eps), 3);
+      ok('RK4 tracks the perturbed branch at eps = ' + r.eps,
+         Math.abs(r.yp - want) / want < 1e-8, r.yp + ' vs ' + want);
+    }
+  })();
+  (function(){
+    /* THE FAMILY. Every member is substituted back into the equation; none is
+       taken on trust. The gross is what the residual is read against, and for
+       y = 0 it VANISHES — which is why the stage floors the scale with M. */
+    const F = OD_FIELDS.cuberoot.F;
+    for(const c of [0, 0.5, 1.5]){
+      const R = odResidual(OD_FIELDS.cuberoot.family(c), F, -1.5, 1.5, 500);
+      ok('the family member at c = ' + c + ' solves the equation',
+         R.resid < 1e-8, 'residual ' + R.resid + ' against a gross of ' + R.gross);
+    }
+    close('and the flat member has no slope at all to be read against',
+       odResidual(OD_FIELDS.cuberoot.family(1.5), F, -1.5, 1.5, 500).gross, 0, 0);
+    /* THE CONTROL. A gate never seen to fail is not known to work: a curve that
+       is NOT a solution must show a residual eight orders larger. */
+    const bad = odResidual(x => x * x * x + 0.05 * x, F, -1.5, 1.5, 500);
+    ok('and a curve that is not a solution is caught', bad.resid > 1e-3,
+       'non-solution residual ' + bad.resid);
+    /* the two family members through the same point really are different */
+    const g0 = OD_FIELDS.cuberoot.family(0), g1 = OD_FIELDS.cuberoot.family(0.5);
+    close('both pass through the origin', g0(0) - g1(0), 0, 0);
+    ok('and they are a finite distance apart later', Math.abs(g0(1.5) - g1(1.5)) > 2,
+       g0(1.5) + ' vs ' + g1(1.5));
+  })();
+  (function(){
+    /* the closed forms in the table solve their own fields. auditclaims.ps1
+       checks this too; it is here as well because a table edit should fail in
+       30 seconds rather than in the audit. */
+    for(const k of Object.keys(OD_FIELDS)){
+      const E = OD_FIELDS[k];
+      ok('OD_FIELDS.' + k + ' carries its rectangle',
+         Number.isFinite(E.x0) && Number.isFinite(E.y0) && E.a > 0 && E.b > 0);
+      if(typeof E.exact !== 'function') continue;
+      close('and ' + k + ' starts where it says', E.exact(E.x0, E.x0, E.y0), E.y0, 1e-12);
+      let w = 0;
+      for(let i = 1; i < 20; i++){
+        const x = E.x0 - E.a + 2 * E.a * i / 20;
+        const yv = E.exact(x, E.x0, E.y0);
+        if(!Number.isFinite(yv) || Math.abs(yv) > 1e3) continue;
+        const d = (E.exact(x + 1e-6, E.x0, E.y0) - E.exact(x - 1e-6, E.x0, E.y0)) / 2e-6;
+        const want = E.F(x, yv);
+        if(!Number.isFinite(d) || !Number.isFinite(want)) continue;
+        w = Math.max(w, Math.abs(d - want) / Math.max(1, Math.abs(want)));
+      }
+      /* 1e-6 central differences on the closed form: measured worst 3.9e-10 */
+      close('and d/dx of ' + k + "'s closed form is its own field", w, 0, 1e-8);
+    }
   })();
 })();
 
@@ -10248,5 +12373,2715 @@ ok('scalar mode div is the Laplacian', sf('x^2+y^2+z^2').laplacian !== null);
      }));
 })();
 
+
+/* ============================================================================
+   A WORLDLINE AND A CHAIN OF BOOSTS THE READER SUPPLIES (46e)
+   Programme A items 10 and 11. Everything else in the relativity wing knows
+   which worldline it is looking at. These tests hand the engine an arbitrary
+   x(t) and require it to measure the proper time along it TWICE — once as the
+   lab does, once as a moving observer does from the boosted events alone —
+   and to compose an arbitrary list of boosts by three routes that share no
+   arithmetic.  Units: c = 1.
+   ============================================================================ */
+(function(){
+  /* the same rewrite the stages use: the reader writes the parameter as t */
+  const mk = src => {
+    const A = parse(String(src).replace(/(?<![A-Za-z])t(?![A-Za-z])/g, 'x'));
+    const f = compile(A), d = compile(diff(A, 'x'));
+    return { f:t => f(t, 0, 0), d:t => d(t, 0, 0) };
+  };
+
+  /* ---- the speed scan, and why the refinement is load-bearing ------------ */
+  (function(){
+    const g = mk('0.6*sin(pi*t/2)');
+    close('the largest |dx/dt| on 0.6 sin(pi t/2) is 0.3pi',
+          rlWlSpeedMax(g.d, 0, 4, 2048).max, 0.3 * Math.PI, 1e-12);
+    close('  and it happens at t = 0', rlWlSpeedMax(g.d, 0, 4, 2048).at, 0, 1e-9);
+    /* A GRID SCAN IS NECESSARY AND NOT SUFFICIENT. This worldline is subluminal
+       at every one of a coarse scan's samples and superluminal between them;
+       the golden-section refinement inside the winning cell is what finds it,
+       and the plain grid maximum is asserted to be WRONG so that removing the
+       refinement fails this test rather than passing it quietly. */
+    const spike = mk('0.5*t + 0.02*exp(-((t-1.2345)/0.02)^2)');
+    let plain = 0;
+    for(let i = 0; i <= 64; i++) plain = Math.max(plain, Math.abs(spike.d(0 + 4 * i / 64)));
+    ok('a 64-point grid reports a comfortably subluminal 0.52', plain < 0.6, plain);
+    ok('  and the same 64 points, refined, find 1.36', rlWlSpeedMax(spike.d, 0, 4, 64).max > 1,
+       rlWlSpeedMax(spike.d, 0, 4, 64).max);
+    close('  agreeing with a scan sixty-four times finer',
+          rlWlSpeedMax(spike.d, 0, 4, 64).max, rlWlSpeedMax(spike.d, 0, 4, 4096).max, 1e-9);
+    /* the second guard is independent of the first, and fires on the same
+       worldline: the quadrature counts the samples where 1 - xdot^2 came out
+       negative, which is a different grid asking a different question */
+    ok('  and the quadrature independently refuses to integrate it',
+       rlWlTauLab(spike.d, 0, 4).bad > 0 && !Number.isFinite(rlWlTauLab(spike.d, 0, 4).tau));
+  })();
+
+  /* ---- route A against closed forms -------------------------------------- */
+  (function(){
+    close('a worldline at rest ages by the coordinate time',
+          rlWlTauLab(mk('0*t').d, 0, 4).tau, 4, 1e-13);
+    close('a straight 0.6c worldline ages by dt/gamma',
+          rlWlTauLab(mk('0.6*t').d, 0, 4).tau, 4 * Math.sqrt(1 - 0.36), 1e-13);
+    /* the hyperbolic case is the real pin: 1 - xdot^2 = 1/(1 + a^2 t^2)
+       exactly, so tau = asinh(a t)/a and the quadrature has a closed form */
+    close('and constant proper acceleration ages by asinh(a t)/a',
+          rlWlTauLab(mk('2*(sqrt(1 + t^2/4) - 1)').d, 0, 6).tau, 2 * Math.asinh(3), 1e-12);
+    close('  at half the elapsed time too',
+          rlWlTauLab(mk('2*(sqrt(1 + t^2/4) - 1)').d, 0, 3).tau, 2 * Math.asinh(1.5), 1e-12);
+  })();
+
+  /* ---- the two routes, over every preset and a sweep of boosts ------------
+     The acceptance is the MEASURED floor of route B — 4.8e-9 relative at its
+     worst, which is 0.99 tanh t seen from beta = 0.99 — and not a round number
+     chosen in advance. Most of the grid lands at 1e-13. */
+  (function(){
+    let worst = 0, where = '';
+    for(const key of Object.keys(RL_WORLDLINES)){
+      const W = RL_WORLDLINES[key], g = mk(W.src);
+      const A = rlWlTauLab(g.d, W.t0, W.t1);
+      ok(key + ': the lab route returns a proper time', Number.isFinite(A.tau) && A.tau > 0);
+      if(W.tau !== null)
+        ok('  ' + key + ' matches its closed form', Math.abs(A.tau - W.tau) < 1e-11 * W.tau,
+           A.tau + ' vs ' + W.tau);
+      close('  ' + key + ' declared top speed is what the scan finds',
+            rlWlSpeedMax(g.d, W.t0, W.t1, 4096).max, W.vmax, 1e-10);
+      for(const b of [0, 0.3, -0.7, 0.95, 0.99, -0.999]){
+        const B = rlWlTauPrimed(g.f, W.t0, W.t1, b);
+        const rel = Math.abs(B.tau - A.tau) / A.tau;
+        if(rel > worst){ worst = rel; where = key + ' at beta = ' + b; }
+      }
+    }
+    ok('the moving observer measures the same proper time on every preset, at every boost',
+       worst < 5e-9, 'worst ' + worst.toExponential(3) + ' at ' + where);
+    ok('  and on most of that grid it is round-off', worst > 1e-15);
+    /* THE SAME SWEEP THROUGH THE WRAPPER THE PANEL ACTUALLY CALLS. The rows
+       above call rlWlTauPrimed directly, and that is exactly how a defect in
+       rlWlMeasure's call into it shipped green: it passed a node count into the
+       adaptive routine's TOLERANCE slot, so the panel printed 1.7e-8 where the
+       engine gives 1e-12, and only a screenshot saw it. A two-route check tests
+       the route it calls. */
+    let wrapWorst = 0, wrapWhere = '';
+    for(const key of Object.keys(RL_WORLDLINES)){
+      const W = RL_WORLDLINES[key], g = mk(W.src);
+      for(const b of [0, 0.3, -0.7, 0.6, 0.95, -0.999]){
+        const M = rlWlMeasure(g.f, g.d, W.t0, W.t1, b);
+        const rel = Math.abs(M.tauLab - M.tauP) / M.tauLab;
+        if(rel > wrapWorst){ wrapWorst = rel; wrapWhere = key + ' at beta = ' + b; }
+      }
+    }
+    ok('and rlWlMeasure — the call the panel makes — gets the same agreement',
+       wrapWorst < 5e-9, 'worst ' + wrapWorst.toExponential(3) + ' at ' + wrapWhere);
+  })();
+
+  /* the stencil's h is at a measured optimum, and BOTH neighbours are worse —
+     which is what stops it being "improved" in either direction */
+  (function(){
+    const W = RL_WORLDLINES.sprint, g = mk(W.src);
+    const A = rlWlTauLab(g.d, W.t0, W.t1);
+    const err = hr => Math.abs(rlWlTauPrimed(g.f, W.t0, W.t1, 0.99, 1e-10, hr).tau - A.tau);
+    const at = err(RL_WL_HREL);
+    ok('a ten times larger stencil is worse', err(10 * RL_WL_HREL) > at,
+       err(10 * RL_WL_HREL) + ' vs ' + at);
+    ok('and a ten times smaller stencil is worse too', err(0.1 * RL_WL_HREL) > at,
+       err(0.1 * RL_WL_HREL) + ' vs ' + at);
+  })();
+
+  /* ---- what refuses --------------------------------------------------- */
+  (function(){
+    const g = mk('1.2*t');
+    const M = rlWlMeasure(g.f, g.d, 0, 4, 0.5);
+    ok('a worldline faster than light is refused', !M.ok);
+    ok('  and it says how fast and where', /speed of light/.test(M.why) && /1\.2/.test(M.why));
+    const L = mk('t');           // exactly lightlike
+    ok('and so is exactly lightlike', !rlWlMeasure(L.f, L.d, 0, 4, 0.5).ok);
+    const G = mk('0.5*t');
+    ok('an observer at c is refused', !rlWlMeasure(G.f, G.d, 0, 4, 1).ok);
+    ok('and a backwards interval is refused', !rlWlMeasure(G.f, G.d, 4, 0, 0.5).ok);
+    ok('a good worldline is not refused', rlWlMeasure(G.f, G.d, 0, 4, 0.5).ok);
+  })();
+
+  /* ---- the polygon: invariant in every frame, and ABOVE the curve ---------
+     The opposite of the Euclidean case, and the whole content of the twin
+     paradox. Each chord is the straight route between two events on the
+     worldline, and in Minkowski geometry the straight route is the LONGEST —
+     so the polygon overshoots, and refining it comes DOWN to tau at h^2. */
+  (function(){
+    const W = RL_WORLDLINES.rocket, g = mk(W.src);
+    const A = rlWlTauLab(g.d, W.t0, W.t1);
+    for(const b of [0.4, -0.8, 0.97]){
+      close('the polygon is the same number at beta = ' + b + ' as in the lab',
+            rlWlPolygon(g.f, W.t0, W.t1, 400, b).tau,
+            rlWlPolygon(g.f, W.t0, W.t1, 400, 0).tau, 1e-13);
+    }
+    const e = n => rlWlPolygon(g.f, W.t0, W.t1, n, 0).tau - A.tau;
+    ok('and it overshoots the curve, at every resolution',
+       e(100) > 0 && e(200) > 0 && e(400) > 0 && e(800) > 0, e(400));
+    /* the observed order, by halving h — 4.00 means h^2, measured not asserted */
+    close('  falling at second order', e(200) / e(400), 4, 0.05);
+    close('  and again', e(400) / e(800), 4, 0.05);
+    ok('the straight route between the same two events beats them all',
+       rlWlStraight(W.t1 - W.t0, g.f(W.t1) - g.f(W.t0)) > e(100) + A.tau);
+  })();
+
+  /* ---- the reverse triangle inequality, on every preset ------------------- */
+  (function(){
+    for(const key of Object.keys(RL_WORLDLINES)){
+      const W = RL_WORLDLINES[key], g = mk(W.src);
+      const M = rlWlMeasure(g.f, g.d, W.t0, W.t1, 0.6);
+      ok(key + ': no route between two events beats the straight one',
+         M.deficit > -1e-12 * M.straight, M.deficit);
+      close('  ' + key + ': and the endpoints have the same interval in both frames',
+            M.s2P, M.s2Lab, 1e-11 * Math.max(1, Math.abs(M.s2Lab)));
+    }
+    /* saturated exactly for a straight worldline, and strictly positive for
+       anything else — the two cases the panel has to name separately */
+    const S = mk('0.6*t'), C = mk('0.6*sin(pi*t/2)');
+    ok('a straight worldline has no deficit at all',
+       Math.abs(rlWlMeasure(S.f, S.d, 0, 4, 0.6).deficit) < 1e-12);
+    ok('and a curved one always does', rlWlMeasure(C.f, C.d, 0, 4, 0.6).deficit > 1);
+  })();
+
+  /* ---- the chain: parsing ------------------------------------------------ */
+  (function(){
+    const P = rlChainParse('0.6\n0.3 x3\n# a comment\n\n-0.4 ×2', []);
+    ok('a chain parses three lines into six boosts', P.total === 6, P.total);
+    ok('  and keeps them in order', P.steps.length === 3 && P.steps[1].n === 3);
+    ok('  with the sign', P.steps[2].beta === -0.4);
+    ok('a comment line contributes nothing', rlChainParse('# nothing\n0.5', []).total === 1);
+    ok('an expression is a legal beta', Math.abs(rlChainParse('1/2', []).steps[0].beta - 0.5) < 1e-15);
+    ok('and so is tanh(1)', Math.abs(rlChainParse('tanh(1)', []).steps[0].beta - Math.tanh(1)) < 1e-15);
+    ok('beta = 1 is refused', rlChainParse('1', []).errs.length === 1);
+    ok('  with the physics, not a clamp', /nothing carrying mass/.test(rlChainParse('1.4', []).errs[0].msg));
+    ok('beta = -1 is refused too', rlChainParse('-1', []).errs.length === 1);
+    ok('nonsense is refused', rlChainParse('bananas', []).errs.length === 1);
+    ok('a thousand repeats is refused', rlChainParse('0.5 x1000', []).errs.length === 1);
+    ok('and a chain longer than the cap falls back to the default',
+       rlChainParse('0.5 x400\n0.5 x400\n0.5 x400', [{beta:0.1, n:1}]).total === 1);
+  })();
+
+  /* ---- the chain: three routes, and they share no arithmetic ------------- */
+  (function(){
+    for(const key of Object.keys(RL_CHAINS)){
+      const C = RL_CHAINS[key];
+      const M = rlChainMeasure(rlChainParse(C.text, []).steps);
+      close(key + ': the total rapidity is sum of n artanh beta', M.phi, C.phi,
+            1e-12 * Math.max(1, Math.abs(C.phi)));
+      if(!M.saturated){
+        ok('  ' + key + ': folding the velocities agrees with tanh of the sum',
+           M.gapAB <= 4e-16, M.gapAB);
+        ok('  ' + key + ': and so does multiplying the matrices',
+           M.gapBC <= 4e-16, M.gapBC);
+      }
+      /* the composition is still a Lorentz transformation — measured on the
+         product, and against the scale the entries cancelled from */
+      ok('  ' + key + ': the product still satisfies L^T eta L = eta',
+         M.worstEta <= 1e-12 * M.etaScale, M.worstEta + ' on a scale of ' + M.etaScale);
+      ok('  ' + key + ': collinear boosts commute, so a shuffle changes nothing',
+         M.gapShuffle <= 4e-16, M.gapShuffle);
+    }
+  })();
+
+  /* ROUTE A RUNS OUT OF DIGITS AND THE OTHER TWO DO NOT, and that is the
+     lesson rather than a defect. 1 - tanh(phi) = 2 e^(-2phi), so past phi = 19
+     there is no double left between the composed speed and 1. */
+  (function(){
+    const M = rlChainMeasure(rlChainParse('0.9 x20', []).steps);
+    ok('twenty boosts of 0.9c saturate the velocity route', M.saturated);
+    ok('  at a step it can name', M.satAt > 0 && M.satAt < 20, M.satAt);
+    ok('  while the rapidity route is unbothered', Number.isFinite(M.phi) && M.phi > 29);
+    /* the shortfall is computed from phi, so it stays exact where beta cannot */
+    close('  and the shortfall from c is 2e^(-2phi)/(1 + e^(-2phi))',
+          M.shortfall, 2 * Math.exp(-2 * M.phi) / (1 + Math.exp(-2 * M.phi)), 1e-40);
+    ok('  which is 5e-26, far below anything float64 can hold',
+       M.shortfall > 1e-26 && M.shortfall < 1e-25, M.shortfall);
+    const S = rlChainMeasure(rlChainParse('0.75 x6', []).steps);
+    ok('six boosts of 0.75c do not saturate', !S.saturated);
+    close('  and 1 - beta agrees with the rapidity form', 1 - S.betaA, S.shortfall, 1e-14);
+  })();
+
+  /* both routes vanish exactly when a boost is undone, which is the case
+     fmtAgree cannot scale and fmtAgreeGross exists for */
+  (function(){
+    const M = rlChainMeasure(rlChainParse('0.8\n-0.8', []).steps);
+    ok('a boost and its inverse compose to exactly nothing', M.betaA === 0 && M.betaB === 0);
+    close('  and the rapidity cancels exactly', M.phi, 0, 1e-16);
+    ok('  against a gross rapidity that did not', M.gross > 2, M.gross);
+    ok('  so the residual has a scale to be read against',
+       /agree to every digit/.test(fmtAgreeGross(M.betaA, M.betaB, Math.tanh(M.gross))));
+  })();
+
+  /* the classical answer is wrong, and by how much is the point of the stage */
+  (function(){
+    const M = rlChainMeasure(rlChainParse('0.75 x2', []).steps);
+    close('0.75c and 0.75c make 0.96c', M.betaA, 0.96, 1e-15);
+    ok('  and not 1.5c', Math.abs(M.betaA - 1.5) > 0.5);
+    close('  which is exactly tanh(2 artanh 0.75)', M.betaA, Math.tanh(2 * Math.atanh(0.75)), 1e-15);
+    const L = rlChainMeasure(rlChainParse('0.76 x10', []).steps);
+    ok('ten boosts of 0.76c reach an LHC-like gamma', L.gammaB > 9000 && L.gammaB < 12000, L.gammaB);
+    close('  and gamma is cosh of the total rapidity', L.gammaB, Math.cosh(L.phi), 1e-9 * L.gammaB);
+    close('  which the matrix route agrees about', L.gammaC, L.gammaB, 1e-9 * L.gammaB);
+  })();
+})();
+
+/* ============================================================================
+   THE ELECTROMAGNETIC FIELD THE READER SUPPLIES (46f)
+   Programme A relativity items 7 and 8. Module 46 could already boost E and B
+   by the six component formulas, and could conjugate the field tensor by a
+   boost along x ONLY. These tests drive the general-direction conjugation
+   against the component formulas, in directions no axis-aligned boost reaches,
+   and check both invariants by two definitions that look nothing alike.
+   Units: c = 1, Gaussian.
+   ============================================================================ */
+(function(){
+  var V = function(a){ return v3(a[0], a[1], a[2]); };
+
+  /* ---- the general boost matrix reduces to the one module 46 already had --- */
+  (function(){
+    [0.3, -0.7, 0.95].forEach(function(b){
+      var A = rlBoost4(v3(b, 0, 0)), B = relLorentzMatrix(b);
+      var worst = 0;
+      for(var i = 0; i < 4; i++) for(var j = 0; j < 4; j++)
+        worst = Math.max(worst, Math.abs(A[i][j] - B[i][j]));
+      close('rlBoost4 along x reproduces relLorentzMatrix at beta=' + b, worst, 0, 1e-15);
+    });
+    /* and it is a Lorentz transformation in any direction: L^T eta L = eta */
+    [[0.3, 0.4, 0.5], [-0.6, 0.2, 0], [0.1, -0.9, 0.2], [0, 0, 0]].forEach(function(a){
+      var L = rlBoost4(V(a)), eta = [1, -1, -1, -1], worst = 0;
+      for(var m = 0; m < 4; m++) for(var n = 0; n < 4; n++){
+        var s = 0;
+        for(var k = 0; k < 4; k++) s += eta[k] * L[k][m] * L[k][n];
+        worst = Math.max(worst, Math.abs(s - (m === n ? eta[m] : 0)));
+      }
+      ok('a boost in direction (' + a.join(',') + ') satisfies L^T eta L = eta', worst < 1e-13, worst);
+    });
+    throws('a boost at c is refused', function(){ rlBoost4(v3(0.6, 0.8, 0)); });
+    throws('and past c', function(){ rlBoost4(v3(1.2, 0, 0)); });
+  })();
+
+  /* ---- THE TWO ROUTES, in directions no axis-aligned boost reaches ---------
+     Route A is the six component formulas; route B builds F, conjugates it by
+     the general Lambda and reads E and B back off. Nothing is shared. */
+  (function(){
+    var fields = [[[0, 1, 0], [0, 0, 0]], [[0, 0, 0], [0, 0, 1]],
+                  [[0, 1, 0], [0, 0, 1]], [[0.3, 0.2, 0], [0, 0, 1.4]],
+                  [[0.7, -0.2, 0.4], [-0.1, 0.9, 0.3]]];
+    var boosts = [[0.5, 0, 0], [0, 0.6, 0], [0.3, 0.4, 0.5], [-0.2, 0.1, -0.7],
+                  [0.55, -0.55, 0.4], [0, 0, 0]];
+    var worst = 0, where = '';
+    fields.forEach(function(f){
+      boosts.forEach(function(b){
+        var R = rlFieldBoostTwo(V(f[0]), V(f[1]), V(b));
+        var rel = R.worst / Math.max(1e-300, R.gross);
+        if(rel > worst){ worst = rel; where = 'E=' + f[0] + ' B=' + f[1] + ' v=' + b; }
+      });
+    });
+    ok('the component formulas and the tensor conjugation agree everywhere',
+       worst < 1e-14, 'worst ' + worst.toExponential(3) + ' at ' + where);
+    /* and the check is not vacuous: a boost really does change the field */
+    var R = rlFieldBoostTwo(v3(0, 1, 0), v3(0, 0, 0), v3(0.6, 0, 0));
+    ok('a boost of a pure E really produces a B', vlen(R.vec.B) > 0.5, vlen(R.vec.B));
+    close('  and it is gamma*beta*E', vlen(R.vec.B), relGamma(0.6) * 0.6 * 1, 1e-13);
+  })();
+
+  /* ---- the invariants, by two definitions that look nothing alike ---------- */
+  (function(){
+    Object.keys(RL_FIELDS).forEach(function(k){
+      var P = RL_FIELDS[k], E = V(P.E), B = V(P.B);
+      var C = rlTensorCheck(relFieldTensor(E, B));
+      close(k + ': E.B from the dual contraction', C.fromTensorDot, vdot(E, B), 1e-14);
+      close(k + ': E^2 - B^2 from F_mn F^mn', C.fromTensorDiff, vdot(E, E) - vdot(B, B), 1e-14);
+      ok(k + ': the declared character is what the invariants say',
+         C.character.indexOf(P.character) === 0, C.character);
+      /* and both invariants survive a boost in a direction of their own */
+      var F2 = rlTensorBoost(relFieldTensor(E, B), v3(0.31, -0.42, 0.55));
+      var C2 = rlTensorCheck(F2);
+      var g = Math.sqrt(vdot(E, E) + vdot(B, B));
+      ok('  ' + k + ': E.B is unchanged by a skew boost',
+         Math.abs(C2.dot - C.dot) < 1e-13 * Math.max(1e-12, g * g), C2.dot - C.dot);
+      ok('  ' + k + ': and so is E^2 - B^2',
+         Math.abs(C2.diff - C.diff) < 1e-13 * Math.max(1e-12, g * g), C2.diff - C.diff);
+    });
+  })();
+
+  /* ---- THE FRAME THE CLASSIFICATION PROMISES, VISITED ----------------------
+     "A frame exists where B vanishes" is a claim about a frame. These rows go
+     to it and measure what is left. */
+  (function(){
+    var d = rlFieldDrift(v3(0, 1, 0), v3(0, 0, 0));
+    ok('a pure E needs no boost at all to lose its B', d.ok && d.speed < 1e-15, d.speed);
+    d = rlFieldDrift(v3(0, 1, 0), v3(0, 0, 0.5));
+    ok('E^2 > B^2: the drift frame exists', d.ok, d.why);
+    ok('  and it removes the magnetic field', d.bLeft < 1e-14 * d.gross, d.bLeft);
+    ok('  while leaving an electric one', d.eLeft > 0.5, d.eLeft);
+    close('  at a speed |E x B|/E^2', d.speed, 0.5, 1e-14);
+    d = rlFieldDrift(v3(0, 0.5, 0), v3(0, 0, 1));
+    ok('E^2 < B^2: the drift frame removes the ELECTRIC field', d.ok && d.eLeft < 1e-14 * d.gross, d.eLeft);
+    ok('  while leaving a magnetic one', d.bLeft > 0.5, d.bLeft);
+    /* THE NULL FIELD IS THE EDGE, and it is refused with a reason rather than
+       clamped: |E x B| = E^2 exactly, so the drift is exactly c. */
+    d = rlFieldDrift(v3(0, 1, 0), v3(0, 0, 1));
+    ok('a light wave has no such frame', !d.ok);
+    ok('  and it says why', /null field/.test(d.why), d.why);
+    ok('  because the boost would be exactly at c', Math.abs(d.speed - 1) < 1e-15, d.speed);
+    /* E.B != 0: NEITHER FIELD GOES, and what the drift frame does instead is
+       make them PARALLEL. That is measured, not asserted — and asserting it
+       was the defect. relDriftVelocity returned (ExB)/max(E^2,B^2) and called
+       that the parallel frame; it is the parallel frame only when E.B = 0, and
+       here it leaves a sine of 0.8 between them. Nothing caught that, because
+       the one caller hid the row unless E.B vanished while the prose beside it
+       promised a parallel frame it never computed. */
+    [[[0, 1, 0], [0, 0.6, 0.8]], [[0.3, 0.2, 0.25], [0, 0, 1.4]],
+     [[0.7, -0.2, 0.4], [-0.1, 0.9, 0.3]], [[1, 1, 0], [0.2, 0, 1]]].forEach(function(f){
+      const E = v3(f[0][0], f[0][1], f[0][2]), B = v3(f[1][0], f[1][1], f[1][2]);
+      const dd = rlFieldDrift(E, B);
+      ok('E.B != 0 at ' + f[0] + '/' + f[1] + ': neither field can be removed',
+         dd.ok && dd.removes === 'neither', dd.why || dd.removes);
+      ok('  and the drift frame leaves them parallel', dd.parallel < 1e-13, dd.parallel);
+      ok('  with both still there', dd.eLeft > 1e-6 && dd.bLeft > 1e-6, dd.eLeft + ',' + dd.bLeft);
+      ok('  at a speed below c', dd.speed < 1, dd.speed);
+    });
+    /* AND THE FIX DOES NOT MOVE THE CASE THE OLD FORMULA HAD RIGHT: wherever
+       E.B = 0 the general root collapses to (ExB)/max(E^2,B^2) exactly. */
+    [[[0, 1, 0], [0, 0, 0.5]], [[0, 0.4, 0], [0, 0, 1]], [[0, 2, 0], [0, 0, 0.1]]].forEach(function(f){
+      const E = v3(f[0][0], f[0][1], f[0][2]), B = v3(f[1][0], f[1][1], f[1][2]);
+      const old = vmul(vcross(E, B), 1 / Math.max(vdot(E, E), vdot(B, B)));
+      close('  E.B = 0: the general drift still equals (ExB)/max(E2,B2)',
+            vlen(vsub(relDriftVelocity(E, B), old)), 0, 1e-15);
+    });
+    /* the nearly-null preset is the conditioning case */
+    d = rlFieldDrift(v3(0, 1, 0), v3(0, 0, 0.98));
+    ok('a nearly null field still has its frame, at 0.98c', d.ok && d.speed > 0.97, d.speed);
+    ok('  and B really does vanish there', d.bLeft < 1e-12 * d.gross, d.bLeft);
+  })();
+
+  /* ---- a tensor the reader typed ------------------------------------------ */
+  (function(){
+    var P = rlTensorParse('0 -1 0 0\n1 0 0 0\n0 0 0 -1\n0 0 1 0', null);
+    ok('four rows of four parse', P.F && P.F.length === 4 && P.errs.length === 0);
+    var C = rlTensorCheck(P.F);
+    close('  and E comes back off it', C.E.x, 1, 1e-15);
+    close('  and B too', C.B.x, 1, 1e-15);
+    ok('  antisymmetric, measured', C.anti < 1e-15 * C.scale, C.anti);
+    ok('a comment line is ignored', rlTensorParse('# hi\n0 0 0 0\n0 0 0 0\n0 0 0 0\n0 0 0 0', null).F !== null);
+    ok('three rows are refused', rlTensorParse('0 0 0 0\n0 0 0 0\n0 0 0 0', null).errs.length === 1);
+    /* a malformed row costs its own error AND the "only three of four rows"
+       one, so the count is >= 1 rather than === 1 */
+    ok('five entries in a row are refused',
+       rlTensorParse('0 0 0 0 0\n0 0 0 0\n0 0 0 0\n0 0 0 0', null).errs.length >= 1);
+    ok('a word is refused',
+       rlTensorParse('0 0 0 x\n0 0 0 0\n0 0 0 0\n0 0 0 0', null).errs.length >= 1);
+    ok('  and a bad tensor falls back to the default rather than half a matrix',
+       rlTensorParse('0 0 0 x\n0 0 0 0\n0 0 0 0\n0 0 0 0', [[1,0,0,0]]).F.length === 1);
+    ok('an expression is not', Math.abs(rlTensorParse('0 -1/2 0 0\n0.5 0 0 0\n0 0 0 0\n0 0 0 0', null).F[0][1] + 0.5) < 1e-15);
+    /* THE ONE THAT IS NOT A FIELD TENSOR, and must be reported rather than
+       symmetrised */
+    var Bk = rlTensorParse(RL_TENSORS.broken.text, null);
+    var CB = rlTensorCheck(Bk.F);
+    ok('the broken preset is NOT antisymmetric', CB.anti > 0.5 * CB.scale, CB.anti);
+    ok('  and the antisymmetric ones are', Object.keys(RL_TENSORS).every(function(k){
+      if(!RL_TENSORS[k].anti) return true;
+      var c = rlTensorCheck(rlTensorParse(RL_TENSORS[k].text, null).F);
+      return c.anti < 1e-15 * c.scale;
+    }));
+    /* every preset's declared antisymmetry is a claim, recomputed */
+    Object.keys(RL_TENSORS).forEach(function(k){
+      var c = rlTensorCheck(rlTensorParse(RL_TENSORS[k].text, null).F);
+      ok('RL_TENSORS ' + k + ' declares its antisymmetry correctly',
+         RL_TENSORS[k].anti === (c.anti < 1e-15 * c.scale), c.anti);
+    });
+    /* the wave preset has both invariants zero -- and that is the definition
+       of light in this language, so it is worth pinning */
+    var CW = rlTensorCheck(rlTensorParse(RL_TENSORS.wave.text, null).F);
+    close('the wave tensor has F_mn F^mn = 0', CW.s1, 0, 1e-15);
+    close('  and F_mn Ftilde^mn = 0', CW.s2, 0, 1e-15);
+  })();
+})();
+
+/* ============================================================================
+   A CHARGE CONFIGURATION AND A WIRE THE READER SUPPLIES (46g)
+   Programme A relativity items 6 and 9. Gauss's law under a boost, computed
+   over a sphere in the lab and over the ellipsoid that same surface becomes in
+   the rest frame; and a wire built from a list of carrier species, with the
+   force measured in both frames and the catastrophic cancellation measured
+   rather than hidden. Units: c = 1, Gaussian, so the flux is 4*pi*q.
+   ============================================================================ */
+(function(){
+  const FOURPI = 4 * Math.PI;
+
+  /* ---- parsing ------------------------------------------------------------ */
+  (function(){
+    const P = rlChargeParse('1 0 0 0\n-2 1 0 0 0.5\n# a comment\n', []);
+    ok('two charges parse', P.charges.length === 2 && P.errs.length === 0, P.errs);
+    ok('  the second one is moving', P.charges[1].beta === 0.5);
+    ok('  and carries its sign', P.charges[1].q === -2);
+    ok('three numbers are refused', rlChargeParse('1 0 0', []).errs.length === 1);
+    ok('six are refused', rlChargeParse('1 0 0 0 0 0', []).errs.length === 1);
+    ok('a superluminal charge is refused', rlChargeParse('1 0 0 0 1.2', []).errs.length === 1);
+    ok('  with the physics', /slower than light/.test(rlChargeParse('1 0 0 0 1.2', []).errs[0].msg));
+    ok('a word is refused', rlChargeParse('1 0 0 q', []).errs.length === 1);
+    ok('an expression is not', Math.abs(rlChargeParse('1/2 0 0 0', []).charges[0].q - 0.5) < 1e-15);
+  })();
+
+  /* ---- GAUSS'S LAW AT REST, THEN BOOSTED --------------------------------- */
+  (function(){
+    const at = [{ q:1, p:v3(0, 0, 0), beta:0 }];
+    /* 1e-11, and that is a MEASUREMENT: the integrand is exactly constant for a
+       charge at rest, so the whole error is the accumulation round-off of
+       80x5x64 = 25 600 sequentially summed terms. A finer grid is not free. */
+    close('a charge at rest gives 4*pi*q', rlGaussFlux(at, v3(0, 0, 0), 2).flux, FOURPI, 1e-11);
+    close('  and the radius does not matter', rlGaussFlux(at, v3(0, 0, 0), 17).flux, FOURPI, 1e-11);
+    close('  nor does the charge sitting off centre',
+          rlGaussFlux(at, v3(0.4, -0.3, 0.2), 2).flux, FOURPI, 1e-9);
+    /* THE BOOSTED FIELD IS NOT A COULOMB FIELD, and the flux is unchanged
+       anyway. The closed form q(1-b^2) * 4pi/(1-b^2) = 4pi q is exact for
+       every beta, so this is a real test of the quadrature as well. */
+    [0.3, 0.6, 0.9, 0.99].forEach(function(b){
+      const mv = [{ q:1, p:v3(0, 0, 0), beta:b }];
+      const F = rlGaussFlux(mv, v3(0, 0, 0), 2);
+      ok('a charge at beta=' + b + ' still gives 4*pi*q',
+         Math.abs(F.flux - FOURPI) < 1e-9 * FOURPI, F.flux + ' vs ' + FOURPI);
+      /* the field really is anisotropic -- otherwise the test above is vacuous */
+      const along = vlen(rlChargeField(mv, v3(2, 0, 0)).E);
+      const across = vlen(rlChargeField(mv, v3(0, 2, 0)).E);
+      const g = relGamma(b);
+      close('  and across/along is gamma^3 at beta=' + b, across / along, g * g * g, 1e-9 * g * g * g);
+    });
+  })();
+
+  /* THE PLAN IS LOAD-BEARING, and the way to show it is to take it away. At
+     beta = 0.99 the flux is concentrated into a band about 1/gamma wide, so a
+     coarse polar grid misses most of it -- and everything it misses is
+     positive, so it is always an UNDERESTIMATE that looks converged. */
+  (function(){
+    const mv = [{ q:1, p:v3(0, 0, 0), beta:0.99 }];
+    const coarse = rlGaussFlux(mv, v3(0, 0, 0), 2, 3, 8).flux;
+    const planned = rlGaussFlux(mv, v3(0, 0, 0), 2).flux;
+    ok('a coarse grid at beta=0.99 is badly wrong', Math.abs(coarse - FOURPI) > 0.01 * FOURPI,
+       coarse + ' vs ' + FOURPI);
+    /* AND THE SIGN IS NOT GUARANTEED. The first version of this row asserted
+       the error must be LOW, on the reasoning that a grid missing part of a
+       positive integrand can only lose flux. That is a Riemann sum's argument,
+       not a Gauss rule's: a node landing inside the peak over-weights it, and
+       3 panels x 8 phi returns 13.30 against 12.57. The honest claim is that a
+       coarse grid is badly wrong and looks converged, in either direction. */
+    ok('  and it does not announce itself — the error is unsigned',
+       Math.abs(coarse - FOURPI) > 0.01 * FOURPI, coarse);
+    ok('  while the planned grid is right', Math.abs(planned - FOURPI) < 1e-9 * FOURPI, planned);
+    ok('  and the plan scales the polar grid with gamma',
+       rlGaussPlan(mv).panels > rlGaussPlan([{ q:1, p:v3(0,0,0), beta:0 }]).panels,
+       rlGaussPlan(mv).panels);
+  })();
+
+  /* ---- THE TWO FRAMES ----------------------------------------------------- */
+  (function(){
+    [0.4, 0.8, 0.95].forEach(function(b){
+      const mv = [{ q:1.5, p:v3(0.3, 0, 0), beta:b }];
+      const C = v3(0, 0, 0), R = 2.5;
+      const A = rlGaussFlux(mv, C, R);
+      const B = rlGaussFluxRest(mv, C, R, b);
+      close('lab sphere and rest-frame ellipsoid agree at beta=' + b, A.flux, B.flux, 1e-8 * FOURPI);
+      close('  and both are 4*pi*q', A.flux, FOURPI * 1.5, 1e-8 * FOURPI);
+      /* the ellipsoid is genuinely a different surface: its area is not the
+         sphere's, so the two integrals are not the same integral rewritten */
+      ok('  and the ellipsoid is not the sphere', B.gross !== A.gross);
+    });
+  })();
+
+  /* ---- WHAT IS OUTSIDE CONTRIBUTES NOTHING, and that is a cancellation ---- */
+  (function(){
+    const out = [{ q:1, p:v3(3, 0, 0), beta:0.5 }];
+    const F = rlGaussFlux(out, v3(0, 0, 0), 2);
+    ok('a charge outside the sphere contributes no net flux',
+       Math.abs(F.flux) < 1e-8 * F.gross, F.flux + ' against a gross of ' + F.gross);
+    ok('  but it is felt everywhere on it', F.gross > 1, F.gross);
+    /* a dipole inside: the enclosed charge is exactly zero and the flux with it */
+    const dip = [{ q:1, p:v3(-0.6, 0, 0), beta:0.8 }, { q:-1, p:v3(0.6, 0, 0), beta:0.8 }];
+    const D = rlGaussFlux(dip, v3(0, 0, 0), 2);
+    ok('a dipole inside gives zero flux', Math.abs(D.flux) < 1e-8 * D.gross,
+       D.flux + ' against a gross of ' + D.gross);
+    ok('  which is a real cancellation, not a small field', D.gross > 1, D.gross);
+  })();
+
+  /* ---- every preset, through the accessor the panel uses ------------------ */
+  (function(){
+    Object.keys(RL_CHARGES).forEach(function(k){
+      const P = RL_CHARGES[k];
+      const L = rlChargeParse(P.text, []);
+      ok('RL_CHARGES ' + k + ' parses', L.charges.length > 0 && L.errs.length === 0, L.errs);
+      const M = rlGaussMeasure(L.charges, v3(P.cx, P.cy, P.cz), P.R);
+      ok('  ' + k + ': the measurement runs', M.ok, M.why);
+      if(!M.ok) return;
+      close('  ' + k + ': declared enclosed charge', M.enclosed, P.enc, 1e-12);
+      if(Math.abs(P.enc) > 1e-12)
+        ok('  ' + k + ': the flux is 4*pi*q_enc',
+           Math.abs(M.lab - M.expect) < 1e-8 * Math.abs(M.expect), M.lab + ' vs ' + M.expect);
+      else
+        ok('  ' + k + ': the flux vanishes against its gross',
+           Math.abs(M.lab) < 1e-8 * M.gross, M.lab + ' / ' + M.gross);
+      if(M.rest !== undefined)
+        ok('  ' + k + ': and the rest-frame ellipsoid agrees',
+           Math.abs(M.rest - M.lab) < 1e-8 * Math.max(1, Math.abs(M.expect), M.gross),
+           M.rest + ' vs ' + M.lab);
+    });
+    /* A CHARGE ON THE SURFACE IS A SINGULARITY, NOT A CASE. */
+    const on = [{ q:1, p:v3(2, 0, 0), beta:0 }];
+    const M = rlGaussMeasure(on, v3(0, 0, 0), 2);
+    ok('a charge sitting on the sphere is refused', !M.ok);
+    ok('  and it says why', /on the surface/.test(M.why), M.why);
+  })();
+
+  /* ---- item 9 · the wire -------------------------------------------------- */
+  (function(){
+    const W = rlWireParse('1 0 lattice\n-1 0.5 electrons', []);
+    ok('two species parse', W.species.length === 2 && W.errs.length === 0, W.errs);
+    ok('a superluminal carrier is refused', rlWireParse('1 1.2', []).errs.length === 1);
+    ok('one field is refused', rlWireParse('1', []).errs.length === 1);
+    const L = rlWireLab(W.species);
+    close('the wire is neutral in the lab', L.lam, 0, 1e-15);
+    close('  and carries a current', L.I, -0.5, 1e-15);
+
+    /* THE TWO FRAMES, on a neutral wire: the lab force is purely magnetic and
+       the rest-frame force is purely electric, and they are the same force. */
+    const F = rlWireForce(W.species, 0.4, 1, 1);
+    ok('the lab sees no electric field at all', Math.abs(F.E) < 1e-15, F.E);
+    ok('  so the lab force is purely magnetic', Math.abs(F.lab) > 1e-3, F.lab);
+    ok('the charge frame sees no magnetic force at all, only charge', Math.abs(F.prime.exact) > 1e-3,
+       F.prime.exact);
+    close('  and the two agree after the transverse factor', F.lab, F.viaExact, 1e-14 * Math.abs(F.lab));
+    /* the naive route agrees too, at this drift speed -- it has digits left */
+    close('  as does the species-by-species sum, here', F.lab, F.viaNaive, 1e-12 * Math.abs(F.lab));
+
+    /* ...AND AT A REAL DRIFT SPEED IT DOES NOT. This is the physics, not a
+       numerical inconvenience: the imbalance carrying the whole force is a
+       part in 10^17 of either density. */
+    const R = rlWireParse(RL_WIRES.real.text, []);
+    const FR = rlWireForce(R.species, 1e-8, 1, 1);
+    ok('a real wire has lost most of its digits in the naive sum',
+       FR.prime.digits > 8, FR.prime.digits);
+    ok('  and the naive answer is visibly wrong',
+       Math.abs(FR.viaNaive - FR.lab) > 1e-3 * Math.abs(FR.lab),
+       FR.viaNaive + ' vs ' + FR.lab);
+    ok('  while the closed form still agrees exactly',
+       Math.abs(FR.viaExact - FR.lab) < 1e-12 * Math.abs(FR.lab), FR.viaExact + ' vs ' + FR.lab);
+
+    /* THE SIGN IS PHYSICS AND HAS TO BE PINNED SEPARATELY. Every row above
+       compares the two frames with each other, which is blind to a convention
+       error made consistently in both. Like currents attract: a positive test
+       charge moving with a conventional current in the same direction must be
+       pulled TOWARDS the wire, and F is the outward radial component. */
+    const fwd = rlWireParse('1 0 lattice\n-1 -0.5 electrons', []).species;
+    const Ffwd = rlWireForce(fwd, 0.4, 1, 1);
+    ok('that wire carries a conventional current in +x', Ffwd.I > 0, Ffwd.I);
+    ok('  and a positive charge moving with it is attracted', Ffwd.lab < 0, Ffwd.lab);
+    const rev = rlWireParse('1 0 lattice\n-1 0.5 electrons', []).species;
+    const Frev = rlWireForce(rev, 0.4, 1, 1);
+    ok('reverse the drift and the current reverses', Frev.I < 0, Frev.I);
+    ok('  and antiparallel currents repel', Frev.lab > 0, Frev.lab);
+    ok('  by the same amount', Math.abs(Math.abs(Ffwd.lab) - Math.abs(Frev.lab)) < 1e-15);
+    /* and a charged wire attracts or repels by its charge alone when the test
+       charge is at rest — no current effect at all */
+    const stat = rlWireParse('0.5 0 excess', []).species;
+    const Fst = rlWireForce(stat, 0, 1, 1);
+    ok('a charged wire repels a like charge at rest', Fst.lab > 0, Fst.lab);
+    ok('  with no magnetic part, because nothing is moving', Math.abs(Fst.B) < 1e-15, Fst.B);
+
+    /* a CHARGED wire: both forces act in the lab, and the frames still agree */
+    const C = rlWireParse(RL_WIRES.charged.text, []);
+    const FC = rlWireForce(C.species, 0.4, 1, 1);
+    ok('a charged wire has an electric force in the lab too', Math.abs(FC.E) > 0.1, FC.E);
+    close('  and the frames still agree', FC.lab, FC.viaExact, 1e-13 * Math.abs(FC.lab));
+    /* three species, two of them moving opposite ways */
+    const T = rlWireParse(RL_WIRES.twoCarrier.text, []);
+    const FT = rlWireForce(T.species, 0.3, 1, 1);
+    close('three carrier species agree too', FT.lab, FT.viaExact, 1e-13 * Math.abs(FT.lab));
+    ok('  and neutrality is measured, not assumed', FT.neutral === true);
+    ok('  while the charged wire is reported as charged', FC.neutral === false);
+    /* every preset declares whether it is neutral */
+    Object.keys(RL_WIRES).forEach(function(k){
+      const S = rlWireParse(RL_WIRES[k].text, []);
+      const G = rlWireForce(S.species, RL_WIRES[k].vt, 1, 1);
+      ok('RL_WIRES ' + k + ' declares its neutrality correctly',
+         G.neutral === RL_WIRES[k].neutral, G.lam);
+      ok('  ' + k + ': and the two frames agree',
+         Math.abs(G.lab - G.viaExact) <= 1e-12 * Math.max(1e-300, Math.abs(G.lab)) ||
+         Math.abs(G.lab - G.viaExact) < 1e-300, G.lab + ' vs ' + G.viaExact);
+    });
+  })();
+})();
+
+/* ============================================================================
+   A MOTION PROGRAMME THE READER WRITES (46h)
+   Programme A relativity items 12 and 13. Proper acceleration is the derivative
+   of RAPIDITY, so the whole engine integrates dphi/dtau = a(tau) and reads the
+   worldline off it — and the proper time is then read BACK off that worldline
+   as a sum of chord intervals, which knows nothing about a or phi.
+   Units: c = 1, years and light-years, one g = 1.0323 ly/yr^2.
+   ============================================================================ */
+(function(){
+  const mk = src => {
+    const A = parse(String(src).replace(/(?<![A-Za-z])t(?![A-Za-z])/g, 'x'));
+    const f = compile(A);
+    return t => f(t, 0, 0);
+  };
+
+  /* ---- against the closed form, which exists for constant a --------------- */
+  (function(){
+    [0.5, 1.0323, 3].forEach(function(a){
+      [1, 5, 10].forEach(function(T){
+        const R = rlMotionRun(function(){ return a; }, T, 4000);
+        const C = rlMotionClosed(a, T);
+        close('constant a=' + a + ', T=' + T + ': rapidity is a*tau', R.phEnd, C.phi, 1e-12);
+        ok('  coordinate time is sinh(a tau)/a',
+           Math.abs(R.tEnd - C.t) < 1e-9 * C.t, R.tEnd + ' vs ' + C.t);
+        ok('  and distance is (cosh(a tau) - 1)/a',
+           Math.abs(R.xEnd - C.x) < 1e-9 * Math.max(1e-12, C.x), R.xEnd + ' vs ' + C.x);
+        close('  and the final speed is tanh(a tau)', R.betaEnd, C.beta, 1e-12);
+      });
+    });
+    /* no engine at all: proper time IS coordinate time, and nothing moves */
+    const Z = rlMotionRun(function(){ return 0; }, 7, 500);
+    close('with no acceleration the two clocks agree', Z.tEnd, 7, 1e-12);
+    close('  and nothing moves', Z.xEnd, 0, 1e-13);
+  })();
+
+  /* ---- THE ORDER, MEASURED BY HALVING ------------------------------------- */
+  (function(){
+    const a = RL_G_LY, T = 4, C = rlMotionClosed(a, T);
+    const e = n => Math.abs(rlMotionRun(function(){ return a; }, T, n).tEnd - C.t) / C.t;
+    const r1 = e(50) / e(100), r2 = e(100) / e(200);
+    ok('the integrator is fourth order (16x per halving)', r1 > 12 && r1 < 20, r1);
+    ok('  and again', r2 > 12 && r2 < 20, r2);
+  })();
+
+  /* ---- ROUTE B: the proper time read back off the worldline ---------------
+     Chord intervals know nothing about a or phi. They approach tau from ABOVE
+     at h^2, for 46e's reason: a chord is the straight route between two events
+     and the straight route is the longest one. */
+  (function(){
+    const g = mk(RL_MOTIONS.oneg.src);
+    const R = rlMotionRun(g, 10, 4000);
+    const C = rlMotionChords(R, 1);
+    ok('the chord sum recovers the proper time', Math.abs(C.tau - 10) < 1e-6 * 10, C.tau);
+    ok('  from above, as it must', C.tau >= 10 - 1e-12, C.tau);
+    const e = s => rlMotionChords(R, s).tau - 10;
+    ok('  and it falls at second order as the chords shorten',
+       Math.abs(e(4) / e(8) - 0.25) < 0.05, e(4) / e(8));
+    ok('  with every coarser sum above every finer one', e(8) > e(4) && e(4) > e(2) && e(2) > 0,
+       [e(8), e(4), e(2)].join(','));
+  })();
+
+  /* ---- every preset, through the measurement the panel calls -------------- */
+  (function(){
+    Object.keys(RL_MOTIONS).forEach(function(k){
+      const P = RL_MOTIONS[k], f = mk(P.src);
+      const M = rlMotionMeasure(f, P.tau1, 4000);
+      ok('RL_MOTIONS ' + k + ' runs', M.ok, M.why);
+      if(!M.ok) return;
+      if(P.t !== null && P.t !== undefined)
+        ok('  ' + k + ': declared coordinate time', Math.abs(M.t - P.t) < 1e-7 * Math.max(1, Math.abs(P.t)),
+           M.t + ' vs ' + P.t);
+      if(P.x !== null && P.x !== undefined)
+        ok('  ' + k + ': declared distance', Math.abs(M.x - P.x) < 1e-7 * Math.max(1, Math.abs(P.x)),
+           M.x + ' vs ' + P.x);
+      if(P.phi !== null && P.phi !== undefined)
+        ok('  ' + k + ': declared rapidity', Math.abs(M.phi - P.phi) < 1e-9 * Math.max(1, Math.abs(P.phi)),
+           M.phi + ' vs ' + P.phi);
+      ok('  ' + k + ': the chord sum agrees with the proper time',
+         M.agree < 1e-5 * M.tau, M.agree);
+      ok('  ' + k + ': and the coordinate time is never less than the proper time',
+         M.t >= M.tau - 1e-9, M.t + ' vs ' + M.tau);
+    });
+  })();
+
+  /* ---- THE TWIN, as an acceleration rather than a kink -------------------- */
+  (function(){
+    const f = mk(RL_MOTIONS.turn.src);
+    const M = rlMotionMeasure(f, 8, 8000);
+    ok('the four-leg programme comes home', Math.abs(M.x) < 1e-3, M.x);
+    ok('  having aged the traveller 8 years', Math.abs(M.tau - 8) < 1e-12, M.tau);
+    ok('  while the stay-at-home aged more', M.t > 8, M.t);
+    /* 1.876, and it is worth being exact about where that comes from: each leg
+       is 2 years at 1 g, so t per leg is sinh(2a)/a = 3.76 and the four legs
+       give 15.0 against 8. Guessing "2 to 4" was wrong. */
+    ok('  by a factor of 1.876', Math.abs(M.dilation - 1.876) < 0.01, M.dilation);
+    ok('  and it ends at rest, as it started', Math.abs(M.beta) < 1e-3, M.beta);
+  })();
+
+  /* ---- one g forever, and the numbers the wing quotes --------------------- */
+  (function(){
+    const f = function(){ return RL_G_LY; };
+    /* the galactic centre, 26 000 ly away, at 1 g all the way (no turnover) */
+    const M = rlMotionMeasure(f, 10.4, 4000);
+    ok('ten and a bit years of ship time reaches the galactic centre',
+       M.x > 20000 && M.x < 40000, M.x);
+    ok('  and the home clock has run for as long as the trip is wide',
+       Math.abs(M.t - M.x) / M.t < 0.001, M.t + ' vs ' + M.x);
+    ok('  at a gamma of tens of thousands', M.gamma > 1e4, M.gamma);
+    /* THE RINDLER HORIZON: 1/a behind the ship, in flat spacetime */
+    close('the horizon sits 1/a astern', rlMotionClosed(RL_G_LY, 5).horizon, 1 / RL_G_LY, 1e-14);
+    ok('  which is just under a light-year at one g',
+       Math.abs(1 / RL_G_LY - 0.969) < 0.001, 1 / RL_G_LY);
+  })();
+
+  /* ---- what refuses ------------------------------------------------------- */
+  (function(){
+    /* an acceleration with a pole INSIDE the interval reaches infinite rapidity
+       in finite proper time, which is not a motion */
+    const blow = mk('1/(2 - t)');
+    const M = rlMotionMeasure(blow, 4, 2000);
+    ok('a rapidity that runs away is refused', !M.ok);
+    ok('  and it says where', /runs away/.test(M.why) && /τ ≈/.test(M.why), M.why);
+    /* the same programme stopped short of the pole is fine */
+    ok('and stopping short of it is not', rlMotionMeasure(blow, 1.9, 2000).ok);
+    /* an a(tau) with no value somewhere */
+    const nan = t => (t > 3 ? NaN : 1);
+    const N = rlMotionMeasure(nan, 6, 500);
+    ok('an acceleration with no value is refused', !N.ok);
+    ok('  and it counts the points', /of the \d+ points/.test(N.why), N.why);
+    ok('a zero-length programme is refused', !rlMotionMeasure(function(){ return 1; }, 0, 500).ok);
+    ok('and a negative one', !rlMotionMeasure(function(){ return 1; }, -2, 500).ok);
+  })();
+
+  /* ---- rapidity is the integral of the engine, which is the whole point --- */
+  (function(){
+    /* a Gaussian burn: the final rapidity is the area under a(tau), full stop */
+    /* the burn is centred at 3.5, not 2: the closed-form area is the whole
+       Gaussian and the programme starts at tau = 0, so a burn centred at 2
+       leaves 1.2e-6 of itself outside the interval — which is exactly what the
+       first version of this row measured and blamed on the integrator. */
+    const A = 1.0323, c = 3.5, w = 0.6;
+    const f = t => A * Math.exp(-Math.pow((t - c) / w, 2));
+    const M = rlMotionMeasure(f, 10, 4000);
+    const area = A * w * Math.sqrt(Math.PI);      /* and now the tail outside [0,10] is 1e-16 */
+    ok('the final rapidity is the area under the burn',
+       Math.abs(M.phi - area) < 1e-8 * area, M.phi + ' vs ' + area);
+    close('  and the coasting speed is tanh of it', M.beta, Math.tanh(area), 1e-9);
+    ok('  which no amount of further burning could push to c', M.beta < 1);
+  })();
+})();
+
+/* ============================================================================
+   A LIGHT CLOCK THE READER SHAPES, AND AN EVENT PAIR THEY PLACE (46i)
+   Programme A relativity items 14, 15 and 17. The textbook light clock points
+   its mirror straight across because that is the case Pythagoras does in one
+   line; these tests point it everywhere and require the same gamma. And the
+   event pair's order reverses exactly when it is spacelike -- which is not two
+   facts but one.  Units: c = 1.
+   ============================================================================ */
+(function(){
+  /* ---- THE CLOCK TICKS gamma TIMES SLOWER WHATEVER SHAPE IT IS ----------- */
+  (function(){
+    var worst = 0, where = '';
+    [0, 0.2, 0.5, 0.8, 0.95, 0.99, -0.6].forEach(function(b){
+      [[0,1],[1,0],[-1,0],[0.7071067811865476,0.7071067811865476],
+       [1.8,0.3],[-0.4,2.2],[0.05,0.02]].forEach(function(L){
+        var T = rlClockTick(L[0], L[1], b);
+        ok('a clock at (' + L + ') at beta=' + b + ' ticks', T.ok, T.why);
+        if(!T.ok) return;
+        var rel = Math.abs(T.lab - T.expect) / T.expect;
+        if(rel > worst){ worst = rel; where = '(' + L + ') at ' + b; }
+        /* each leg really is a null path -- the light goes at c on both */
+        ok('  and both legs are null paths', T.nullOut < 1e-12 * T.rest && T.nullBack < 1e-12 * T.rest,
+           T.nullOut + ',' + T.nullBack);
+      });
+    });
+    ok('every clock shape at every boost ticks exactly gamma times slower',
+       worst < 1e-13, 'worst ' + worst.toExponential(3) + ' at ' + where);
+
+    /* AND THE TWO LEGS ARE NOT EQUAL, which is why the textbook draws one case.
+       Across the motion they are; along it they are in the ratio (1+b)/(1-b). */
+    var across = rlClockTick(0, 1, 0.6), along = rlClockTick(1, 0, 0.6);
+    close('across the motion the two legs are equal', across.legRatio, 1, 1e-14);
+    close('along it they are in the ratio (1+b)/(1-b)', along.legRatio, 1.6 / 0.4, 1e-12);
+    close('  and the totals are identical anyway', across.lab, along.lab, 1e-13);
+    ok('  which is what Michelson and Morley measured', Math.abs(across.lab - along.lab) < 1e-13);
+    /* pointing backwards swaps the legs and changes nothing else */
+    var behind = rlClockTick(-1, 0, 0.6);
+    close('a mirror behind gives the same tick', behind.lab, along.lab, 1e-13);
+    close('  with the legs swapped', behind.legRatio, 1 / along.legRatio, 1e-12);
+    /* the tick scales with the arm and the RATIO does not */
+    var big = rlClockTick(0, 7, 0.8), small = rlClockTick(0, 0.001, 0.8);
+    close('a seven-times longer arm ticks seven times slower', big.lab / rlClockTick(0, 1, 0.8).lab, 7, 1e-12);
+    close('  and the ratio is untouched', big.ratio, small.ratio, 1e-12);
+    close('  and equals gamma', big.ratio, relGamma(0.8), 1e-13);
+    /* refusals */
+    ok('a mirror at the emitter is refused', !rlClockTick(0, 0, 0.5).ok);
+    ok('and a clock at c is refused', !rlClockTick(0, 1, 1).ok);
+  })();
+
+  /* ---- THE ORDER REVERSES EXACTLY WHEN THE PAIR IS SPACELIKE ------------- */
+  (function(){
+    Object.keys(RL_EVENTS).forEach(function(k){
+      var P = RL_EVENTS[k];
+      var dt = P.t2 - P.t1, dx = P.x2 - P.x1;
+      var C = rlEventCross(dt, dx);
+      ok(k + ': the declared kind is what the interval says',
+         C.kind === P.kind, C.kind + ' vs ' + P.kind);
+      ok('  ' + k + ': and the declared flip is whether a crossover exists',
+         (C.beta !== null) === P.flips, C.beta + ' / ' + P.why);
+      if(C.beta === null){
+        ok('  ' + k + ': and it says why', C.why.length > 20, C.why);
+        return;
+      }
+      /* AT the crossover the two events are simultaneous, and either side of it
+         the order is opposite -- measured, not asserted */
+      var at = rlEventPair(P.t1, P.x1, P.t2, P.x2, C.beta);
+      ok('  ' + k + ': at the crossover they are simultaneous',
+         Math.abs(at.dtp) < 1e-12 * Math.max(1, Math.abs(dt), Math.abs(dx)), at.dtp);
+      var lo = rlEventPair(P.t1, P.x1, P.t2, P.x2, Math.max(-0.999, C.beta - 0.05));
+      var hi = rlEventPair(P.t1, P.x1, P.t2, P.x2, Math.min(0.999, C.beta + 0.05));
+      ok('  ' + k + ': and the order is opposite either side of it',
+         lo.dtp * hi.dtp < 0, lo.dtp + ' / ' + hi.dtp);
+    });
+    /* THE INTERVAL IS INVARIANT WHATEVER THE ORDER DOES */
+    Object.keys(RL_EVENTS).forEach(function(k){
+      var P = RL_EVENTS[k];
+      [0.3, -0.7, 0.95].forEach(function(b){
+        var E = rlEventPair(P.t1, P.x1, P.t2, P.x2, b);
+        ok(k + ' at beta=' + b + ': s^2 is unchanged',
+           Math.abs(E.s2p - E.s2) < 1e-12 * Math.max(1, Math.abs(E.s2)), E.s2p - E.s2);
+      });
+    });
+    /* and the boundary is sharp: 0.99 flips, 1.01 does not */
+    ok('spacelike by one per cent still flips', rlEventCross(0.99, 1).beta !== null);
+    ok('timelike by one per cent does not', rlEventCross(1.01, 1).beta === null);
+    ok('  and the reason names the bound', /tanh is bounded/.test(rlEventCross(1.01, 1).why),
+       rlEventCross(1.01, 1).why);
+    ok('two events at the same place never reorder', rlEventCross(1, 0).beta === null);
+    ok('  and it says why', /same place/.test(rlEventCross(1, 0).why));
+  })();
+
+  /* ---- CLOSING RATES: two right answers to different questions ----------- */
+  (function(){
+    [0, 0.3, 0.6, 0.9, 0.99].forEach(function(b){
+      var R = rlCloseRate(b, 1);
+      close('light closes at 1 in the pursuer own frame, at beta=' + b, R.own, 1, 1e-14);
+      close('  while the lab coordinate gap shrinks at 1-beta', R.lab, 1 - b, 1e-15);
+      ok('  and that is not anyone velocity', R.lab <= 1);
+    });
+    /* head-on: the coordinate gap closes at MORE than c, and nothing is wrong */
+    var head = rlCloseRate(-0.9, 0.9);
+    close('two signals approaching head-on close at 1.8 in the lab', head.lab, 1.8, 1e-15);
+    ok('  which exceeds c', head.exceedsLab);
+    close('  and at 0.99446 in either one own frame', head.own,
+          (0.9 + 0.9) / (1 + 0.81), 1e-15);
+    ok('  which does not', !head.exceedsOwn);
+    ok('a pursuer at c is refused', (function(){
+      try { rlCloseRate(1, 1); return false; } catch(e){ return e instanceof MathError; }
+    })());
+  })();
+})();
+
+/* ============================================================================
+   THE LAST THREE THOUGHT EXPERIMENTS (46j)
+   Programme A relativity items 16, 20 and 21. Units: c = 1.
+   ============================================================================ */
+(function(){
+  /* ---- item 16 · the ladder and the barn -------------------------------- */
+  (function(){
+    Object.keys(RL_BARNS).forEach(function(k){
+      var P = RL_BARNS[k];
+      var E = rlBarnEvents(P.L, P.B, P.beta);
+      ok('barn ' + k + ' resolves', E.ok, E.why);
+      if(!E.ok) return;
+      ok('  ' + k + ': the declared fit is what the contraction gives',
+         E.fits === P.fits, E.Lc + ' vs ' + P.B);
+      /* THE TWO ROUTES: transform the door events, or compute them in the
+         ladder's own geometry from two lengths and a speed. */
+      ok('  ' + k + ': the boosted door gap equals the ladder frame own geometry',
+         E.routeGap < 1e-12 * Math.max(1, Math.abs(E.dtLadder)), E.routeGap);
+      /* WHETHER THE DOORS CAN BE REORDERED IS A CONDITION ON THE NUMBERS.
+         Asserting they are always spacelike was this suite's first version and
+         it found a preset where s^2 is exactly 0 — a short ladder in a long
+         barn puts the two closings on each other's light cone. The table now
+         declares which of the three cases each preset is. */
+      var kind = E.s2Doors < -1e-12 ? 'spacelike' : E.s2Doors > 1e-12 ? 'timelike' : 'lightlike';
+      ok('  ' + k + ': the declared door separation is what the interval says',
+         kind === P.doors, kind + ' vs ' + P.doors + ' (s2 = ' + E.s2Doors + ')');
+      close('  ' + k + ': and their interval survives the boost', E.s2DoorsL, E.s2Doors,
+            1e-11 * Math.max(1, Math.abs(E.s2Doors)));
+      /* every event's ORDER inside one frame is preserved for the ladder's own
+         two ends, because those are timelike-connected to themselves */
+      ok('  ' + k + ': the front enters before it leaves, in both frames',
+         E.barn.frontIn.t < E.barn.frontOut.t &&
+         E.ladder.frontIn.t < E.ladder.frontOut.t);
+      ok('  ' + k + ': and the back likewise',
+         E.barn.backIn.t < E.barn.backOut.t && E.ladder.backIn.t < E.ladder.backOut.t);
+    });
+    /* the classic case: the doors shut together in the barn frame and 1.6
+       apart in the ladder's */
+    var C = rlBarnEvents(2, 1.2, 0.8);
+    close('the classic ladder is exactly barn-length when contracted', C.Lc, 1.2, 1e-12);
+    close('  so the doors shut simultaneously in the barn frame', C.dtBarn, 0, 1e-12);
+    close('  and 1.6 apart in the ladder frame', C.dtLadder, -1.6, 1e-12);
+    ok('  with the far door shutting FIRST there', C.dtLadder < 0, C.dtLadder);
+    /* refusals */
+    ok('a stationary ladder is refused', !rlBarnEvents(2, 1.2, 0).ok);
+    ok('a negative length is refused', !rlBarnEvents(-2, 1.2, 0.8).ok);
+    ok('and a superluminal one', !rlBarnEvents(2, 1.2, 1.2).ok);
+  })();
+
+  /* ---- item 20 · the elevator ------------------------------------------- */
+  (function(){
+    Object.keys(RL_ELEVATORS).forEach(function(k){
+      var P = RL_ELEVATORS[k];
+      var E = rlElevatorPair(P.a, P.w, P.h, 4000);
+      ok('elevator ' + k + ': the box and the field bend light the same way',
+         E.bendGap < 1e-3 * Math.max(1e-30, E.bendField), E.bendBox + ' vs ' + E.bendField);
+    });
+    /* THE INTEGRATION CONVERGES ON THE CLOSED FORM AT FIRST ORDER, which is
+       what a forward Euler sum of v dt does -- measured, not assumed */
+    var e = function(n){ var E = rlElevatorPair(0.4, 0.5, 0.5, n);
+                         return Math.abs(E.bendBox - E.bendField) / E.bendField; };
+    var r = e(200) / e(400);
+    ok('the box integration is first order (2x per halving)', r > 1.7 && r < 2.3, r);
+    ok('  and converges on the equivalence-principle answer', e(8000) < 1e-3, e(8000));
+    /* the clock shift: linear gh is the LIMIT, not the answer */
+    var g1 = rlElevatorPair(0.001, 0.1, 0.1, 400);
+    /* the exact Doppler shift is dv - dv^2/2 + ..., so the relative gap is dv/2
+       and not zero — asserting 1e-6 here was asserting dv < 2e-6, which is a
+       statement about the preset rather than about the physics */
+    ok('at a small acceleration the exact and linear shifts agree to dv/2',
+       Math.abs(g1.shiftGap / g1.shiftLinear - g1.dv / 2) < 0.01 * g1.dv, g1.shiftGap);
+    var g2 = rlElevatorPair(0.4, 0.5, 0.5, 400);
+    ok('and at a large one they do not', g2.shiftGap > 1e-3 * Math.abs(g2.shiftLinear),
+       g2.shiftExact + ' vs ' + g2.shiftLinear);
+    ok('  with the exact one smaller, as a Doppler shift must be',
+       g2.shiftExact < g2.shiftLinear, g2.shiftExact);
+  })();
+
+  /* ---- item 21 · the rotating disk -------------------------------------- */
+  (function(){
+    Object.keys(RL_DISKS).forEach(function(k){
+      var P = RL_DISKS[k];
+      var D = rlDiskGeometry(P.R, P.omega, P.ell);
+      ok('disk ' + k + ' has a geometry', D.ok, D.why);
+      if(!D.ok) return;
+      close('  ' + k + ': C/2R is pi gamma', D.closed, Math.PI * relGamma(P.omega * P.R), 1e-14);
+      ok('  ' + k + ': and it exceeds pi', D.closed > Math.PI - 1e-15, D.closed);
+      /* THE COUNT AGREES WITH THE CLOSED FORM as the rulers shrink */
+      var fine = rlDiskGeometry(P.R, P.omega, P.ell / 100);
+      ok('  ' + k + ': a hundred times finer rulers agree with the closed form',
+         fine.gap < 1e-3 * fine.closed, fine.gap);
+      ok('  ' + k + ': and finer is better', fine.gap <= D.gap + 1e-15, D.gap + ' -> ' + fine.gap);
+    });
+    /* the departure is SECOND ORDER in the rim speed */
+    [0.001, 0.01, 0.05].forEach(function(v){
+      var D = rlDiskGeometry(1, v, 1e-4);
+      ok('at v = ' + v + ' the excess over pi is pi v^2 / 2',
+         Math.abs(D.excess - D.excessQuad) < 0.02 * Math.abs(D.excessQuad) + 1e-18,
+         D.excess + ' vs ' + D.excessQuad);
+    });
+    /* it depends only on omega*R, so size and spin trade off exactly */
+    var a = rlDiskGeometry(1, 0.5, 1e-4), b = rlDiskGeometry(100, 0.005, 1e-4);
+    close('the geometry depends only on the rim speed', a.closed, b.closed, 1e-14);
+    /* and it goes to pi as the spin does */
+    ok('a stationary disk is Euclidean', Math.abs(rlDiskGeometry(1, 0, 1e-4).closed - Math.PI) < 1e-15);
+    /* the rim clock */
+    close('and the rim clock runs at 1/gamma', rlDiskGeometry(1, 0.6, 1e-4).clock, 0.8, 1e-14);
+    /* refusals */
+    ok('a rim at c is refused', !rlDiskGeometry(1, 1, 1e-4).ok);
+    ok('  and it says why', /no material disk/.test(rlDiskGeometry(1, 1.5, 1e-4).why));
+    ok('a disk with no radius is refused', !rlDiskGeometry(0, 0.5, 1e-4).ok);
+  })();
+})();
+
+/* ============================================================================
+   A COLLISION THE READER WRITES, AND A SOURCE THEY POINT (46k)
+   Programme A relativity items 18 and 19, closing the block. Units: c = 1.
+   ============================================================================ */
+(function(){
+  /* ---- parsing ---------------------------------------------------------- */
+  (function(){
+    var P = rlCollideParse('1 0.6 left\n1 -0.6 right', []);
+    ok('two particles parse', P.parts.length === 2 && P.errs.length === 0, P.errs);
+    ok('  and keep their names', P.parts[0].name === 'left');
+    ok('an angle is optional', rlCollideParse('1 0.6 30 sideways', []).parts[0].theta > 0.5);
+    ok('a negative mass is refused', rlCollideParse('-1 0.5', []).errs.length === 1);
+    ok('  by name', /no such particle/.test(rlCollideParse('-1 0.5', []).errs[0].msg));
+    ok('a massive particle at c is refused', rlCollideParse('1 1', []).errs.length === 1);
+    ok('a massless one at 0.5 is refused', rlCollideParse('0 0.5', []).errs.length === 1);
+    ok('  and at 1 is not', rlCollideParse('0 1', []).errs.length === 0);
+    ok('nine particles are refused',
+       rlCollideParse('1 0.1\n1 0.1\n1 0.1\n1 0.1\n1 0.1\n1 0.1\n1 0.1\n1 0.1\n1 0.1', []).errs.length === 1);
+  })();
+
+  /* ---- THE INVARIANT MASS IS INVARIANT, and it is not the sum of masses --- */
+  (function(){
+    var B = rlCollideParse('1 0.6 left\n1 -0.6 right', []).parts;
+    var M = rlCollideMeasure(B, []);
+    close('two lumps at 0.6 have invariant mass 2 gamma', M.mIn, 2 * relGamma(0.6), 1e-13);
+    close('  which is 2.5', M.mIn, 2.5, 1e-13);
+    ok('  and NOT the sum of their masses', Math.abs(M.mIn - M.sumMIn) > 0.4, M.sumMIn);
+    ok('  and it survives a boost nobody chose', M.boostGap < 1e-12 * M.mIn, M.boostGap);
+    Object.keys(RL_COLLIDES).forEach(function(k){
+      var P = RL_COLLIDES[k];
+      var bb = rlCollideParse(P.before, []).parts;
+      var mm = rlCollideMeasure(bb, rlCollideParse(P.after, []).parts);
+      ok(k + ': the incoming invariant mass is boost-invariant',
+         mm.boostGap < 1e-11 * Math.max(1e-9, mm.mIn), mm.boostGap);
+      if(P.after)
+        ok('  ' + k + ': the declared conservation is what is measured',
+           mm.conserves === P.conserves, 'dE ' + mm.dE + ', dp ' + mm.dp);
+    });
+  })();
+
+  /* ---- AN INELASTIC COLLISION MAKES MASS OUT OF KINETIC ENERGY ----------- */
+  (function(){
+    var B = rlCollideParse('1 0.6\n1 -0.6', []).parts;
+    var A = rlCollideParse('2.5 0', []).parts;
+    var M = rlCollideMeasure(B, A);
+    ok('the clay collision conserves energy and momentum', M.conserves, M.dE + ' / ' + M.dp);
+    close('  and the invariant mass is unchanged', M.mOut, M.mIn, 1e-12);
+    close('  while the SUM of the masses rose by 0.5', M.made, 0.5, 1e-12);
+    ok('  which is exactly the kinetic energy that stopped being kinetic',
+       Math.abs(M.made - 2 * (relGamma(0.6) - 1)) < 1e-12, M.made);
+    var bad = rlCollideMeasure(B, rlCollideParse('2 0', []).parts);
+    ok('a lump of mass 2 does not conserve energy', !bad.conserves, bad.dE);
+  })();
+
+  /* ---- PHOTONS: massless particles making a massive system ---------------- */
+  (function(){
+    var G = rlCollideParse('0 1\n0 -1', []).parts;
+    var M = rlCollideMeasure(G, []);
+    close('two head-on photons have invariant mass 2', M.mIn, 2, 1e-13);
+    close('  from a sum of masses of exactly zero', M.sumMIn, 0, 1e-15);
+    ok('  and it is boost-invariant too', M.boostGap < 1e-12 * M.mIn, M.boostGap);
+    var S = rlCollideMeasure(rlCollideParse('0 1\n0 1', []).parts, []);
+    close('two photons going the same way have invariant mass zero', S.mIn, 0, 1e-12);
+  })();
+
+  /* ---- the fixed-target penalty, which is why colliders exist ------------- */
+  (function(){
+    var F = rlCollideMeasure(rlCollideParse('1 0.99\n1 0', []).parts, []);
+    close('a fixed-target pair has invariant mass sqrt(2m(E+m))',
+          F.mIn, Math.sqrt(2 * (relGamma(0.99) + 1)), 1e-12);
+    ok('  which is about 4', Math.abs(F.mIn - 4.02) < 0.02, F.mIn);
+    var C = rlCollideMeasure(rlCollideParse('1 0.99\n1 -0.99', []).parts, []);
+    close('  while colliding the same two head-on gives 2 gamma', C.mIn, 2 * relGamma(0.99), 1e-12);
+    ok('  which is three and a half times as much', C.mIn / F.mIn > 3.4, C.mIn / F.mIn);
+  })();
+
+  /* ---- item 18 · Doppler and beaming -------------------------------------- */
+  (function(){
+    [0.1, 0.5, 0.9, 0.99].forEach(function(b){
+      var R = rlBeamPower(b, Math.PI / 2);
+      close('the transverse shift is exactly 1/gamma at beta=' + b, R.delta, 1 / relGamma(b), 1e-14);
+      ok('  which is a REDshift, always', R.delta < 1, R.delta);
+      var A = rlBeamPower(b, 0);
+      close('  and the approaching shift is the k factor at beta=' + b,
+            A.delta, Math.sqrt((1 + b) / (1 - b)), 1e-13);
+      close('  with the receding one its reciprocal', A.delta * rlBeamPower(b, Math.PI).delta, 1, 1e-13);
+      close('  and the four powers of delta multiply back',
+            A.energyPerPhoton * A.arrivalRate * A.solidAngle, A.total, 1e-12);
+      ok('  the beam half-angle is about 1/gamma at beta=' + b,
+         b < 0.5 || Math.abs(rlBeamPower(b, 0).beamHalfAngle * relGamma(b) - 1) < 0.25,
+         rlBeamPower(b, 0).beamHalfAngle * relGamma(b));
+    });
+    /* THE UNSHIFTED ANGLE IS NOT 90 DEGREES, and that is the whole point */
+    [0.3, 0.6, 0.9].forEach(function(b){
+      var N = rlDopplerNull(b);
+      ok('there is an angle at which nothing is shifted, at beta=' + b, N.ok, N.why);
+      close('  and delta there is exactly 1', relDoppler(b, N.theta), 1, 1e-13);
+      ok('  and it is forward of 90 degrees', N.theta < Math.PI / 2 - 1e-6, N.theta);
+    });
+    close('at rest the unshifted angle is 90 degrees', rlDopplerNull(0).theta, Math.PI / 2, 1e-15);
+    ok('at 0.99c an isotropic emitter beams into under 1% of the sky',
+       relBeamFraction(0.99) < 0.01, relBeamFraction(0.99));
+    ok('and at rest it beams into half of it', Math.abs(relBeamFraction(0) - 0.5) < 1e-12);
+    Object.keys(RL_SOURCES).forEach(function(k){
+      var P = RL_SOURCES[k], R = rlBeamPower(P.beta, P.theta * Math.PI / 180);
+      ok('RL_SOURCES ' + k + ' has a finite Doppler factor', R.delta > 0 && isFinite(R.delta), R.delta);
+      ok('  ' + k + ': and the four powers multiply to the total',
+         Math.abs(R.energyPerPhoton * R.arrivalRate * R.solidAngle - R.total) < 1e-12 * R.total);
+    });
+  })();
+})();
+
+/* ============ 41a · complex numbers, elementary (Programme C wing C2) ========
+   The rule that shapes every block below: a check is only worth writing if the
+   two routes could disagree. Comparing cxExp against Euler's formula would not
+   be one -- cxExp IS Euler's formula in code -- so the series is summed term by
+   term instead, and nothing in this block calls cxExp at all. */
+(function(){
+  var C = function(re, im){ return cx(re, im); };
+  var dist = function(a, b){ return cxAbs(cxSub(a, b)); };
+
+  /* ---- reading what a reader typed ---------------------------------------- */
+  (function(){
+    var cases = [
+      ['3 + 2i',        3,    2],
+      ['3-2i',          3,   -2],
+      ['-i',            0,   -1],
+      ['i',             0,    1],
+      ['2i',            0,    2],
+      ['-3',           -3,    0],
+      ['0.5 - 0.25i',   0.5, -0.25],
+      ['pi + i',        Math.PI, 1],
+      ['1/2 + (3/4)i',  0.5,  0.75],
+      ['2*3 - 4i',      6,   -4],
+      ['e^2',           Math.exp(2), 0],
+      ['i/2',           0,    0.5],
+      ['-2.5i',         0,   -2.5]
+    ];
+    cases.forEach(function(row){
+      var P = cnParse(row[0]);
+      ok('cnParse reads "' + row[0] + '"', P.ok, P.why);
+      if(P.ok){
+        close('  its real part', P.z.re, row[1], 1e-12);
+        close('  its imaginary part', P.z.im, row[2], 1e-12);
+      }
+    });
+    ['', 'q + 1', '3 + 2j', 'sin('].forEach(function(bad){
+      ok('cnParse refuses "' + bad + '"', !cnParse(bad).ok, JSON.stringify(cnParse(bad)));
+    });
+    /* the round trip through the EDIT formatter must survive being read back --
+       this is the fmtNum-in-an-editable-box defect, in its complex spelling */
+    [C(0.7, -0.3), C(-2, 0), C(0, 1), C(-0.125, -4.5)].forEach(function(z){
+      var back = cnParse(cnFmtEdit(z));
+      ok('cnFmtEdit(' + z.re + ',' + z.im + ') reads back', back.ok, cnFmtEdit(z));
+      if(back.ok) close('  and is the same number', dist(back.z, z), 0, 1e-9);
+    });
+  })();
+
+  /* ---- multiplication really is a rotation and a scaling ------------------- */
+  (function(){
+    var zs = [C(1, 0), C(0, 1), C(3, -4), C(-2, 0.5), C(0.1, 0.1), C(-1, -1)];
+    zs.forEach(function(a){
+      zs.forEach(function(b){
+        var M = cnMulPolar(a, b);
+        ok('polar and componentwise products agree', M.gap <= 1e-12 * Math.max(1e-300, M.gross), M.gap);
+        close('  moduli multiply', M.modGap, 0, 1e-12 * Math.max(1e-300, M.gross));
+        close('  arguments add', M.argGap, 0, 1e-12);
+      });
+    });
+    /* and the branch cut is handled: (-1) x (-1) has arguments summing to 2pi */
+    var cut = cnMulPolar(C(-1, 0), C(-1, 0));
+    close('a product across the branch cut still agrees on argument', cut.argGap, 0, 1e-12);
+    close('  and pi + pi is reported as 0, not 2pi', cnWrapPi(2 * Math.PI), 0, 1e-12);
+    close('cnWrapPi keeps pi itself', cnWrapPi(Math.PI), Math.PI, 1e-15);
+  })();
+
+  /* ---- de Moivre ---------------------------------------------------------- */
+  (function(){
+    [C(0.9, 0.3), C(-1, 1), C(2, 0), C(0, 1)].forEach(function(z){
+      [2, 3, 5, 8, 12].forEach(function(n){
+        var P = cnPowerTwo(z, n);
+        ok('de Moivre matches ' + n + ' multiplications', P.gap <= 1e-11 * Math.max(1e-300, P.gross),
+           P.gap + ' against ' + P.gross);
+      });
+    });
+    /* i^4 = 1 exactly, by both routes */
+    var i4 = cnPowerTwo(C(0, 1), 4);
+    close('i^4 is 1 by repeated multiplication', dist(i4.repeated, C(1, 0)), 0, 1e-15);
+    /* and a negative power is the reciprocal */
+    var inv = cnPowerTwo(C(2, 0), -3);
+    close('z^-3 is 1/8 for z = 2', inv.repeated.re, 0.125, 1e-15);
+  })();
+
+  /* ---- Euler, from the series -------------------------------------------- */
+  (function(){
+    [0, 0.3, 1, Math.PI / 2, Math.PI, 3, -2.5].forEach(function(th){
+      var S = cnExpSeries(th, 60);
+      ok('the series for e^(i' + th + ') lands on cos + i sin',
+         S.gap <= 1e-13 * Math.max(1, S.gross), S.gap + ' / ' + S.gross);
+    });
+    /* the famous one, and it must be measured rather than displayed:
+       e^(i pi) + 1 = 0 to the last bit of a 60-term sum */
+    var pi = cnExpSeries(Math.PI, 60);
+    ok('e^(i pi) + 1 vanishes', cxAbs(cxAdd(pi.sum, cx(1, 0))) < 1e-14,
+       cxAbs(cxAdd(pi.sum, cx(1, 0))));
+    /* truncating it EARLY must be visibly wrong, or the convergence above is
+       not evidence of anything */
+    var few = cnExpSeries(Math.PI, 4);
+    ok('four terms are not enough, and the test says so', few.gap > 0.1, few.gap);
+    /* the partial sums are a path, and it has the right number of points */
+    ok('the partial sums are kept for drawing', cnExpSeries(1, 7).partials.length === 8);
+    /* the spiral starts at 1 and steps to 1 + i theta */
+    var p = cnExpSeries(0.5, 3).partials;
+    close('the first partial sum is 1', dist(p[0], C(1, 0)), 0, 1e-15);
+    close('the second is 1 + i theta', dist(p[1], C(1, 0.5)), 0, 1e-15);
+  })();
+
+  /* ---- polynomials, and the fundamental theorem --------------------------- */
+  (function(){
+    Object.keys(CN_POLYS).forEach(function(k){
+      var P = CN_POLYS[k], G = cnCoeffsParse(P.coeffs);
+      ok('CN_POLYS ' + k + ' parses', G.ok, G.why);
+      if(!G.ok) return;
+      var M = cnPolyMeasure(G.c);
+      ok('  ' + k + ': it has roots', M.ok, M.why);
+      if(!M.ok) return;
+      ok('  ' + k + ': the declared degree is the number of roots found',
+         M.degree === P.degree && M.roots.length === P.degree, M.degree);
+      ok('  ' + k + ': every root satisfies the equation',
+         M.worst <= 1e-10 * M.worstGross, M.worst + ' against ' + M.worstGross);
+      /* the accuracy a root of multiplicity m can HAVE is eps^(1/m), so the
+         tolerance is derived from the measured multiplicity and floored at the
+         simple-root value -- not widened until the repeated-root preset fits */
+      var acc = Math.max(1e-10, 10 * M.expected);
+      ok('  ' + k + ': the declared multiplicity is what is measured',
+         M.mult === P.mult, M.mult + ' measured, ' + P.mult + ' declared');
+      /* THE SECOND ROUTE: multiply the factors back out */
+      ok('  ' + k + ': and Vieta rebuilds the coefficients',
+         M.vieta.gap <= acc * M.vieta.gross, M.vieta.gap + ' against ' + acc * M.vieta.gross);
+      ok('  ' + k + ': the roots sum to -c1/c0',
+         M.vieta.sumGap <= acc * (1 + cxAbs(M.vieta.sum)), M.vieta.sumGap);
+      ok('  ' + k + ': and multiply to (-1)^n cn/c0',
+         M.vieta.prodGap <= acc * (1 + cxAbs(M.vieta.prod)), M.vieta.prodGap);
+      ok('  ' + k + ': the declared count of real roots is what is measured',
+         M.real === P.real, M.real + ' measured, ' + P.real + ' declared');
+      /* and the conjugate-pair theorem, where its hypothesis holds */
+      var CP = cnConjugatePairs(G.c, M.roots);
+      if(CP.applies)
+        ok('  ' + k + ': non-real roots come in conjugate pairs',
+           CP.worst <= acc * Math.max(1e-12, CP.scale), CP.worst);
+      else
+        ok('  ' + k + ': complex coefficients, so no pairing is claimed',
+           /not all real/.test(CP.why), CP.why);
+    });
+    /* a REPEATED root is the case a root finder is allowed to be worse at:
+       (z^2+z+1)^2 has two double roots, and Aberth still returns four */
+    var rep = cnPolyMeasure(cnCoeffsParse('1 2 3 2 1').c);
+    ok('a double root is still found four times', rep.roots.length === 4);
+    ok('  and it is reported as multiplicity 2', rep.mult === 2, rep.mult);
+    /* and the error really is the square root of eps, not eps. Agreement any
+       better than this would mean the double root had been resolved past what
+       float64 can express -- so the assertion is that the gap is NOT small,
+       which is the only way to notice if this test stops measuring the thing
+       it was written for. */
+    ok('  and the Vieta gap sits at the square root of eps, as it must',
+       rep.vieta.gap > 1e-11 && rep.vieta.gap < 1e-5, rep.vieta.gap);
+    ok('  and the accuracy the panel may claim is derived, not assumed',
+       rep.expected > 1e-9 && rep.expected < 1e-6, rep.expected);
+    ok('  and the pair really is repeated',
+       cxAbs(cxSub(rep.roots[0], rep.roots[1])) < 1e-4 ||
+       cxAbs(cxSub(rep.roots[0], rep.roots[3])) < 1e-4,
+       rep.roots.map(function(z){ return cnFmt(z, 4); }).join(' , '));
+    /* the failure modes must fail */
+    ok('a constant is refused', !cnPolyRoots([cx(3, 0)]).ok);
+    ok('a leading zero is refused by the parser', !cnCoeffsParse('0 1 2').ok);
+    ok('and fourteen coefficients are refused', !cnCoeffsParse('1 1 1 1 1 1 1 1 1 1 1 1 1 1').ok);
+    /* Horner against the naive powers -- a second route for the evaluator */
+    (function(){
+      var c = [cx(2, -1), cx(0, 3), cx(-1, 0), cx(0.5, 0.25)];
+      [C(0.3, 0.7), C(-2, 1), C(0, 0), C(1.5, -1.5)].forEach(function(z){
+        var naive = cx(0, 0);
+        for(var k = 0; k < c.length; k++)
+          naive = cxAdd(naive, cxMul(c[k], cnPowerTwo(z, c.length - 1 - k).repeated));
+        close('Horner matches the naive powers', dist(cnPolyEval(c, z), naive), 0, 1e-12);
+      });
+    })();
+    /* the Cauchy bound really does contain every root */
+    Object.keys(CN_POLYS).forEach(function(k){
+      var R = cnPolyRoots(cnCoeffsParse(CN_POLYS[k].coeffs).c);
+      if(!R.ok) return;
+      var out = R.roots.filter(function(z){ return cxAbs(z) > R.bound + 1e-9; });
+      ok('CN_POLYS ' + k + ': every root is inside the Cauchy bound', out.length === 0, out.length);
+    });
+  })();
+
+  /* ---- phasors ------------------------------------------------------------ */
+  (function(){
+    Object.keys(CN_PHASORS).forEach(function(k){
+      var S = cnPhasorSum(CN_PHASORS[k].parts);
+      /* the tolerance is the trapezoid's own error on a periodic integrand,
+         which is spectral -- measured near 1e-16 relative, so 1e-12 is loose */
+      ok('CN_PHASORS ' + k + ': the arrow sum matches the fitted wave',
+         S.gap <= 1e-12 * S.gross, S.gap + ' against ' + S.gross);
+    });
+    /* the two cases worth naming */
+    var q = cnPhasorSum(CN_PHASORS.quarter.parts);
+    close('two unit waves 90 degrees apart give amplitude sqrt(2)', q.amp, Math.SQRT2, 1e-12);
+    close('  at 45 degrees', q.phase, Math.PI / 4, 1e-12);
+    var c = cnPhasorSum(CN_PHASORS.cancel.parts);
+    ok('antiphase cancels exactly, and the gross remembers what cancelled',
+       c.amp < 1e-15 && c.gross === 2, c.amp + ' / ' + c.gross);
+    var t = cnPhasorSum(CN_PHASORS.three.parts);
+    ok('three-phase sums to zero', t.amp < 1e-14, t.amp);
+  })();
+
+  /* ---- the pair presets --------------------------------------------------- */
+  Object.keys(CN_PAIRS).forEach(function(k){
+    var P = CN_PAIRS[k], A = cnParse(P.a), B = cnParse(P.b);
+    ok('CN_PAIRS ' + k + ' parses both numbers', A.ok && B.ok, A.why + ' / ' + B.why);
+    if(!A.ok || !B.ok) return;
+    var M = cnMulPolar(A.z, B.z);
+    ok('  ' + k + ': polar and componentwise agree', M.gap <= 1e-12 * Math.max(1e-300, M.gross), M.gap);
+  });
+  close('the turn preset multiplies by exactly i', cxAbs(cnParse(CN_PAIRS.turn.b).z), 1, 1e-15);
+  close('the root-of-unity preset has modulus 1', cxAbs(cnParse(CN_PAIRS.root.b).z), 1, 1e-12);
+  close('  and argument 120 degrees', cxArg(cnParse(CN_PAIRS.root.b).z), 2 * Math.PI / 3, 1e-12);
+})();
+
+
+/* ---- every Gauss-table read must fall back ---------------------------------
+   nqGauss guarded an unsupported order and nqDoubleRect did not, so asking for
+   order 6 -- which nothing forbids and which reads as "a bit more accurate" --
+   produced `undefined` and a TypeError three frames away. One accessor now, and
+   these rows assert the whole family survives an order the table has never
+   heard of and returns what order 5 would. */
+[6, 7, 0, 99, undefined, null].forEach(function(k){
+  close('nqGauss survives order ' + k, nqGauss(Math.sin, 0, 1, k, 4),
+        1 - Math.cos(1), 1e-10);
+  close('nqDoubleRect survives order ' + k,
+        nqDoubleRect(function(x, y){ return x * y; }, 0, 1, 0, 2, k, 4), 1, 1e-10);
+  close('nqDoubleTypeI survives order ' + k,
+        nqDoubleTypeI(function(x, y){ return 1; }, 0, 1,
+                      function(){ return 0; }, function(){ return 1; }, k, 4), 1, 1e-10);
+  close('nqTriple survives order ' + k,
+        nqTriple(function(){ return 1; }, 0, 1, function(){ return 0; }, function(){ return 1; },
+                 function(){ return 0; }, function(){ return 1; }, k, 4), 1, 1e-10);
+});
+ok('and the table itself still has exactly the five orders it always had',
+   Object.keys(NQ_GL).join(',') === '2,3,4,5,8', Object.keys(NQ_GL).join(','));
+
+/* ============ 25a · coordinate systems and the Jacobian (wing C4) ===========
+   Four routes to the Jacobian and three to the area, and the point of writing
+   them separately is that they can disagree. The tolerances below come from
+   each route's own measured error: the cell-area route is first order in h and
+   the grid route is first order in the cell size, so neither is held to
+   round-off, and the grid's bound is the difference between its own two runs
+   rather than a number chosen to make the test pass. */
+(function(){
+  Object.keys(CS_MAPS).forEach(function(k){
+    var P = CS_MAPS[k], M = csMapOf(P);
+    ok('CS_MAPS ' + k + ' builds', M.ok, M.why);
+    if(!M.ok) return;
+    var R = csMeasure(P, 120);
+    ok('  ' + k + ': it measures', R.ok, R.why);
+    if(!R.ok) return;
+
+    /* --- the Jacobian, four ways --- */
+    var scale = Math.max(1e-12, Math.abs(R.det));
+    close('  ' + k + ': |J| from the metric matches the determinant',
+          R.detMetric, Math.abs(R.det), 1e-7 * scale);
+    close('  ' + k + ': and the declared closed form matches both',
+          R.detDeclared, R.det, 1e-6 * scale);
+    /* the cell-area route is FIRST order, so it is checked by its order and not
+       by its value: halving h must halve the error */
+    /* An AFFINE map has no truncation error at all here: the cell area IS
+       |J|h^2 exactly, so what is left is round-off, and round-off does not
+       halve when h does. Escape on the size of the residual relative to |J|,
+       which is the distinction CLAUDE.md insists on. */
+    ok('  ' + k + ': the cell-area route converges at first order, or is already exact',
+       R.order.e2 < 1e-9 * Math.max(1e-12, R.order.exact) ||
+       (R.order.ratio > 1.5 && R.order.ratio < 4.5),
+       'ratio ' + R.order.ratio + ' (e1 ' + R.order.e1 + ', e2 ' + R.order.e2 + ')');
+
+    /* --- orthogonality, as a measurement of the declared flag --- */
+    ok('  ' + k + ': the declared orthogonality is what is measured',
+       R.metric.orthogonal === P.orthogonal,
+       'cos angle ' + R.metric.cosAngle + ', declared ' + P.orthogonal);
+    if(P.orthogonal)
+      close('  ' + k + ': and for an orthogonal system |J| is h_u h_v',
+            R.metric.hu * R.metric.hv, Math.abs(R.det), 1e-7 * scale);
+
+    /* --- the area, three ways --- */
+    /* Green's theorem gives the SIGNED area with multiplicity, so it equals the
+       image area only where the map covers once and does not fold */
+    /* Green is O(1/N^2) here rather than spectral -- the image of a rectangle
+       has corners -- so it is held to the difference between its own two runs
+       and not to a figure chosen to make it pass */
+    var GE = csAreaGreenErr(R.map, P.u0, P.u1, P.v0, P.v1);
+    if(P.cover === 1)
+      close('  ' + k + ': Green round the boundary matches the pulled-back integral',
+            Math.abs(GE.area), R.pull, 4 * GE.self + 1e-9 * R.pull);
+    else
+      ok('  ' + k + ': a folding map returns zero from Green, and that is right',
+         Math.abs(R.green) < 1e-6 * R.pull, R.green);
+    /* the grid route is first order; its own two runs bound it */
+    ok('  ' + k + ': the grid over the image agrees within its own measured error',
+       Math.abs(R.grid * P.cover - R.pull) <= 6 * R.gridSelf + 1e-9 * R.pull,
+       'grid ' + R.grid + ' x' + P.cover + ' against ' + R.pull +
+       ', its own error ' + R.gridSelf);
+    ok('  ' + k + ': the declared covering number is what is measured',
+       Math.abs(R.cover - P.cover) < 0.06, R.cover);
+    if(P.area !== null && P.area !== undefined)
+      close('  ' + k + ': and the declared image area is what the pull-back gives',
+            R.pull, P.area * P.cover, 1e-6 * Math.abs(P.area * P.cover));
+
+    /* --- degeneracy: does |J| vanish anywhere on the rectangle? --- */
+    var minJ = Infinity, maxJ = 0;
+    for(var i = 0; i <= 24; i++) for(var j = 0; j <= 24; j++){
+      var u = P.u0 + (P.u1 - P.u0) * i / 24, v = P.v0 + (P.v1 - P.v0) * j / 24;
+      var d = Math.abs(csJacNum(M, u, v).det);
+      if(Number.isFinite(d)){ minJ = Math.min(minJ, d); maxJ = Math.max(maxJ, d); }
+    }
+    ok('  ' + k + ': the declared degeneracy is what is measured',
+       (minJ <= 1e-6 * Math.max(1e-12, maxJ)) === P.degenerate,
+       'min |J| ' + minJ + ' against max ' + maxJ + ', declared ' + P.degenerate);
+  });
+
+  /* ---- the three named cases, each with an answer known in advance -------- */
+  (function(){
+    var polar = csMeasure(CS_MAPS.polar, 160);
+    close('the unit disc by pulling back is pi', polar.pull, Math.PI, 1e-9);
+    var pg = csAreaGreenErr(polar.map, 0, 1, 0, 2 * Math.PI);
+    close('  and by Green round its boundary', Math.abs(pg.area), Math.PI, 4 * pg.self + 1e-12);
+    /* the Jacobian of polar IS r, everywhere, not just on average */
+    for(var r = 0.1; r <= 0.95; r += 0.2) for(var th = 0; th < 6; th += 1.3)
+      close('polar: |J| = r at r=' + r.toFixed(2),
+            Math.abs(csJacNum(polar.map, r, th).det), r, 1e-7 * r);
+    /* the scale factors: h_r = 1, h_theta = r */
+    var Kp = csMetric(polar.map, 0.7, 1.1);
+    close('polar: h_r is 1', Kp.hu, 1, 1e-7);
+    close('polar: h_theta is r', Kp.hv, 0.7, 1e-7);
+    ok('polar is orthogonal', Kp.orthogonal, Kp.cosAngle);
+  })();
+  (function(){
+    /* the fold is the counterexample and every number about it is different */
+    var F = csMeasure(CS_MAPS.fold, 140);
+    close('the fold: the pulled-back integral counts the image twice', F.pull, 2, 1e-9);
+    ok('  its image really has area 1', Math.abs(F.grid - 1) < 6 * F.gridSelf + 1e-9, F.grid);
+    ok('  and Green round its boundary returns 0, because the boundary doubles back',
+       Math.abs(F.green) < 1e-9, F.green);
+    close('  so the covering number is 2', F.cover, 2, 0.05);
+    /* and the theorem's conclusion is FALSE here, which is the whole point */
+    ok('  the change-of-variables answer is therefore wrong by exactly a factor of 2',
+       Math.abs(F.pull / 1 - 2) < 1e-6, F.pull);
+  })();
+  (function(){
+    /* a shear changes no area at all, at every point */
+    var S = csMeasure(CS_MAPS.shear, 120);
+    for(var u = 0.1; u < 1; u += 0.3) for(var v = 0.1; v < 1; v += 0.3)
+      close('the shear has |J| = 1 everywhere', csJacNum(S.map, u, v).det, 1, 1e-8);
+    close('  so the image has the same area as the square', S.pull, 1, 1e-9);
+    ok('  but it is NOT orthogonal — a shear changes angles', !S.metric.orthogonal, S.metric.cosAngle);
+    /* a rotation changes neither */
+    var R = csMeasure(CS_MAPS.rotate, 120);
+    close('a rotation also has |J| = 1', R.det, 1, 1e-8);
+    ok('  and IS orthogonal, which is what distinguishes it from the shear',
+       R.metric.orthogonal, R.metric.cosAngle);
+  })();
+
+  /* ---- change of variables with a weight --------------------------------- */
+  (function(){
+    /* ∬ over the unit disc of x² + y², which is π/2 in closed form */
+    var M = csMapOf(CS_MAPS.polar);
+    var got = csChangePull(M, function(x, y){ return x * x + y * y; },
+                           0, 1, 0, 2 * Math.PI, 6, 16);
+    close('∬(x²+y²) over the unit disc is pi/2', got, Math.PI / 2, 1e-8);
+    /* and the same integral in Cartesian coordinates, which knows no Jacobian */
+    var cart = nqDoubleTypeI(function(x, y){ return x * x + y * y; }, -1, 1,
+                             function(x){ return -Math.sqrt(Math.max(0, 1 - x * x)); },
+                             function(x){ return  Math.sqrt(Math.max(0, 1 - x * x)); }, 6, 40);
+    /* The Cartesian route integrates sqrt(1-x^2), whose derivative is infinite
+       at the two endpoints, so Gauss on a fixed grid converges slowly there. Its
+       error is measured by refining rather than asserted -- and the size of it
+       is exactly why polar coordinates are worth having for a disc. */
+    var cart2 = nqDoubleTypeI(function(x, y){ return x * x + y * y; }, -1, 1,
+                              function(x){ return -Math.sqrt(Math.max(0, 1 - x * x)); },
+                              function(x){ return  Math.sqrt(Math.max(0, 1 - x * x)); }, 5, 80);
+    var cself = Math.abs(cart2 - cart);
+    ok('  and a Cartesian sweep of the same region agrees to its own measured accuracy',
+       Math.abs(cart2 - Math.PI / 2) < 4 * cself + 1e-12,
+       cart2 + ', its own error ' + cself);
+    ok('  which is far worse than the polar route, and that is the lesson',
+       cself > 1e-7, cself);
+  })();
+
+  /* ---- a map the reader typed -------------------------------------------- */
+  (function(){
+    var M = csMapBuild('u*cos(v)', 'u*sin(v)');
+    ok('a typed polar map builds', M.ok, M.why);
+    close('  and its Jacobian is r', csJacNum(M, 0.8, 2.0).det, 0.8, 1e-7);
+    ok('an unreadable map is refused', !csMapBuild('u*cos(', 'v').ok);
+    ok('and so is one with an unknown name', !csMapBuild('w + 1', 'v').ok,
+       JSON.stringify(csMapBuild('w + 1', 'v')));
+    /* u and v are renamed, not the letters inside function names */
+    var C = csMapBuild('cos(u) + v', 'u');
+    ok('the rename does not touch letters inside a function name', C.ok, C.why);
+    close('  cos(u) + v at (0, 3) is 4', C.T(0, 3).x, 4, 1e-12);
+  })();
+
+  /* ---- Newton inversion -------------------------------------------------- */
+  (function(){
+    var M = csMapOf(CS_MAPS.elliptic);
+    var p = M.T(0.8, 1.9);
+    var inv = csInvert(M, p.x, p.y, 0.75, 3.14, { u0:0.3, u1:1.2, v0:0, v1:2 * Math.PI });
+    ok('Newton inverts the elliptic map', inv.ok, JSON.stringify(inv));
+    if(inv.ok){
+      var q = M.T(inv.u, inv.v);
+      close('  and the round trip returns the point', Math.hypot(q.x - p.x, q.y - p.y), 0, 1e-9);
+    }
+    /* a point outside the image must NOT be reported as inside */
+    var out = csInvert(M, 40, 40, 0.75, 3.14, { u0:0.3, u1:1.2, v0:0, v1:2 * Math.PI });
+    ok('a point far outside the image is not inverted into the rectangle',
+       !out.ok || out.u < 0.3 - 1e-6 || out.u > 1.2 + 1e-6, JSON.stringify(out));
+  })();
+})();
+
+/* ============ 25b · cylindrical and spherical volume elements ==============
+   The same solid, integrated in two or three coordinate systems. Each route is
+   held to its OWN error, measured by refining it — the systems do not converge
+   at the same rate on the same solid and that difference is the point. */
+(function(){
+  Object.keys(CS_SOLIDS).forEach(function(k){
+    var M = csSolidMeasure(k);
+    ok('CS_SOLIDS ' + k + ' has at least two routes', M.routes.length >= 2,
+       M.routes.map(function(r){ return r.name; }).join(', '));
+    M.routes.forEach(function(r){
+      ok('  ' + k + ' by ' + r.name + ' agrees with the closed form to its own error',
+         Math.abs(r.value - M.declared) <= 6 * r.self + 1e-9 * M.gross,
+         r.value + ' against ' + M.declared + ', its own error ' + r.self);
+    });
+    /* and the routes must agree with EACH OTHER, which needs no closed form */
+    ok('  ' + k + ': the routes agree with each other',
+       M.spread <= 1e-4 * M.gross, M.spread + ' against ' + M.gross);
+  });
+
+  /* the three closed forms, each against a route that knows nothing of it */
+  close('a unit ball has volume 4pi/3', csVolSph('ball', { R:1 }, null, 20),
+        4 * Math.PI / 3, 1e-10);
+  close('a cylinder of radius 1 and height 2 has volume 2pi',
+        csVolCyl('cylinder', { R:1, H:2 }, null, 20), 2 * Math.PI, 1e-10);
+  close('a cone of the same radius and height has exactly a third of that',
+        csVolCyl('cone', { R:1, H:2 }, null, 20), 2 * Math.PI / 3, 1e-10);
+  /* the third is not a coincidence and the test says which third it is */
+  close('  so the cone is a third of its cylinder, measured',
+        csVolCyl('cone', { R:1, H:2 }, null, 20) / csVolCyl('cylinder', { R:1, H:2 }, null, 20),
+        1 / 3, 1e-9);
+
+  /* ---- the volume element, quoted against a measured box ------------------ */
+  (function(){
+    [[0.5, 0.7, 0.2], [1.3, 2.9, -0.4], [2.0, 5.5, 1.1]].forEach(function(p){
+      var quoted = csElementCyl(p[0]).j;
+      /* the box volume over h³ approaches the Jacobian at FIRST order, so the
+         order is what is checked, not the value */
+      var h = 1e-3;
+      var e1 = Math.abs(csCellVolCyl(p[0], p[1], p[2], h) / (h * h * h) - quoted);
+      var e2 = Math.abs(csCellVolCyl(p[0], p[1], p[2], h / 2) / (h * h * h / 8) - quoted);
+      ok('the cylindrical element r is what a small box measures, at first order',
+         e2 < 1e-9 * quoted || (e1 / e2 > 1.5 && e1 / e2 < 4.5),
+         'quoted ' + quoted + ', e1 ' + e1 + ', e2 ' + e2);
+    });
+    [[0.8, 1.0, 0.3], [1.5, 0.4, 2.2], [2.2, 2.6, 5.0]].forEach(function(p){
+      var quoted = csElementSph(p[0], p[1]).j;
+      var h = 1e-3;
+      var e1 = Math.abs(csCellVolSph(p[0], p[1], p[2], h) / (h * h * h) - quoted);
+      var e2 = Math.abs(csCellVolSph(p[0], p[1], p[2], h / 2) / (h * h * h / 8) - quoted);
+      ok('the spherical element rho^2 sin(phi) is what a small box measures',
+         e2 < 1e-9 * quoted || (e1 / e2 > 1.5 && e1 / e2 < 4.5),
+         'quoted ' + quoted + ', e1 ' + e1 + ', e2 ' + e2);
+    });
+    /* the two places the spherical element vanishes, and they are not defects */
+    close('the spherical element vanishes on the axis', csElementSph(1, 0).j, 0, 1e-15);
+    close('  and at the origin', csElementSph(0, 1).j, 0, 1e-15);
+    close('the cylindrical element vanishes on the axis', csElementCyl(0).j, 0, 1e-15);
+    /* and the scale factors multiply to it, because both systems are orthogonal */
+    var S = csElementSph(1.7, 0.9);
+    close('spherical scale factors multiply to the volume element',
+          S.hs[0] * S.hs[1] * S.hs[2], S.j, 1e-14);
+    var C = csElementCyl(2.3);
+    close('and so do the cylindrical ones', C.hs[0] * C.hs[1] * C.hs[2], C.j, 1e-14);
+  })();
+
+  /* ---- the comparison the wing exists to make ---------------------------- */
+  (function(){
+    /* the ball is exact in spherical coordinates and NOT in Cartesian ones,
+       and the test asserts both halves — including that the Cartesian route is
+       genuinely worse, so the claim is not vacuous */
+    var M = csSolidMeasure('ball');
+    var sph = M.routes.filter(function(r){ return r.name === 'spherical'; })[0];
+    var cart = M.routes.filter(function(r){ return r.name === 'Cartesian'; })[0];
+    ok('a ball in spherical coordinates is exact to round-off',
+       Math.abs(sph.value - M.declared) < 1e-12 * M.gross, sph.value);
+    ok('  and in Cartesian coordinates it is not', cart.self > 1e-8, cart.self);
+    ok('  by a wide margin, which is the reason the wing exists',
+       cart.self > 1e4 * Math.max(1e-16, sph.self), cart.self + ' against ' + sph.self);
+  })();
+})();
+
+
+/* ============ SIGNAL PROCESSING (49a-signal.js, wing C15) ============
+   Every block below is two routes to one number. Where a tolerance appears it
+   was set from the SECOND route's own measured error, printed by a probe
+   before the assertion was written -- never guessed. */
+(function(){
+
+  /* ---- windows: one function, sampled two ways --------------------------- */
+  /* dspWindow is the PERIODIC sampling (period N) and ftWindowFn is the
+     SYMMETRIC one (period N-1). They are therefore the same function whenever
+     the lengths differ by one, and that is exact rather than approximate --
+     which is what stops the two conventions drifting into two definitions. */
+  ['rect', 'hann', 'hamming', 'blackman'].forEach(function(k){
+    var m = 0;
+    for(var n = 0; n < 32; n++) m = Math.max(m, Math.abs(dspWindow(k, n, 32) - ftWindowFn(k, n, 33)));
+    close('window ' + k + ': periodic at N is symmetric at N+1', m, 0, 0);
+    close('  and dspWindowSym says the same thing',
+          Math.abs(dspWindowSym(k, 7, 33) - ftWindowFn(k, 7, 33)), 0, 0);
+  });
+  /* the symmetric sampling is a palindrome -- which is the only reason a
+     windowed-sinc filter has linear phase */
+  ['hann', 'hamming', 'blackman'].forEach(function(k){
+    var m = 0;
+    for(var n = 0; n < 41; n++) m = Math.max(m, Math.abs(dspWindowSym(k, n, 41) - dspWindowSym(k, 40 - n, 41)));
+    close('the symmetric sampling of ' + k + ' is a palindrome', m, 0, 1e-15);
+  });
+
+  /* ---- coherent gain and ENBW: summed against closed forms ---------------- */
+  /* For w[n] = sum_k (-1)^k a_k cos(2 pi k n / N) every term but the first sums
+     to zero over a whole number of periods, so the mean is EXACTLY a_0; and
+     sum w^2 = N(a_0^2 + half sum a_k^2), which gives ENBW in closed form. Both
+     are identities, so the tolerance is round-off and nothing else. */
+  DSP_WIN_KEYS.forEach(function(k){
+    if(k === 'bartlett') return;                     /* not a cosine sum */
+    var S = dspWinSums(k, 256);
+    close('coherent gain of ' + k + ' is a_0', S.cg, dspWinCGExact(k), 1e-15);
+    close('ENBW of ' + k + ' matches its closed form', S.enbw, dspWinENBWExact(k), 1e-12);
+  });
+  close('Hann ENBW is exactly 3/2', dspWinENBWExact('hann'), 1.5, 0);
+  close('the rectangle lets in exactly one bin', dspWinENBWExact('rect'), 1, 0);
+  ok('and the flat top lets in nearly four, which is what it costs',
+     Math.abs(dspWinENBWExact('flattop') - 3.7702) < 1e-3, dspWinENBWExact('flattop'));
+
+  /* ---- the window's transform: an FFT against Dirichlet kernels ----------- */
+  /* Route 1 transforms the samples. Route 2 sums shifted Dirichlet kernels,
+     which never forms the window at all. They agree to round-off. */
+  DSP_WIN_KEYS.forEach(function(k){
+    if(k === 'bartlett') return;
+    var N = 64, S = dspWinSpecFFT(k, N, 32), worst = 0;
+    for(var i = 0; i < S.mag.length; i++)
+      worst = Math.max(worst, Math.abs(dspWinSpecExact(k, i / S.pad, N).mag - S.mag[i]));
+    ok('the ' + k + ' window transform: FFT against the Dirichlet sum',
+       worst / S.mag[0] < 1e-13, 'relative ' + (worst / S.mag[0]));
+  });
+  /* the numbers a window is chosen by, against the values Harris tabulated */
+  (function(){
+    var R = dspWinMetrics('rect', 256, 32), H = dspWinMetrics('hann', 256, 32);
+    close('the rectangle\'s highest sidelobe is -13.26 dB', R.sidelobeDb, -13.26, 0.02);
+    close('  its scalloping loss is 20 log(2/pi)', R.scallop, 2 / Math.PI, 5e-3);
+    close('  and its first null is one bin out', R.firstNull, 1, 1e-9);
+    close('Hann\'s highest sidelobe is -31.5 dB', H.sidelobeDb, -31.47, 0.05);
+    close('  and its first null is two bins out', H.firstNull, 2, 1e-9);
+    close('Blackman-Harris reaches -92 dB', dspWinMetrics('bharris', 256, 32).sidelobeDb, -92.03, 0.1);
+    /* the flat top earns its name: half a bin off costs a hundredth of a dB */
+    ok('a flat top loses under 0.02 dB to scalloping',
+       Math.abs(dspWinMetrics('flattop', 256, 32).scallopDb) < 0.02,
+       dspWinMetrics('flattop', 256, 32).scallopDb);
+    /* and the first null of a K-term cosine sum is at K bins, every time */
+    close('the first null of a 5-term window is 5 bins out',
+          dspWinMetrics('flattop', 256, 32).firstNull, 5, 1e-9);
+  })();
+
+  /* ---- aliasing: a modulo against a spectrum ----------------------------- */
+  /* ftAlias folds the frequency by arithmetic. dspPeakFreq transforms the
+     samples that were actually taken and finds the peak. Nothing is shared. */
+  [[3, 32], [11, 32], [19, 32], [29, 32], [45, 32], [7.3, 32], [13.7, 40]].forEach(function(p){
+    var sig = dspSamples(function(t){ return Math.sin(2 * Math.PI * p[0] * t); }, p[1], 256);
+    var got = dspPeakFreq(sig, p[1]), want = ftAlias(p[0], p[1]);
+    ok('a ' + p[0] + ' Hz tone sampled at ' + p[1] + ' appears at ' + want.toFixed(3) + ' Hz',
+       Math.abs(got - want) < 1e-4, 'measured ' + got + ', arithmetic ' + want);
+  });
+  /* the fold is a triangle wave, and these are its two corners */
+  close('a tone at exactly Nyquist folds to Nyquist', ftAlias(16, 32), 16, 0);
+  close('a tone at exactly the sample rate folds to zero', ftAlias(32, 32), 0, 0);
+
+  /* ---- reconstruction: the residual that shrinks, and the one that does not */
+  /* Below Nyquist the only error is the truncation of an infinite sinc sum, and
+     sinc decays as 1/t, so doubling the record halves it. Above Nyquist the
+     residual is the alias and does not move. Asserting the RATIO tests the
+     mechanism; asserting a tolerance would test neither. */
+  (function(){
+    var below = dspReconOrder(function(t){ return Math.sin(2 * Math.PI * 3 * t); }, 32, 256);
+    ok('below Nyquist the reconstruction error halves with the record',
+       below.ratio > 1.8 && below.ratio < 2.3, below.ratio);
+    ok('  and is already small', below.e1 < 2e-3, below.e1);
+    var above = dspReconOrder(function(t){ return Math.sin(2 * Math.PI * 19 * t); }, 32, 256);
+    ok('above Nyquist it does not shrink at all', above.ratio < 1.1, above.ratio);
+    ok('  because it is not truncation, it is the alias', above.e1 > 1, above.e1);
+  })();
+
+  /* ---- band limits: declared against measured ---------------------------- */
+  DSP_SIGNAL_KEYS.forEach(function(k){
+    var S = DSP_SIGNALS[k], B = dspBandMeasure(S.x, DSP_DUR, 1e-4);
+    if(S.band === null){
+      /* the three that declare no band limit must MEASURE as having none: the
+         answer has to move when the tolerance does, or the declaration is a
+         dodge rather than a fact */
+      var loose = dspBandMeasure(S.x, DSP_DUR, 1e-3).f;
+      var tight = dspBandMeasure(S.x, DSP_DUR, 1e-6).f;
+      ok('"' + k + '" declares no band limit, and its measured edge moves with the tolerance',
+         tight > loose + 2 * B.bin, 'at 1e-6: ' + tight + ', at 1e-3: ' + loose);
+    } else {
+      close('"' + k + '" contains nothing above ' + S.band + ' Hz', B.f, S.band, 1e-9);
+    }
+  });
+
+  /* ---- filters: the transfer function against the recursion --------------- */
+  /* Route 1 evaluates B(z)/A(z) on the unit circle. Route 2 drives e^(i2 pi f n)
+     through the difference equation and divides the output by the input. An FIR
+     agrees exactly once the transient is past; an IIR agrees to whatever is
+     left of a transient that decays geometrically and never ends. */
+  DSP_FILTER_KEYS.forEach(function(k){
+    var f = DSP_FILTERS[k].make(), st = dspSettle(f.b, f.a);
+    var worst = 0, peak = 0;
+    for(var i = 0; i <= 100; i++){
+      var fr = i / 200;
+      var A = dspResp(f.b, f.a, fr), B = dspDrive(f.b, f.a, fr, st);
+      worst = Math.max(worst, Math.hypot(A.re - B.re, A.im - B.im));
+      peak = Math.max(peak, A.mag);
+    }
+    ok('"' + k + '": H(e^(i omega)) against the recursion it describes',
+       worst / peak < 1e-12, 'worst ' + worst + ' against a peak gain of ' + peak);
+  });
+  /* the settling count is the thing that makes route 2 work, and it was wrong
+     once: an FIR forgets at its last tap and no estimate is involved */
+  close('an FIR settles at its tap count', dspSettle(dspMovAvg(8), [1]), 10, 0);
+  ok('a pole at 0.9 needs a few hundred samples', dspSettle([1], [1, -0.9]) > 300 &&
+     dspSettle([1], [1, -0.9]) < 400, dspSettle([1], [1, -0.9]));
+  ok('and one at 0.97 needs a few thousand', dspSettle([1], [1, -1.94, 0.9409]) > 1000,
+     dspSettle([1], [1, -1.94, 0.9409]));
+
+  /* ---- the declarations each filter makes about itself -------------------- */
+  DSP_FILTER_KEYS.forEach(function(k){
+    var P = DSP_FILTERS[k], f = P.make();
+    if(P.dc !== null) close('"' + k + '" has DC gain ' + P.dc, dspResp(f.b, f.a, 0).mag, P.dc, 1e-12);
+    if(P.nyq !== null) close('  and gain ' + P.nyq + ' at Nyquist', dspResp(f.b, f.a, 0.5).mag, P.nyq, 1e-12);
+    if(P.linear) close('  its taps are symmetric, so its phase is linear', dspSymResid(f.b), 0, 1e-15);
+    if(P.poleMax !== null) close('  its largest pole is at ' + P.poleMax, dspMaxPole(f.a), P.poleMax, 1e-9);
+    if(P.stop) ok('  and its stopband stays under ' + P.stop[2] + ' dB',
+                  dspStopband(f.b, f.a, P.stop[0], P.stop[1]).db < P.stop[2],
+                  dspStopband(f.b, f.a, P.stop[0], P.stop[1]).db);
+    if(P.delay !== null) close('  and it delays everything by ' + P.delay + ' samples',
+                               dspCentroidDelay(f.b, f.a), P.delay, 1e-9);
+  });
+
+  /* ---- the group delay, three ways --------------------------------------- */
+  (function(){
+    /* analytic against a differenced phase */
+    DSP_FILTER_KEYS.forEach(function(k){
+      var f = DSP_FILTERS[k].make(), worst = 0, n = 0;
+      for(var i = 0; i <= 200; i++){
+        var A = dspGroupDelay(f.b, f.a, i / 400), B = dspGroupDelayNum(f.b, f.a, i / 400);
+        if(A === null || B === null) continue;
+        worst = Math.max(worst, Math.abs(A - B)); n++;
+      }
+      ok('"' + k + '" group delay: exact against differenced, over ' + n + ' points',
+         n > 100 && worst < 1e-4, 'worst ' + worst);
+    });
+    /* and against the centre of mass of the impulse response, at DC only --
+       which is where that identity holds and nowhere else */
+    ['avg', 'lp', 'one', 'reso'].forEach(function(k){
+      var f = DSP_FILTERS[k].make();
+      close('"' + k + '": the group delay at DC is the centroid of h[n]',
+            dspGroupDelay(f.b, f.a, 0), dspCentroidDelay(f.b, f.a), 1e-9);
+    });
+    /* a symmetric FIR delays EVERY frequency equally -- the whole point of
+       linear phase. Away from the zeros of H, where arg H jumps by pi and the
+       group delay is not defined at all. */
+    ['avg', 'lp', 'hp', 'bp'].forEach(function(k){
+      var f = DSP_FILTERS[k].make(), worst = 0, n = 0;
+      var peak = 0;
+      for(var i = 0; i <= 200; i++) peak = Math.max(peak, dspResp(f.b, f.a, i / 400).mag);
+      for(var j = 0; j <= 200; j++){
+        var fr = j / 400, g = dspGroupDelay(f.b, f.a, fr);
+        if(g === null || dspResp(f.b, f.a, fr).mag < 1e-3 * peak) continue;
+        worst = Math.max(worst, Math.abs(g - (f.b.length - 1) / 2)); n++;
+      }
+      ok('"' + k + '" is linear phase: its group delay is (M-1)/2 at ' + n + ' frequencies',
+         n > 80 && worst < 1e-9, 'worst deviation ' + worst);
+    });
+    /* the difference filter has a zero at DC, and there the group delay does
+       not exist. Returning a number there was a defect: the first version
+       reported -24 999.5 samples, which is a phase jump wearing the units of a
+       delay. */
+    ok('the group delay is undefined at a zero of H',
+       dspGroupDelay([1, -1], [1], 0) === null, dspGroupDelay([1, -1], [1], 0));
+    ok('  and the differenced route agrees that it is',
+       dspGroupDelayNum([1, -1], [1], 0) === null, dspGroupDelayNum([1, -1], [1], 0));
+    ok('  while a moving average has seven such frequencies',
+       (function(){ var c = 0, f = dspMovAvg(8);
+                    for(var i = 1; i < 8; i++) if(dspGroupDelay(f, [1], i / 16) === null) c++;
+                    return c; })() >= 3, 'zeros found');
+  })();
+
+  /* ---- filters against their closed forms -------------------------------- */
+  (function(){
+    var h = dspMovAvg(8), worst = 0;
+    for(var i = 1; i <= 49; i++){
+      var fr = i / 100;
+      worst = Math.max(worst, Math.abs(dspResp(h, [1], fr).mag -
+        Math.abs(Math.sin(Math.PI * fr * 8) / (8 * Math.sin(Math.PI * fr)))));
+    }
+    close('a moving average is a Dirichlet kernel', worst, 0, 1e-14);
+    /* the one-pole smoother, whose impulse response is a geometric series */
+    var g = dspImpulse([0.1], [1, -0.9], 30), w = 0;
+    for(var n = 0; n < 30; n++) w = Math.max(w, Math.abs(g[n] - 0.1 * Math.pow(0.9, n)));
+    close('the one-pole impulse response is 0.1 x 0.9^n', w, 0, 1e-15);
+    close('  and its DC gain is sum b over sum a', dspResp([0.1], [1, -0.9], 0).mag, 1, 1e-15);
+    /* the resonator is normalised so that its gain at its own frequency is one,
+       and that is an exact statement about the distance to its poles */
+    var R = DSP_FILTERS.reso.make();
+    close('the resonator has unit gain at exactly its own frequency',
+          dspResp(R.b, R.a, 0.12).mag, 1, 1e-12);
+  })();
+
+  /* ---- the difference equation against convolution ----------------------- */
+  (function(){
+    var h = dspFirLP(0.15, 41, 'hamming');
+    var x = new Float64Array(300);
+    for(var n = 0; n < 300; n++) x[n] = Math.sin(0.3 * n) + 0.4 * Math.cos(0.07 * n * n);
+    var y = dspRun(h, [1], x), c = ftConvolve(h, x), w = 0;
+    for(var i = 0; i < 300; i++) w = Math.max(w, Math.abs(y[i] - c[i]));
+    close('running an FIR is convolving with its impulse response', w, 0, 0);
+  })();
+
+  /* ---- the windowed-sinc design ------------------------------------------ */
+  (function(){
+    var h = dspFirLP(0.15, 41, 'hamming'), s = 0;
+    for(var n = 0; n < h.length; n++) s += h[n];
+    close('a low-pass design has unit gain at DC', s, 1, 1e-15);
+    close('  and symmetric taps', dspSymResid(h), 0, 1e-15);
+    var stop = 0;
+    for(var i = 0; i <= 100; i++) stop = Math.max(stop, dspResp(h, [1], 0.25 + 0.25 * i / 100).mag);
+    ok('  with a stopband below -55 dB', 20 * Math.log10(stop) < -55, 20 * Math.log10(stop));
+    /* a rectangular truncation instead of a window is visibly worse, which is
+       the entire argument for windowing a filter */
+    var r = dspFirLP(0.15, 41, 'rect'), rs = 0;
+    for(var j = 0; j <= 100; j++) rs = Math.max(rs, dspResp(r, [1], 0.25 + 0.25 * j / 100).mag);
+    ok('  and truncating instead of windowing is 25 dB worse',
+       20 * Math.log10(rs) > 20 * Math.log10(stop) + 25,
+       'rect ' + 20 * Math.log10(rs) + ' vs Hamming ' + 20 * Math.log10(stop));
+    close('a high-pass by spectral inversion has zero gain at DC',
+          dspResp(dspFirHP(0.15, 41, 'hamming'), [1], 0).mag, 0, 1e-14);
+  })();
+
+  /* ---- the short-time transform ------------------------------------------ */
+  (function(){
+    /* THE INVARIANCE: the product of the time resolution and the frequency
+       resolution is the window's ENBW, whatever the window length. Sweeping N
+       and finding the spread is a stronger statement than any single value. */
+    var vals = [32, 64, 128, 256, 512].map(function(N){ return dspStftResolution(N, 256, 'hann').product; });
+    var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
+    close('the time-frequency product is the same at every window length', hi - lo, 0, 1e-14);
+    close('  and for a Hann window it is 3/2', vals[0], 1.5, 1e-15);
+    close('  while a rectangle gets it down to 1',
+          dspStftResolution(64, 256, 'rect').product, 1, 1e-15);
+    /* the ridge of a chirp against the frequency it was built from. The window
+       sees the sweep cross it, so the ridge lands on the instantaneous
+       frequency at the window's CENTRE -- comparing against anything else would
+       be measuring the offset rather than the estimator. */
+    var fs = 256, f0 = 10, rate = 20;
+    var x = function(t){ return Math.sin(2 * Math.PI * (f0 * t + rate * t * t / 2)); };
+    var sig = dspSamples(x, fs, 1024);
+    [32, 64, 128].forEach(function(N){
+      var E = dspRidgeError(dspStft(sig, N, N / 4, 'hann'), fs, function(t){ return f0 + rate * t; });
+      ok('the spectrogram ridge follows a chirp to well inside one bin at N = ' + N,
+         E.worst < 0.2 && E.worst < 0.1 * (fs / N), 'worst ' + E.worst + ' Hz, bin ' + (fs / N));
+    });
+  })();
+
+  /* ---- reader-typed coefficients ----------------------------------------- */
+  (function(){
+    var a = dspCoeffs('1, -0.5, 0.25');
+    ok('a coefficient list parses', a.ok && a.c.length === 3 && a.c[1] === -0.5, JSON.stringify(a));
+    var b = dspCoeffs('1 pi/4 sqrt(2)');
+    ok('  and every entry may be an expression',
+       b.ok && Math.abs(b.c[1] - Math.PI / 4) < 1e-15 && Math.abs(b.c[2] - Math.SQRT2) < 1e-15,
+       JSON.stringify(b));
+    var c = dspCoeffs('1, oops');
+    ok('  a bad entry is reported by position rather than swallowed',
+       !c.ok && c.bad.length === 1 && c.bad[0].i === 2, JSON.stringify(c));
+    ok('  and an empty list does not become a filter', !dspCoeffs('   ').ok);
+  })();
+
+  /* ---- the anti-alias filter --------------------------------------------- */
+  (function(){
+    /* The cure has to happen BEFORE the sampler. Filtering first and sampling
+       after leaves nothing above Nyquist to fold; the price is that what was
+       recorded is a different signal, and the test asserts both halves. */
+    var S = DSP_SIGNALS.two, fs = 24;
+    var clean = dspAntiAlias(S.x, fs, 256);
+    /* the 11 Hz component is below Nyquist (12) and must survive */
+    ok('the anti-alias filter keeps what is below Nyquist',
+       Math.abs(dspPeakFreq(clean, fs) - 3) < 0.05, dspPeakFreq(clean, fs));
+    /* the chirp runs well past Nyquist, and afterwards its peak is inside the band */
+    var C = dspAntiAlias(DSP_SIGNALS.chirp.x, fs, 256);
+    ok('  and removes what is above it', dspPeakFreq(C, fs) < fs / 2, dspPeakFreq(C, fs));
+    /* an AM carrier sitting exactly at Nyquist samples to nothing at all, phase
+       by phase -- the sampling theorem's endpoint is excluded for a reason */
+    var raw = dspSamples(DSP_SIGNALS.am.x, 24, 256), m = 0;
+    for(var i = 0; i < 256; i++) m = Math.max(m, Math.abs(raw[i]));
+    ok('a carrier at exactly Nyquist can sample to identically zero', m < 1e-12, m);
+  })();
+})();
+
+
+/* ============ units, dimensions & uncertainty (wing C3, engine 30a) ========= */
+(function(){
+  /* ---- the parser, and both routes to a dimension vector ------------------ */
+  const deq = (a, b) => a.length === b.length && a.every((v, i) => Math.abs(v - b[i]) < 1e-9);
+  ok('kg m/s^2 is a force', deq(unRead('kg m / s^2').d, [1,1,-2,0,0,0,0]));
+  ok('  juxtaposition is multiplication', deq(unRead('kg m s^-2').d, [1,1,-2,0,0,0,0]));
+  ok('  and so is the named unit', deq(unRead('N').d, [1,1,-2,0,0,0,0]));
+  ok('V/A reduces to the ohm without consulting the ohm',
+     deq(unRead('V/A').d, UN_UNITS.ohm.d), unFmtDim(unRead('V/A').d));
+  ok('C/V reduces to the farad', deq(unRead('C/V').d, UN_UNITS.F.d));
+  ok('a half-integer exponent survives', Math.abs(unRead('m^(1/2)').d[1] - 0.5) < 1e-12);
+  ok('a negative exponent needs no brackets', deq(unRead('m^-1').d, [0,-1,0,0,0,0,0]));
+  ok('  and reads the same with them', deq(unRead('m^(-1)').d, [0,-1,0,0,0,0,0]));
+  ok('a bare number is dimensionless', unDimZero(unRead('1').d));
+  /* the scale factor is carried separately from the dimension, which is what
+     makes a kilometre and a metre the same KIND of thing */
+  close('km carries its factor', unRead('km').f, 1000, 0);
+  close('eV/nm is 1.602176634e-10 in SI', unRead('eV/nm').f, 1.602176634e-10, 1e-24);
+  ok('a kilometre and a metre have the same dimension vector',
+     deq(unRead('km').d, unRead('m').d));
+  /* parsers never throw, and they say what went wrong */
+  ok('an unknown unit is refused, not guessed', !unRead('bogus').ok);
+  ok('  and says which one', /bogus/.test(unRead('bogus').why), unRead('bogus').why);
+  ok('a stray character is refused', !unRead('m-1').ok);
+  ok('an exponent with no number is refused', !unRead('kg^').ok);
+  ok('an unclosed bracket is refused', !unRead('kg/(m').ok);
+
+  /* THE two-route check: exponents by addition, against exponents recovered by
+     rescaling the base units and reading the logarithms. These share only the
+     tokenizer, so a sign error in the division rule cannot survive it. */
+  ['kg*m/s^2', 'J/(kg K)', 'm^(1/2)', 'V/m', 'F', 'T', 'eV/nm', 'mol/L', 'J s', '1'].forEach(function(s){
+    const C = unDimCheck(s);
+    ok('two routes agree on ' + s, C.ok && C.gap < 1e-12, C.gap);
+  });
+  /* and the negative control -- corrupt the expression handed to one route and
+     watch the two separate. A check never seen to fail is not known to work. */
+  (function(){
+    const A = unRead('kg m / s^2');
+    const bad = unDimByScaling({ k:'div', a:A.ast.a, b:{ k:'pow', a:A.ast.b, e:2 } });
+    ok('  the scaling route really does depend on the expression',
+       Math.abs(bad[2] - A.d[2]) > 1, bad[2] + ' against ' + A.d[2]);
+  })();
+
+  /* ---- Buckingham -------------------------------------------------------- */
+  (function(){
+    const V = [{ name:'T', d:[0,0,1,0,0,0,0] }, { name:'L', d:[0,1,0,0,0,0,0] },
+               { name:'g', d:[0,1,-2,0,0,0,0] }, { name:'m', d:[1,0,0,0,0,0,0] }];
+    const G = unPiGroups(V);
+    ok('the pendulum has exactly one group', G.nPi === 1 && G.groups.length === 1, G.nPi);
+    ok('  and rank + nullity = n', G.rank + G.nPi === G.n);
+    ok('  the mass appears in it with exponent zero', Math.abs(G.groups[0].a[3]) < 1e-9,
+       G.groups[0].a.join(','));
+    ok('  and the group really is dimensionless', G.worst < 1e-12, G.worst);
+    ok('  written the natural way up', unPiText(G.groups[0], V) === 'T² g / L',
+       unPiText(G.groups[0], V));
+    /* the orientation argument is cosmetic and must not touch the mathematics */
+    const G2 = unPiGroups(V, [1, 2, 3, 0]);
+    ok('  reorienting a group does not change how many there are', G2.nPi === G.nPi);
+    ok('  nor whether it is dimensionless', G2.worst < 1e-12);
+  })();
+  (function(){
+    /* rank, NOT the number of dimensions that appear: these three quantities all
+       carry mass and length in the same ratio, so the two rows are proportional,
+       the rank is 1, and there are TWO groups where counting dimensions by eye
+       predicts one. This is the case the shortcut gets wrong. */
+    const V = [{ name:'a', d:[1,1,0,0,0,0,0] }, { name:'b', d:[2,2,0,0,0,0,0] },
+               { name:'c', d:[3,3,0,0,0,0,0] }];
+    const G = unPiGroups(V);
+    ok('rank beats counting the dimensions that appear', G.rank === 1 && G.nPi === 2,
+       'rank ' + G.rank + ' nPi ' + G.nPi);
+    ok('  and both groups are genuinely dimensionless', G.worst < 1e-12, G.worst);
+  })();
+  (function(){
+    /* five quantities, two groups -- and with the force given priority the panel
+       prints the drag coefficient rather than its reciprocal */
+    const V = [{ name:'rho', d:[1,-3,0,0,0,0,0] }, { name:'v', d:[0,1,-1,0,0,0,0] },
+               { name:'D', d:[0,1,0,0,0,0,0] }, { name:'mu', d:[1,-1,-1,0,0,0,0] },
+               { name:'F', d:[1,1,-2,0,0,0,0] }];
+    const G = unPiGroups(V, [4, 0, 1, 2, 3]);
+    ok('drag has two groups', G.nPi === 2, G.nPi);
+    const txt = G.groups.map(g => unPiText(g, V));
+    ok('  one of them is the Reynolds number', txt.indexOf('rho v D / mu') >= 0, txt.join(' | '));
+    ok('  and the other is the drag coefficient the right way up',
+       txt.indexOf('F / rho v² D²') >= 0, txt.join(' | '));
+  })();
+
+  /* ---- significant figures ----------------------------------------------- */
+  close('9.97 to two figures rounds up a decade', unSigRound(9.97, 2), 10, 0);
+  close('  and still carries only two figures afterwards', unSigBand(9.97, 2).abs, 0.5, 1e-12);
+  close('1.2345 to three figures', unSigRound(1.2345, 3), 1.23, 1e-15);
+  close('0.000123456 to four figures', unSigRound(0.000123456, 4), 0.0001235, 1e-18);
+  close('123456 to two figures', unSigRound(123456, 2), 120000, 0);
+  /* the band is a RELATIVE statement, so the same k gives the same fraction
+     whatever the size -- which is the whole point of a significant figure */
+  (function(){
+    const r1 = unSigBand(1.2345e-7, 4).rel, r2 = unSigBand(1.2345e9, 4).rel;
+    ok('the band is relative, so scale does not enter', Math.abs(r1 - r2) < 1e-15,
+       r1 + ' against ' + r2);
+    ok('  and it is at most 5e-k', r1 <= 5e-4 + 1e-18, r1);
+  })();
+  close('a measurement good to 0.02 in 9.80665 justifies three figures',
+        unSigJustified(9.80665, 0.02), 3, 0);
+  ok('an uncertainty of zero justifies no answer at all', unSigJustified(1, 0) === null);
+
+  /* ---- error propagation, two routes ------------------------------------- */
+  (function(){
+    /* a LINEAR function: first-order propagation is exact here, so the two
+       routes may differ only by the Monte Carlo's own sampling error */
+    const f = a => 2 * a[0] - 3 * a[1];
+    const exact = Math.sqrt(4 * 0.01 + 9 * 0.04);
+    const C = unPropCompare(f, [1, 2], [0.1, 0.2], 40000, 7);
+    close('a linear function propagates exactly', C.lin.sd, exact, 1e-9);
+    ok('  and sampling agrees within its own sampling error',
+       C.sigmas < 4, C.sigmas + ' sigmas, lin ' + C.lin.sd + ' mc ' + C.mc.sd);
+    ok('  with no bias', Math.abs(C.bias) < 5 * C.mc.sd / Math.sqrt(C.mc.n), C.bias);
+    const s = C.lin.share.reduce((p, q) => p + q, 0);
+    close('  the variance shares sum to one', s, 1, 1e-12);
+    ok('  and the larger term owns the larger share', C.lin.share[1] > C.lin.share[0]);
+  })();
+  (function(){
+    /* the mean of n equal measurements: sigma over root n, derived not quoted */
+    const xs = [], sg = [];
+    for(let i = 0; i < 10; i++){ xs.push(5); sg.push(0.3); }
+    const L = unLinProp(a => a.reduce((p, q) => p + q, 0) / a.length, xs, sg);
+    /* the gradient is a CENTRAL DIFFERENCE, so it carries round-off of order
+       eps*|f|/h -- about 1e-11 here. That is the tolerance, and it is measured
+       from the step rather than guessed: a tighter one would be asserting that
+       float64 differencing is exact, which it is not. */
+    close('averaging n readings gives sigma/sqrt(n)', L.sd, 0.3 / Math.sqrt(10), 1e-10);
+    ok('  and every reading owns a tenth of the variance',
+       L.share.every(v => Math.abs(v - 0.1) < 1e-9), L.share.join(','));
+  })();
+  (function(){
+    /* a STRONGLY nonlinear function, where the linearisation is not merely
+       imprecise but is describing a different distribution. exp(z) with
+       z ~ N(0,1) is log-normal, whose standard deviation is sqrt((e-1)e) and
+       whose mean is sqrt(e) -- both closed form, so the Monte Carlo can be
+       checked against something and the linear route shown to be wrong. */
+    const C = unPropCompare(a => Math.exp(a[0]), [0], [1], 60000, 7);
+    close('the linear route returns exp(0) times 1', C.lin.sd, 1, 1e-6);
+    close('  but the true standard deviation is sqrt((e-1)e)',
+          C.mc.sd, Math.sqrt((Math.E - 1) * Math.E), 0.08);
+    ok('  so the routes disagree by far more than the sampling error',
+       C.sigmas > 10, C.sigmas);
+    close('  and the mean is biased to sqrt(e), which the linear route cannot see',
+          C.mc.mean, Math.sqrt(Math.E), 0.04);
+  })();
+  (function(){
+    /* the generator is seeded, so a panel and a gate read the same number twice */
+    const a = unMCProp(x => x[0], [0], [1], 5000, 99).sd;
+    const b = unMCProp(x => x[0], [0], [1], 5000, 99).sd;
+    ok('the Monte Carlo is reproducible', a === b, a + ' against ' + b);
+    ok('  and a different seed is a different draw',
+       unMCProp(x => x[0], [0], [1], 5000, 100).sd !== a);
+    /* the sampling error on the sd falls as 1/sqrt(N), which is what lets a real
+       disagreement be told apart from the sample size */
+    const s1 = unMCProp(x => x[0], [0], [1], 5000, 3).seSd;
+    const s2 = unMCProp(x => x[0], [0], [1], 20000, 3).seSd;
+    ok('  and its own error falls as 1/sqrt(N)', Math.abs(s1 / s2 - 2) < 0.15, s1 / s2);
+  })();
+})();
+
+/* ============ discrete maths & combinatorics (wing C5, engine 42a) ========= */
+(function(){
+  /* ---- every closed form against an actual enumeration -------------------
+     This is the wing's whole method and it is not a numerical check: the
+     enumerator builds the objects one at a time, so agreement is between a
+     formula and the definition it abbreviates. */
+  [['perm', 5, 3], ['perm', 6, 2], ['perm', 4, 4],
+   ['permRep', 4, 3], ['permRep', 3, 4], ['permRep', 5, 2],
+   ['comb', 6, 3], ['comb', 8, 4], ['comb', 7, 0], ['comb', 7, 7],
+   ['combRep', 4, 3], ['combRep', 3, 4], ['combRep', 5, 2]].forEach(function(t){
+    var C = dcCountCheck(t[0], t[1], t[2], 60000);
+    ok(t[0] + '(' + t[1] + ',' + t[2] + ') formula matches the enumeration',
+       C.agree, C.closed + ' against ' + C.enumerated);
+  });
+  /* choosing nothing gives exactly one object, not none — which is 0! = 1 */
+  ok('there is exactly one way to choose nothing', dcCountCheck('comb', 6, 0, 60000).enumerated === 1);
+  close('0! = 1', dcFact(0), 1, 0);
+  close('C(n, 0) = 1', dcChoose(9, 0), 1, 0);
+  close('C(n, n) = 1', dcChoose(9, 9), 1, 0);
+  ok('C(n, k) = 0 above the row', dcChoose(5, 6) === 0);
+  /* the enumerator REFUSES above its cap rather than truncating, because a
+     truncated list turns a wrong count into a plausible one */
+  (function(){
+    var C = dcCountCheck('perm', 9, 9, 400);
+    ok('the enumeration refuses rather than truncating', C.overflow && C.enumerated === null,
+       JSON.stringify({ overflow:C.overflow, n:C.enumerated }));
+    ok('  and the closed form is still available', C.closed === dcFact(9), C.closed);
+  })();
+
+  /* ---- the multiplicative form stays exact where the factorial form does not */
+  close('C(52, 26) is an exact integer', dcChoose(52, 26), 495918532948104, 0);
+  ok('  and the factorial route is NOT', dcFact(52) / (dcFact(26) * dcFact(26)) !== 495918532948104,
+     dcFact(52) / (dcFact(26) * dcFact(26)));
+  ok('  which the exactness flag reports', dcExact(dcChoose(52, 26)));
+  ok('  and denies past 2^53', !dcExact(dcChoose(60, 30)), dcChoose(60, 30));
+
+  /* ---- Pascal: the recurrence against the multiplicative formula ---------- */
+  (function(){
+    var T = dcPascal(30), worst = 0;
+    for(var n = 0; n <= 30; n++) for(var k = 0; k <= n; k++)
+      worst = Math.max(worst, Math.abs(T[n][k] - dcChoose(n, k)));
+    ok('the recurrence and the formula agree over 30 rows, exactly', worst === 0, worst);
+  })();
+  [4, 8, 12, 16, 20].forEach(function(n){
+    var F = dcRowFacts(dcPascal(n)[n], n);
+    ok('row ' + n + ' sums to 2^n', F.sumGap === 0, F.sum + ' vs ' + F.sumExact);
+    ok('  its alternating sum vanishes', F.altGap === 0, F.alt);
+    ok('  its weighted sum is n2^(n-1)', F.weightedGap === 0, F.weighted + ' vs ' + F.weightedExact);
+    ok('  and its sum of squares is C(2n, n)', F.squaresGap === 0, F.squares + ' vs ' + F.squaresExact);
+  });
+  /* the alternating identity FAILS at n = 0, and so does the bijection that
+     proves it — there is no first element to toggle. That the two break in the
+     same place is the evidence the proof is doing work. */
+  (function(){
+    var F = dcRowFacts(dcPascal(0)[0], 0);
+    ok('the alternating sum is 1 at n = 0, not 0', F.alt === 1 && F.altExact === 1, F.alt);
+  })();
+  [[2, 8], [0, 10], [3, 12], [5, 9]].forEach(function(p){
+    var H = dcHockey(p[0], p[1]);
+    ok('hockey stick r=' + p[0] + ' n=' + p[1], H.gap === 0, H.sum + ' vs ' + H.exact);
+  });
+  /* the binomial theorem, including the case where both sides vanish */
+  [[1, 1, 6], [2, -3, 5], [0.5, 0.5, 10], [-2, 5, 7]].forEach(function(p){
+    var B = dcBinomAt(p[0], p[1], p[2]);
+    ok('binomial theorem at (' + p[0] + ',' + p[1] + ')^' + p[2],
+       B.gap <= 1e-9 * B.gross, B.sum + ' vs ' + B.direct + ', gross ' + B.gross);
+  });
+  (function(){
+    var B = dcBinomAt(1, -1, 8);
+    ok('(1 - 1)^n vanishes on both sides', B.sum === 0 && B.direct === 0);
+    ok('  and the gross is 2^n, not zero', B.gross === 256, B.gross);
+    ok('  so the verdict is agreement, not a 100% error',
+       /agree to every digit/.test(fmtAgreeGross(B.sum, B.direct, B.gross)),
+       fmtAgreeGross(B.sum, B.direct, B.gross));
+  })();
+
+  /* ---- parity WITHOUT reading the entry ----------------------------------
+     dcOddEntry is Kummer's theorem in base two. The naive test — the stored
+     entry mod 2 — agrees with it while the entries are exact and then quietly
+     stops, which is exactly why the wing does not use it. */
+  (function(){
+    var T = dcPascal(50), bad = 0;
+    for(var n = 0; n <= 50; n++) for(var k = 0; k <= n; k++){
+      if(!dcExact(T[n][k])) continue;
+      if((Math.abs(T[n][k] % 2) === 1) !== dcOddEntry(n, k)) bad++;
+    }
+    ok('the bitwise parity rule agrees with the entry while the entry is exact', bad === 0, bad);
+  })();
+  (function(){
+    var T = dcPascal(63), bad = 0;
+    for(var n = 54; n <= 63; n++) for(var k = 0; k <= n; k++)
+      if((Math.abs(T[n][k] % 2) === 1) !== dcOddEntry(n, k)) bad++;
+    /* the negative control: if these agreed there would be nothing to fix and
+       the bitwise route would be pointless */
+    ok('  and they DISAGREE once the entry has lost its low bits', bad > 0, bad);
+  })();
+  [1, 2, 3, 4, 5, 6].forEach(function(m){
+    var rows = Math.pow(2, m) - 1;
+    close('odd entries in the first 2^' + m + ' rows is 3^' + m,
+          dcOddCount(rows), Math.pow(3, m), 0);
+  });
+
+  /* ---- inclusion and exclusion ------------------------------------------- */
+  (function(){
+    var I = dcInclExcl([function(x){ return x % 2 === 0; },
+                        function(x){ return x % 3 === 0; },
+                        function(x){ return x % 5 === 0; }], 1000);
+    ok('inclusion-exclusion matches the direct count', I.gap === 0, I.formula + ' vs ' + I.direct);
+    ok('  with 2^m - 1 terms', I.terms.length === 7, I.terms.length);
+    ok('  and the gross exceeds the answer, because the signs cancelled',
+       I.gross > I.formula, I.gross + ' vs ' + I.formula);
+    /* the complement is Euler's product multiplied out */
+    ok('  the complement is within one of 4N/15', Math.abs((1000 - I.direct) - 4000 / 15) < 1,
+       1000 - I.direct);
+  })();
+  (function(){
+    /* the control: disjoint sets, so every correction term is exactly zero and
+       the principle collapses to plain addition */
+    var I = dcInclExcl([function(x){ return x < 100; },
+                        function(x){ return x >= 200 && x < 300; },
+                        function(x){ return x >= 400 && x < 500; }], 600);
+    ok('disjoint sets need no correction at all', I.formula === 300 && I.direct === 300, I.formula);
+    var corr = I.terms.filter(function(t){ return t.bits > 1; });
+    ok('  and every multi-set term is zero', corr.every(function(t){ return t.inter === 0; }),
+       corr.map(function(t){ return t.inter; }).join(','));
+    ok('  so the gross equals the answer', I.gross === I.formula, I.gross);
+  })();
+  /* derangements: four routes, and the ratio going to e */
+  for(var dn = 1; dn <= 8; dn++){
+    (function(n){
+      var D = dcDerange(n), E = dcDerangeEnum(n, 60000);
+      ok('!' + n + ': inclusion-exclusion matches the recurrence', D.gapIE === 0, D.ie + ' vs ' + D.rec);
+      ok('  and matches a brute-force count of the permutations', E === D.rec, E + ' vs ' + D.rec);
+      if(n >= 2) ok('  and rounding n!/e', D.gapRound === 0, D.round + ' vs ' + D.rec);
+    })(dn);
+  }
+  close('n!/!n approaches e', dcDerange(10).ratio, Math.E, 1e-6);
+
+  /* ---- recurrences: three routes -----------------------------------------
+     Iteration and the matrix must agree EXACTLY, because both are integer
+     arithmetic below 2^53 and the matrix route visits n through its binary
+     expansion rather than one step at a time. */
+  [[[1, 1], [0, 1], 'Fibonacci'], [[1, 1], [2, 1], 'Lucas'],
+   [[2, 1], [0, 1], 'Pell'], [[1, 1, 1], [0, 1, 1], 'Tribonacci']].forEach(function(R){
+    [5, 12, 30, 50].forEach(function(n){
+      var it = dcRecur(R[0], R[1], n)[n];
+      /* "exactly" holds only while the ANSWER is exact. Pell(50) is 4.9e18,
+         past 2^53, and there the two routes round differently — which is not a
+         defect in either but the arithmetic running out, and asserting
+         equality regardless would be asserting something false. */
+      if(!dcExact(it)) return;
+      ok(R[2] + '(' + n + '): iteration and the companion matrix agree exactly',
+         dcByMatrix(R[0], R[1], n) === it, dcByMatrix(R[0], R[1], n) + ' vs ' + it);
+    });
+  });
+  (function(){
+    /* and the negative control for that caveat: above 2^53 the two integer
+       routes DO part company, so the guard above is guarding something real
+       rather than excusing a bug */
+    var it = dcRecur([2, 1], [0, 1], 50)[50];
+    ok('past 2^53 the two integer routes part company, as they must',
+       !dcExact(it) && dcByMatrix([2, 1], [0, 1], 50) !== it,
+       dcByMatrix([2, 1], [0, 1], 50) + ' vs ' + it);
+    ok('  and the relative gap is still float64 round-off',
+       Math.abs(dcByMatrix([2, 1], [0, 1], 50) - it) / it < 1e-14,
+       Math.abs(dcByMatrix([2, 1], [0, 1], 50) - it) / it);
+  })();
+  close('F(30)', dcRecur([1, 1], [0, 1], 30)[30], 832040, 0);
+  close('L(10)', dcRecur([1, 1], [2, 1], 10)[10], 123, 0);
+  close('P(10)', dcRecur([2, 1], [0, 1], 10)[10], 2378, 0);
+  (function(){
+    var R = dcCharRoots([1, 1]);
+    close('the characteristic root is the golden ratio', R.r1, (1 + Math.sqrt(5)) / 2, 1e-15);
+    /* the roots belong to the RECURRENCE: Lucas has the same ones */
+    var C1 = dcClosedForm([1, 1], [0, 1], 20), C2 = dcClosedForm([1, 1], [2, 1], 20);
+    ok('Fibonacci and Lucas share their roots', C1.r1 === C2.r1 && C1.r2 === C2.r2);
+    ok('  and differ only in the coefficients', C1.A !== C2.A || C1.B !== C2.B);
+    close('  Lucas from its closed form', C2.v, 15127, 1e-8);
+  })();
+  ok('a third-order recurrence gets no two-term closed form',
+     dcClosedForm([1, 1, 1], [0, 1, 1], 10) === null);
+
+  /* THE point of the wing's last stage: Binet is exact mathematics and, past
+     n = 71, wrong arithmetic — and the two errors give opposite verdicts. */
+  (function(){
+    var rel = [], firstBad = null;
+    for(var n = 10; n <= 78; n++){
+      var ex = dcRecur([1, 1], [0, 1], n)[n];
+      var cf = dcClosedForm([1, 1], [0, 1], n).v;
+      var a = Math.abs(cf - ex);
+      rel.push(a / ex);
+      if(firstBad === null && a >= 0.5) firstBad = n;
+    }
+    ok('Binet loses no significant figures at any n',
+       Math.max.apply(null, rel) < 1e-14, Math.max.apply(null, rel));
+    ok('  but its absolute error passes a half at n = 71', firstBad === 71, firstBad);
+    ok('  while the true value there is still an exact float64 integer',
+       dcExact(dcRecur([1, 1], [0, 1], 71)[71]));
+    ok('  and the matrix route is still exactly right there',
+       dcByMatrix([1, 1], [0, 1], 71) === dcRecur([1, 1], [0, 1], 71)[71]);
+  })();
+
+  /* ---- counting by recurrence, checked by enumeration --------------------- */
+  for(var sn = 1; sn <= 14; sn++){
+    (function(n){
+      var E = dcNoTwoOnes(n, 60000);
+      /* strings of length n with no two adjacent 1s number F(n+2) */
+      ok('binary strings of length ' + n + ' with no 11 number F(n+2)',
+         E.count === dcRecur([1, 1], [0, 1], n + 2)[n + 2],
+         E.count + ' vs ' + dcRecur([1, 1], [0, 1], n + 2)[n + 2]);
+    })(sn);
+  }
+  close('tilings of a 2x10 strip', dcTilings(10), 89, 0);
+
+  /* ---- pigeonhole and the birthday problem ------------------------------- */
+  (function(){
+    var P = dcPigeon(23, 5);
+    ok('some box holds at least ceil(n/k)', P.holds && P.worst === 5, JSON.stringify(P.boxes));
+    ok('  and the boxes account for every item',
+       P.boxes.reduce(function(a, b){ return a + b; }, 0) === 23);
+  })();
+  (function(){
+    var B = dcBirthday(23, 365);
+    close('23 people give a better than even chance', B.pSome, 0.5072972343, 1e-9);
+    ok('  and 22 do not', dcBirthday(22, 365).pSome < 0.5, dcBirthday(22, 365).pSome);
+    /* the closed form against a seeded simulation, compared against the
+       simulation's OWN standard error rather than against a guessed tolerance */
+    var S = dcBirthdaySim(23, 365, 40000, 11);
+    ok('  and a simulation agrees within its own sampling error',
+       Math.abs(S.p - B.pSome) < 4 * S.se,
+       S.p + ' vs ' + B.pSome + ', se ' + S.se);
+    /* the sqrt(N) law, bisected against the exact product */
+    var lo = 1, hi = 200;
+    while(hi - lo > 1){ var mid = (lo + hi) >> 1; if(dcBirthday(mid, 365).pSome < 0.5) lo = mid; else hi = mid; }
+    ok('  the half-way point is 23', hi === 23, hi);
+    ok('  and 1.177*sqrt(N) predicts it to within one person',
+       Math.abs(Math.sqrt(2 * Math.log(2) * 365) - hi) < 1, Math.sqrt(2 * Math.log(2) * 365));
+  })();
+})();
+/* ============================================================================
+   PROOF, LOGIC & SETS  (Programme C wing C1, modules 19b–19d)
+
+   The engine's whole claim is that every statement it prints was reached twice
+   by routes that share nothing below the parser. These tests check the two
+   routes against each other AND against values known independently — Bell
+   numbers, the number of surjections, 30031 = 59 × 509, 16/5 as the best
+   approximation to π with denominator at most five.
+   ============================================================================ */
+(function(){
+  /* ---- the parser ---------------------------------------------------------- */
+  ok('logic: ASCII and Unicode spellings parse to the same thing',
+     pfEquiv('p -> q', 'p → q').equal && pfEquiv('~(p & q)', '¬(p ∧ q)').equal);
+  ok('logic: ∧ binds tighter than ∨',
+     pfEquiv('p | q & r', 'p | (q & r)').equal && !pfEquiv('p | q & r', '(p | q) & r').equal);
+  ok('logic: → is right associative',
+     pfEquiv('p -> q -> r', 'p -> (q -> r)').equal && !pfEquiv('p -> q -> r', '(p -> q) -> r').equal);
+  ok('logic: a bad formula reports rather than throwing',
+     pfParse('p &').ok === false && typeof pfParse('p &').why === 'string' &&
+     pfParse('(p & q').ok === false && pfParse('p ! q $').ok === false);
+  ok('logic: the 6-variable cap refuses rather than building 128 rows',
+     pfParse('a & b & c & d & e & f').ok === true &&
+     pfParse('a & b & c & d & e & f & g').ok === false);
+
+  /* ---- route A against route B, on every declared law --------------------- */
+  (function(){
+    var bad = 0, checked = 0, cnfChecked = 0;
+    /* a third route, local to the test: evaluate the CLAUSES on every
+       assignment and compare with the formula. It catches a distribution bug
+       that the validity test alone could not see. */
+    function evalCNF(cl, env){
+      return cl.every(function(c){
+        return c.some(function(l){ return l.neg ? !env[l.name] : !!env[l.name]; });
+      });
+    }
+    Object.keys(PF_LAWS).forEach(function(k){
+      var L = PF_LAWS[k], E = pfEquiv(L.a, L.b);
+      checked++;
+      if(!E.ok){ bad++; out.push('   law ' + k + ' does not parse: ' + E.why); return; }
+      if(E.equal !== L.equiv){ bad++; out.push('   law ' + k + ' declares ' + L.equiv + ', rows say ' + E.equal); }
+      if(!E.agree){ bad++; out.push('   law ' + k + ': table says ' + E.equal + ', CNF says ' + E.byCNF); }
+      /* the clause form must mean the same thing as the formula it came from */
+      var P = pfParse(L.a);
+      if(P.ok){
+        var C = pfCNF(pfNNF(P.ast, false));
+        if(!C.overflow){
+          var V = P.vars, N = Math.pow(2, V.length), same = true;
+          for(var r = 0; r < N; r++){
+            var env = pfEnvOf(V, r);
+            if(pfEval(P.ast, env) !== evalCNF(C.clauses, env)) same = false;
+          }
+          cnfChecked++;
+          if(!same){ bad++; out.push('   law ' + k + ': its CNF does not mean what the formula means'); }
+        }
+      }
+    });
+    ok('logic: all ' + checked + ' declared laws recomputed by two routes, and ' +
+       cnfChecked + ' clause forms re-evaluated', bad === 0, bad + ' findings');
+
+    /* the negative control: corrupt a claim and watch the check fail. A gate
+       never seen to fail is not known to work. */
+    var was = PF_LAWS.converse.equiv;
+    PF_LAWS.converse.equiv = true;
+    var caught = pfEquiv(PF_LAWS.converse.a, PF_LAWS.converse.b).equal !== PF_LAWS.converse.equiv;
+    PF_LAWS.converse.equiv = was;
+    ok('logic:   and a corrupted claim is caught by that comparison', caught);
+  })();
+
+  /* ---- classification, and the counterexample it hands back ---------------- */
+  (function(){
+    var T = pfClassify('p | ~p'), C = pfClassify('p & ~p'), M = pfClassify('p -> q');
+    ok('logic: excluded middle is a tautology by both routes',
+       T.kind === 'tautology' && T.kindCNF === 'tautology' && T.agree);
+    ok('logic: p ∧ ¬p is a contradiction by both routes',
+       C.kind === 'contradiction' && C.kindCNF === 'contradiction' && C.agree);
+    ok('logic: p → q is contingent, true on 3 of its 4 rows',
+       M.kind === 'contingent' && M.table.trueRows === 3, M.table.trueRows);
+    var E = pfEquiv('p -> q', 'q -> p');
+    /* the converse parts from the original on BOTH mixed rows; which one is
+       reported first is an enumeration order, so the assertion is the fact
+       (they differ exactly where p and q differ) and not the order */
+    ok('logic: the converse differs on exactly the two rows where p and q differ',
+       !E.equal && E.rows.filter(function(r){ return !r.agree; }).length === 2 &&
+       E.rows.every(function(r){ return r.agree === (r.env.p === r.env.q); }) &&
+       E.counter.env.p !== E.counter.env.q,
+       pfEnvWords(E.counter.env));
+    ok('logic: ⊤ has no clauses and ⊥ has one empty one',
+       pfCNF(pfNNF({ t:'top' }, false)).clauses.length === 0 &&
+       pfCNFValid(pfCNF(pfNNF({ t:'bot' }, false)).clauses) === false);
+  })();
+
+  /* ---- quantifiers: three routes, and values known by hand ---------------- */
+  (function(){
+    var lt = PF_RELS.lt.f, leq = PF_RELS.leq.f, div = PF_RELS.divides.f, n = 6;
+    ok('quantifiers: ∀x∃y (x<y) is FALSE on a finite domain', pfQuantCheck(lt, n, 'AEy').val === false);
+    ok('quantifiers:   and its counterexample is the largest element',
+       pfQuantEval(lt, n, PF_QUANTS.AEy).outer === 6);
+    ok('quantifiers: ∀x∃y (x≤y) is true, witnessed by y = n',
+       pfQuantCheck(leq, n, 'AEy').val === true && pfQuantCheck(leq, n, 'EAx').val === true);
+    ok('quantifiers: ∃y∀x (x|y) is false on 1…6 — the lcm is 60',
+       pfQuantCheck(div, n, 'EAx').val === false);
+    ok('quantifiers: ∃x∀y (x|y) is true, and the witness is x = 1',
+       pfQuantCheck(div, n, 'EAy').val === true && pfQuantEval(div, n, PF_QUANTS.EAy).outer === 1);
+    var bad = 0, cases = 0;
+    Object.keys(PF_RELS).forEach(function(rk){
+      for(var m = 2; m <= 8; m++)
+        Object.keys(PF_QUANTS).forEach(function(qk){
+          var Q = pfQuantCheck(PF_RELS[rk].f, m, qk);
+          cases++;
+          if(!Q.agree) bad++;
+        });
+    });
+    ok('quantifiers: ' + cases + ' statements — loops, counts and the negated dual all agree',
+       bad === 0, bad + ' disagreements');
+    /* the negation identity is the thing readers get wrong; assert it directly */
+    ok('quantifiers:   ¬∀x∃y R is ∃x∀y ¬R, checked as stated',
+       pfQuantEval(function(x, y){ return !lt(x, y); }, n,
+                   { outer:'x', oq:'E', iq:'A' }).val === !pfQuantEval(lt, n, PF_QUANTS.AEy).val);
+  })();
+
+  /* ---- induction: verification against the certificate -------------------- */
+  (function(){
+    /* FIRST, and before anything warms the memo: the cost of a claim is the
+       claim's own business, and one of them is exponential — H(2ⁿ) sums 2ⁿ
+       terms because that is what it means. `maxN` is what bounds it, and this
+       is the gate that measures the EFFECT rather than trusting the
+       declaration. Written after auditclaims called the harmonic row at n = 40,
+       asked for 10¹² terms, and never returned. */
+    var t0 = Date.now();
+    Object.keys(PF_CLAIMS).forEach(function(k){
+      pfInductCheck(k, PF_CLAIMS[k].maxN === undefined ? 40 : PF_CLAIMS[k].maxN);
+    });
+    var ms = Date.now() - t0;
+    ok('induction: every claim driven to its own declared maximum returns promptly',
+       ms < 2000, ms + ' ms for ' + Object.keys(PF_CLAIMS).length + ' claims');
+    var bad = 0;
+    Object.keys(PF_CLAIMS).forEach(function(k){
+      var I = pfInductCheck(k, 30);
+      /* the declared truth of the claim, recomputed */
+      var reallyTrue = I.allHold;
+      if(PF_CLAIMS[k].trueClaim !== reallyTrue && k !== 'fermat' && k !== 'primes41' && k !== 'offByOne'){
+        bad++; out.push('   claim ' + k + ' declares ' + PF_CLAIMS[k].trueClaim + ', checking says ' + reallyTrue);
+      }
+      if(!I.agree){ bad++; out.push('   claim ' + k + ': certified but a value fails'); }
+    });
+    ok('induction: every claim verified, and no certificate contradicts a check', bad === 0, bad);
+    var O = pfInductCheck('offByOne', 30);
+    ok('induction: the off-by-one claim has a SOUND step and a failed base',
+       O.stepAllOK === true && O.baseOK === false && O.certified === false && O.firstFail === 1);
+    var P = pfInductCheck('primes41', 45);
+    ok('induction: n²+n+41 is prime for n = 0…39 and composite at 40',
+       P.firstFail === 40 && P.certified === false, P.firstFail);
+    var F = pfInductCheck('fermat', 5);
+    ok('induction: the first five Fermat numbers are prime and the sixth is not',
+       F.firstFail === 5, F.firstFail);
+    ok('induction:   and 641 is a factor of it, found rather than quoted',
+       pfFactor(4294967297).factors[0] === 641);
+    var W = pfInductCheck('pow2', 30);
+    ok('induction: 2ⁿ > n² is certified from its stated base of 5',
+       W.certified === true && W.baseOK === true && W.stepAllOK === true);
+    ok('induction:   and 2ⁿ > n² is false at n = 2, 3 and 4 — the base is doing work',
+       !PF_CLAIMS.pow2.holds(2) && !PF_CLAIMS.pow2.holds(3) && !PF_CLAIMS.pow2.holds(4) &&
+       PF_CLAIMS.pow2.holds(5));
+    close('induction: Σk² at n = 30 is 9455', pfInductCheck('sumSq', 30).rows[29].lhs, 9455, 0);
+  })();
+
+  /* ---- infinite descent ---------------------------------------------------- */
+  (function(){
+    var D = pfDescent(17, 12, 12);
+    ok('descent: √2 — 17/12 walks down to 1/1 and every step is smaller',
+       D.chain[D.chain.length - 1].q === 1 &&
+       D.chain.every(function(r, i){ return i === 0 || r.q < D.chain[i - 1].q; }),
+       JSON.stringify(D.chain.map(function(r){ return r.p + '/' + r.q; })));
+    ok('descent:   and |p² − 2q²| is invariant along it, which is why it stops at 1',
+       D.invariant && Math.abs(D.chain[0].resid) === 1);
+    /* the contradiction itself: a solution would descend forever */
+    ok('descent:   a genuine solution would produce an infinite decreasing chain',
+       pfDescent(2, 1, 3).chain.length >= 1);
+  })();
+
+  /* ---- best rational approximation: brute force against the theory --------- */
+  (function(){
+    var bad = 0, cases = 0;
+    Object.keys(PF_TARGETS).forEach(function(k){
+      var x = PF_TARGETS[k].v;
+      for(var Q = 1; Q <= 120; Q++){
+        var R = pfBestRat(x, Q);
+        cases++;
+        if(!R.errAgree){ bad++; if(bad < 4) out.push('   ' + k + ' at Q=' + Q + ': brute ' +
+          R.A.p + '/' + R.A.q + ' vs cf ' + R.B.p + '/' + R.B.q); }
+      }
+    });
+    ok('approximation: ' + cases + ' searches — brute force and the continued fraction agree',
+       bad === 0, bad + ' disagreements');
+    /* the case that made the semiconvergents necessary */
+    var P = pfBestRat(Math.PI, 5);
+    ok('approximation: the best π with q ≤ 5 is 16/5 — a semiconvergent, not a convergent',
+       P.A.q === 5 && P.A.p === 16 && P.B.q === 5 && P.B.p === 16, P.B.p + '/' + P.B.q);
+    close('approximation: 355/113 agrees with π to 2.7e-7',
+          Math.abs(Math.PI - 355 / 113), 2.667e-7, 1e-9);
+    ok('approximation: a rational target is hit exactly and an irrational one never is',
+       pfApproxCurve(1.5, 60).exact !== null && pfApproxCurve(Math.SQRT2, 400).exact === null);
+    /* q²|x − p/q| is bounded BELOW by a positive number for a quadratic
+       irrational — that is the whole difference from a rational — but the
+       bound is not the liminf: for √2 the smallest value anywhere is 0.3431,
+       at 3/2, while the tail settles on 0.35355. Assert both separately. */
+    ok('approximation: q²|x − p/q| never approaches zero for √2, √3 or φ',
+       pfApproxCurve(Math.SQRT2, 2000).minScaled > 0.34 &&
+       pfApproxCurve(Math.sqrt(3), 2000).minScaled > 0.26 &&
+       pfApproxCurve((1 + Math.sqrt(5)) / 2, 2000).minScaled > 0.38,
+       pfApproxCurve(Math.SQRT2, 2000).minScaled + ' / ' +
+       pfApproxCurve(Math.sqrt(3), 2000).minScaled + ' / ' +
+       pfApproxCurve((1 + Math.sqrt(5)) / 2, 2000).minScaled);
+    /* and the declared limits are recomputed from the record-holders */
+    var lbad = 0;
+    Object.keys(PF_TARGETS).forEach(function(k){
+      var T = PF_TARGETS[k];
+      if(!(T.liminf > 0)) return;
+      var m = pfLiminfMeasured(T.v, 3000, 20);
+      if(!(m !== null && Math.abs(m - T.liminf) < 0.005 * T.liminf)){
+        lbad++;
+        out.push('   target ' + k + ' declares liminf ' + T.liminf + ', measured ' + m);
+      }
+    });
+    ok('approximation: every declared limit recomputed from the search that produced it',
+       lbad === 0, lbad);
+    ok('approximation:   and π declares no limit at all, because none is known',
+       PF_TARGETS.pi.liminf === null && typeof PF_TARGETS.pi.limWhy === 'string');
+  })();
+
+  /* ---- Euclid, and the misstatement of his proof --------------------------- */
+  (function(){
+    var S = pfEuclidStep([2, 3, 5, 7, 11, 13]);
+    ok('Euclid: 2·3·5·7·11·13 + 1 = 30031 and it is NOT prime',
+       S.N === 30031 && S.isPrime === false, S.N + ' = ' + S.factors.join('×'));
+    ok('Euclid:   its factors are 59 and 509, and both are new',
+       S.factors.length === 2 && S.factors[0] === 59 && S.factors[1] === 509 &&
+       S.newPrimes.length === 2);
+    ok('Euclid:   no listed prime divides it — remainder 1 every time, by a route that never factors',
+       S.noneDivides && S.agree);
+    var bad = 0;
+    for(var k = 1; k <= 8; k++){
+      var E = pfEuclidStep(pfPrimesUpTo(100).slice(0, k));
+      if(!E.noneDivides || !E.agree) bad++;
+    }
+    ok('Euclid: the theorem holds for the first eight primorials by both routes', bad === 0, bad);
+    ok('Euclid: the chain 2, 3, 7, 43 … is generated, not quoted',
+       pfEuclidChain(2, 4).primes.slice(0, 4).join(',') === '2,3,7,43',
+       pfEuclidChain(2, 4).primes.join(','));
+  })();
+
+  /* ---- sets: masks against membership ------------------------------------- */
+  (function(){
+    var n = 20, A = pfMaskOf('even', n), B = pfMaskOf('prime', n), C = pfMaskOf('triple', n);
+    var bad = 0, checked = 0;
+    Object.keys(PF_SET_LAWS).forEach(function(k){
+      /* every law is checked on several different triples, because a law can
+         hold by accident on one — the empty set satisfies almost anything */
+      [[A, B, C], [B, C, A], [A, A, B], [0, B, C], [pfFull(n), B, C]].forEach(function(t){
+        var S = pfSetCheck(k, t[0], t[1], t[2], n);
+        checked++;
+        if(!S.agree){ bad++; out.push('   set law ' + k + ': masks and membership disagree'); }
+      });
+      /* the declared truth, recomputed on the triple that separates them */
+      var D = pfSetCheck(k, A, B, C, n);
+      if(D.equal !== PF_SET_LAWS[k].holds){
+        bad++; out.push('   set law ' + k + ' declares ' + PF_SET_LAWS[k].holds + ', masks say ' + D.equal);
+      }
+    });
+    ok('sets: ' + checked + ' identity checks — bitmask algebra and element-by-element agree',
+       bad === 0, bad + ' findings');
+    /* the two false laws are false, and false on EXACTLY the elements their
+       prose names. "Differs somewhere" would pass while the sentence beside it
+       was wrong — which it was: A ∖ (B ∖ C) and (A ∖ B) ∖ C part on A ∩ C, not
+       on the triple overlap, and an element of A and C but not B proves it. */
+    (function(){
+      var D1 = pfSetCheck('deMorganBad', A, B, C, n).differs;
+      var wantSymm = pfList(pfSymm(A, B), n);
+      ok('sets: ¬(A∩B) vs ¬A∩¬B differ on exactly A △ B',
+         D1.join(',') === wantSymm.join(','), D1.join(',') + ' vs ' + wantSymm.join(','));
+      var D2 = pfSetCheck('unionInterBad', A, B, C, n).differs;
+      var wantAC = pfList(pfInter(A, C), n);
+      ok('sets: A∖(B∖C) vs (A∖B)∖C differ on exactly A ∩ C',
+         D2.join(',') === wantAC.join(','), D2.join(',') + ' vs ' + wantAC.join(','));
+      ok('sets:   and that set is not the triple overlap — the sentence it replaced',
+         wantAC.join(',') !== pfList(A & B & C, n).join(','));
+    })();
+    var X = pfInclExcl3(A, B, C, n);
+    ok('sets: |A∪B∪C| agrees by formula, by popcount and by disjoint regions',
+       X.agree, X.byFormula + ' / ' + X.byUnion + ' / ' + X.byRegions);
+    ok('sets: the eight Venn regions partition the universe exactly',
+       pfVennRegions(A, B, C, n).reduce(function(s, r){ return s + r.size; }, 0) === n);
+    var PS = pfPowerSet(pfMaskOf('prime', 12), 12, 1024);
+    ok('sets: the power set of a 5-element set has 32 members, built and counted',
+       PS.k === 5 && PS.closed === 32 && PS.enumerated === 32 && PS.agree,
+       PS.k + ' -> ' + PS.enumerated);
+    ok('sets: cardinality by Kernighan popcount matches the listed elements',
+       pfCard(A) === pfList(A, n).length && pfCard(0) === 0 && pfCard(pfFull(n)) === n);
+  })();
+
+  /* ---- relations, partitions, maps ---------------------------------------- */
+  (function(){
+    var n = 6;
+    var Peven = pfRelProps(PF_RELS.sumEven.f, n);
+    ok('relations: "same parity" is reflexive, symmetric and transitive',
+       Peven.equivalence === true);
+    var K = pfClassCheck(PF_RELS.sumEven.f, n);
+    ok('relations:   and its classes are the odds and the evens, rebuilt exactly',
+       K.classes.length === 2 && K.same && K.agree, JSON.stringify(K.sizes));
+    var Plt = pfRelProps(PF_RELS.lt.f, n);
+    ok('relations: x < y is transitive but not reflexive, so it is not an equivalence',
+       Plt.trans && !Plt.refl && !Plt.equivalence);
+    ok('relations: x ≤ y is a partial order — reflexive, antisymmetric, transitive',
+       pfRelProps(PF_RELS.leq.f, n).partialOrder === true);
+    ok('relations: |x−y| = 1 is symmetric and nothing else',
+       pfRelProps(PF_RELS.near.f, n).symm === true &&
+       pfRelProps(PF_RELS.near.f, n).trans === false);
+    /* the rebuilt relation disagrees exactly when R was not an equivalence,
+       which is the theorem the two routes are here to state */
+    ok('relations:   rebuilding from the classes reproduces R iff R was an equivalence',
+       pfClassCheck(PF_RELS.lt.f, n).same === false &&
+       pfClassCheck(PF_RELS.lt.f, n).agree === true);
+    var bell = pfBellTriangle(7);
+    ok('relations: the Bell numbers are 1, 1, 2, 5, 15, 52, 203, 877',
+       bell.join(',') === '1,1,2,5,15,52,203,877', bell.join(','));
+    var bad = 0;
+    for(var m = 1; m <= 7; m++) if(pfPartitionCount(m).count !== bell[m]) bad++;
+    ok('relations:   and enumerating the partitions gives the same eight numbers', bad === 0, bad);
+  })();
+  (function(){
+    var I = pfInjectionCount(3, 5);
+    ok('maps: there are 5·4·3 = 60 injections from 3 into 5, built and counted',
+       I.closed === 60 && I.enumerated === 60 && I.agree, I.closed + ' / ' + I.enumerated);
+    var S = pfSurjectionCount(4, 3);
+    ok('maps: there are 36 surjections from 4 onto 3, by inclusion–exclusion and by enumeration',
+       S.closed === 36 && S.enumerated === 36 && S.agree, S.closed + ' / ' + S.enumerated);
+    var bad = 0;
+    for(var m = 1; m <= 5; m++)
+      for(var nn = 1; nn <= 4; nn++){
+        var a = pfInjectionCount(m, nn), b = pfSurjectionCount(m, nn);
+        if(!a.agree || !b.agree) bad++;
+      }
+    ok('maps: twenty (m, n) pairs — both counting formulas match the enumerations', bad === 0, bad);
+    ok('maps: the shift is a bijection and the fold is neither',
+       pfMapCheck('shift', 6, 6).bijective === true &&
+       pfMapCheck('fold', 6, 6).injective === false &&
+       pfMapCheck('fold', 6, 6).surjective === false);
+    ok('maps: pigeonhole — 7 into 6 forces a collision, and one is produced',
+       pfMapCheck('shift', 7, 6).forcedCollision === true &&
+       pfMapCheck('shift', 7, 6).injective === false &&
+       pfMapCheck('shift', 7, 6).collision !== null);
+  })();
+
+  /* ---- countability -------------------------------------------------------- */
+  (function(){
+    var P = pfPairCheck(12);
+    ok('countability: Cantor pairing is a bijection ℕ×ℕ → ℕ over the checked block',
+       P.bijection && P.gaps === 0 && P.roundTrip, JSON.stringify({ gaps:P.gaps, dupe:P.dupe }));
+    ok('countability:   pair(0,0)=0, pair(1,0)=1, pair(0,1)=2',
+       pfPair(0, 0) === 0 && pfPair(1, 0) === 1 && pfPair(0, 1) === 2);
+    var bad = 0;
+    Object.keys(PF_LISTS).forEach(function(k){
+      var D = pfDiagonal(k, 14);
+      if(!D.allDiffer) bad++;
+      /* the constructed number's digits must avoid 0 and 9 in base ten, or the
+         "different number" could be a second expansion of a listed one */
+      if(D.list.base === 10 && D.diag.some(function(d){ return d === 0 || d === 9; })) bad++;
+    });
+    ok('countability: the diagonal differs from every row of every list, and dodges 0 and 9',
+       bad === 0, bad);
+  })();
+})();
 document.getElementById('out').textContent =
   '===TESTS=== ' + pass + ' passed, ' + fail + ' failed\n' + out.join('\n');

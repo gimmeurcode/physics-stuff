@@ -1,6 +1,6 @@
-﻿# Working in this repository
+# Working in this repository
 
-An interactive mathematics and physics laboratory: 40 wings, 604 guided experiments,
+An interactive mathematics and physics laboratory: 46 wings, 769 guided experiments,
 built from `src/` into one self-contained `vector-calculus.html`.
 
 **Read `SITE-RULES.md` first.** It is the constitutional layer — the nine laws
@@ -60,6 +60,49 @@ broken by accident:
    where the next reader will look, so the resemblance is not "fixed" again.
 5. **Say which instances you did not fix, and why.** Scaling the work down is
    the reader's call, not yours.
+5a. **A preset table's entries have a domain of validity, and a control can walk
+   out of it — silently, with every gate green.** On 2026-08-19 every signal in
+   the new `DSP_SIGNALS` was a formula written for a two-second record, and the
+   sampling stage had the sample COUNT as a slider, so the record was N/f_s:
+   anywhere from two thirds of a second to eighty-five. A chirp named "sweeping
+   1 → 14 Hz" reached 70, and the folding map's axis ran to 110. Nothing raised,
+   nothing was NaN, `runall`, `auditsides` and `auditclaims` were all green, and
+   **only the screenshot showed it**. Two rules come out of it. Remove the
+   control rather than widening the table — the record is now a constant and
+   `runstagetests` asserts it at six rates. And **name a preset by the property
+   that belongs to the formula, not the one that belongs to the record**: the
+   chirp is "rising 6.5 Hz every second", which is true whatever you show of it.
+6. **A condition that is necessary is not therefore sufficient — and the
+   default preset is exactly where you will not find out.** On 2026-08-18
+   `rlApsidesEL` solved V²(r₁) = V²(r₂) = E² and called the result an orbit. It
+   is an orbit when those radii bracket a well and a *barrier* when they do not,
+   the region between being forbidden; Schwarzschild **cannot** produce the
+   second case, so the formula looked finished for as long as only Schwarzschild
+   was tried. Adding a cosmological term produced it immediately and the "bound
+   orbit" escaped to forty times its apocentre. The same run's other defect had
+   the same shape: "take the outermost two turning points" is right on the three
+   roots Schwarzschild has and wrong on the four that metric has. **Both were
+   found by `./auditsides.ps1` and `./runstagetests.ps1` driving the presets the
+   default is not** — which is what those two gates are for, and neither
+   `runtests` nor `runall` could have seen either.
+7. **And that fix was itself insufficient, the same day — because a fix has
+   blind spots of its own.** The barrier guard scans the *interior* of the two
+   apsides, so it cannot see either of the two failures that remained, both of
+   which are statements about the **slope at an apsis**: an apocentre at the top
+   of the outer barrier (V² falls again just *outside*, so it is an unstable
+   circular orbit and the particle goes over it) and a pericentre with no wall
+   under it (V² falls just *inside*, so the orbit plunges). de Sitter apsides 10
+   and 13.53 satisfied L² > 0, V²(r₁) = V²(r₂) = E², **and** a genuine well
+   between them — and the track escaped. Two lessons, the second more general
+   than the first. **(a) When you fix a necessary-not-sufficient condition, ask
+   what the fix itself does not look at** — a scan of an interval is blind to
+   its endpoints by construction. **(b) "Only the exotic preset does this" was
+   wrong**: the plunge half is *Schwarzschild*, for any pericentre inside the
+   unstable circular orbit of that L, and `rlMetric`'s own slider reached it at
+   r₁ = 5.5. Believing a defect belongs to the strange preset is what let it
+   look finished the first time. Found by driving the two routes against each
+   other over a sweep of apsides — the four cases where the integrator
+   disagreed with the quadrature were the four defective ones.
 
 **Two different errors get called "floating point", and they need opposite
 fixes.** *Round-off* is ε·κ·‖x‖ and shrinks only with precision — a relative
@@ -69,15 +112,25 @@ J9's headline 7.8% was truncation — float64 noise on that same sum was 3e-15,
 eleven orders smaller. Measure which one you have by **halving h**: truncation
 falls by 2^p, round-off does not move.
 
+**And a third gets called that too, with a third cure: a quantity stored at the
+wrong origin.** An inspiral track reaching its end 5.2×10¹⁶ s after the start in
+steps of 2×10⁻⁵ s has one ulp of **eight seconds** there, so the last stretch of
+its elapsed-time array is a single repeated float and every derivative taken
+against it is meaningless — 33% wrong, on 2026-08-18, while the short runs beside
+it passed at 10⁻⁸. Neither a relative floor nor a smaller h touches this. **Carry
+the quantity that is small where you need it** — the time *remaining*, summed
+backwards from the end. Its signature is a defect that appears only on the
+presets with the widest dynamic range, which is why only a preset sweep finds it.
+
 ## The three rules that matter most
 
 1. **Never edit `vector-calculus.html`.** It is generated. Edit `src/` and run
    `./build.ps1`. The same goes for `MAP.md` — run `./map.ps1`.
 2. **Module load order is the filename order.** `build.ps1` concatenates
    `src/js/*.js` by *ordinal* filename sort into one script scope. A file named
-   `60b-` loads after `60a-` and before `61-`. All 235 modules share one global
+   `60b-` loads after `60a-` and before `61-`. All 295 modules share one global
    namespace, so **name collisions are silent** — prefix new engine functions
-   (`nq`, `ga`, `pc`, `mv`, `ig`, `vc`, `od`, `ct`, `ck`, `rl`, `qm`, `dy`, `tm`, `la`,`sk`, `lp`, `mx`, `fn`, `lt`, `sy`, `ph`, `cx`, `df`, `ag`, `pb`, `nm`, `nc`, `sl`,`sm`, `pv`)
+   (`nq`, `ga`, `pc`, `mv`, `ig`, `vc`, `od`, `ct`, `ck`, `rl`, `qm`, `dy`, `tm`, `la`,`sk`, `lp`, `mx`, `fn`, `lt`, `sy`, `ph`, `cx`, `df`, `ag`, `pb`, `nm`, `nc`, `sl`,`sm`, `pv`, `gw`)
    and grep case-sensitively before choosing a name. **The same applies to
    element ids** — one document, `getElementById` is first-wins, and two panels
    both using `ciR` meant a `wireSlider` call reached whichever came first.
@@ -86,7 +139,7 @@ falls by 2^p, round-off does not move.
    scope means a single stray character takes the whole app down, and the unit
    suite only sees the engine section (10-49) and would not notice. Then
    `./runtests.ps1` must print `0 failed`
-   (4375 unit tests), and `./runstagetests.ps1` must print `0 failed` — it calls
+   (6682 unit tests), and `./runstagetests.ps1` must print `0 failed` — it calls
    stage helpers **directly** inside the booted bundle, which is the only way the
    stages' own arithmetic (modules ≥ 50, invisible to `runtests`) is tested; a
    stage defect class fixed adds its two-route test to `tests-stages.js` the
@@ -132,7 +185,7 @@ falls by 2^p, round-off does not move.
 
    **For anything touching `mkPlot`, `plotCurve` or the viewport, also
    `./auditzoom.ps1` (`findings=0`) and `./auditframe.ps1`.** `auditzoom` proves
-   the pan/zoom layer works on all 182 stages *and* that with no interaction
+   the pan/zoom layer works on all 216 stages *and* that with no interaction
    `mkPlot` still returns exactly the window it was handed — the invariant that
    keeps the viewport invisible to stages that know nothing about it.
    `auditframe` measures how much of each curve falls outside its own window and
@@ -179,7 +232,7 @@ falls by 2^p, round-off does not move.
    `./auditviewport.ps1` (`bad=0`).** Every other script runs at one window size,
    so a layout that only breaks at a different aspect ratio is invisible to all
    of them — and a label drawn off the canvas is drawn, discarded and reported by
-   nothing. `auditsize` sweeps eight canvas shapes across all 182 stages;
+   nothing. `auditsize` sweeps eight canvas shapes across all 216 stages;
    `auditviewport` launches Chrome at sixteen real window sizes and checks the
    page around the canvas. They found 161 findings on their first run.
 

@@ -19,14 +19,15 @@
    against the home cards, because all three drifted apart once already — the
    home page was still listing thirty-one wings with one of them twice. */
 const NAV_GROUP_OF = {
-  algebra:'pre', functions:'pre', trig:'pre',
+  proof:'pre', algebra:'pre', functions:'pre', trig:'pre', cnum:'pre',
   limits:'calc', deriv:'calc', integral:'calc', series:'calc', ode:'calc',
-  linsys:'lin', vecspace:'lin', eigen:'lin', prob:'lin', numer:'lin',
+  linsys:'lin', vecspace:'lin', eigen:'lin', discrete:'lin', prob:'lin', numer:'lin',
   laplace:'deq', systems:'deq', phase:'deq',
-  vectors:'mv', curves:'mv', partial:'mv', vector:'mv', forms:'mv', potential:'mv',
+  vectors:'mv', curves:'mv', partial:'mv', coords:'mv', vector:'mv', forms:'mv', potential:'mv',
+  units:'phys',
   mechanics:'phys', rotation:'phys', rotenergy:'phys', waves:'phys', fluids:'phys',
   thermo:'phys', em:'phys', circuit:'phys', optics:'phys', relativity:'phys',
-  complex:'mod', fourier:'mod', quantum:'mod', statmech:'mod', solid:'mod',
+  complex:'mod', fourier:'mod', signal:'mod', quantum:'mod', statmech:'mod', solid:'mod',
   atom:'mod', nuclear:'mod', string:'mod'
 };
 

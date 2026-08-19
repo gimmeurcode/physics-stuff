@@ -379,5 +379,60 @@ if ($ownBad.Count) {
   $bad = 1
 }
 
+# ---------------------------------------------------------------------------
+# A REGISTRATION OBJECT WITH THE SAME KEY TWICE. Found 2026-08-19: THEORY_BY_WING
+# carried `discrete:` on two consecutive lines. JavaScript takes the last one and
+# raises nothing, so by the time the page runs there is one key and every runtime
+# probe in this file — including the three-lists-agree check above — sees a
+# perfectly healthy site. Object.keys() cannot report what the parser already
+# threw away, so this has to be a SOURCE scan.
+#
+# It matters because the winner is the LAST one written. Two entries pointing at
+# different essays, different group arrays or different nav groups would leave
+# the site quietly running the wrong one, and the only symptom would be a reader
+# opening a wing and finding somebody else's prose.
+$dupBad = @()
+$regObjects = @(
+  @{ file = 'src/js/72zz-wings-registry.js'; start = 'const WINGS = {' },
+  @{ file = 'src/js/81-ui-nav.js';           start = 'const NAV_GROUP_OF = {' },
+  @{ file = 'src/js/82-ui-wings.js';         start = 'const WING_SECTIONS = {' },
+  @{ file = 'src/js/82-ui-wings.js';         start = 'const THEORY_BY_WING = {' }
+)
+foreach ($obj in $regObjects) {
+  $path = Join-Path $dir $obj.file
+  if (-not (Test-Path $path)) { continue }
+  $lines = [IO.File]::ReadAllLines($path, [Text.Encoding]::UTF8)
+  $i = 0
+  while ($i -lt $lines.Count -and $lines[$i] -notmatch [regex]::Escape($obj.start)) { $i++ }
+  if ($i -ge $lines.Count) {
+    Write-Output ('smoke FAILED: could not find ' + $obj.start + ' in ' + $obj.file)
+    $bad = 1
+    continue
+  }
+  # brace-balanced walk from the opening line, so a nested object inside an
+  # entry cannot end the scan early or contribute its own keys
+  $depth = 0
+  $seen = @{}
+  for ($j = $i; $j -lt $lines.Count; $j++) {
+    $line = $lines[$j]
+    $before = $depth
+    $depth += ([regex]::Matches($line, '\{')).Count - ([regex]::Matches($line, '\}')).Count
+    if ($before -eq 1 -and $line -match "^\s*([A-Za-z_][A-Za-z0-9_]*)\s*:") {
+      $key = $Matches[1]
+      if ($seen.ContainsKey($key)) {
+        $dupBad += ('  ' + $obj.file + ':' + ($j + 1) + '  ' + $obj.start.Replace('const ', '').Replace(' = {', '') +
+                    ' declares ' + $key + ' twice (first at line ' + $seen[$key] + ') - the LAST one silently wins')
+      } else { $seen[$key] = $j + 1 }
+    }
+    if ($depth -le 0 -and $j -gt $i) { break }
+  }
+}
+if ($dupBad.Count) {
+  Write-Output 'smoke FAILED: a registration object names the same wing twice. JavaScript keeps the'
+  Write-Output '              last entry and raises nothing, so no runtime check can see this:'
+  $dupBad | ForEach-Object { Write-Output $_ }
+  $bad = 1
+}
+
 if ($bad) { Write-Output 'smoke FAILED'; exit 1 }
 Write-Output 'smoke OK'

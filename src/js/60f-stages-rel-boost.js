@@ -39,15 +39,26 @@ STAGES.relBoost = {
     st.beta = o.beta !== undefined ? o.beta : 0.7;
     st.frame = 'lab';                 // 'rest' | 'lab'
     st.probe = 1.6; st.probeY = 1.1; st.phase = 0;
+    st.mode = o.mode === 'gauss' ? 'gauss' : 'one';
+    st.qkey = o.qkey || 'fast';
+    st.qsheet = o.qsheet !== undefined ? o.qsheet : (RL_CHARGES[st.qkey] || RL_CHARGES.one).text;
+    st.qcx = o.qcx === undefined ? 0 : o.qcx;
+    st.qR = o.qR === undefined ? 2 : o.qR;
+    st._gz = null;
   },
   controls(){
-    return ctlRow('speed β = v/c', ctlSlider('rbB', 0, 0.99, 0.01, ST.beta)) +
+    const head = ctlRow('what to show',
+      ctSeg('rbM', ST.mode, [['one', 'one charge, two frames'], ['gauss', 'a configuration, and ∮E·dA']]));
+    if(ST.mode === 'gauss') return head + rlGaussControls(ST);
+    return head + ctlRow('speed β = v/c', ctlSlider('rbB', 0, 0.99, 0.01, ST.beta)) +
       ctlRow('frame', `<div class="seg" id="rbF">
         <button data-f="rest" aria-pressed="false">charge's frame</button>
         <button data-f="lab" aria-pressed="true">lab frame</button></div>`) +
       `<p class="help">One charge, two observers. Riding with the charge you measure a pure Coulomb field - no magnetism anywhere. Watching it fly past, the SAME charge shows a compressed electric field plus a <b>magnetic</b> field circling the motion. Neither observer is wrong: <b>E and B are one object</b> (the field tensor F) sliced two ways, exactly as this stage computes from the closed-form boosted solution. All magnetism - every motor, every compass - is this effect, sourced by charges in relative motion.</p>`;
   },
   wire(){
+    ctWireSeg('rbM', v => { ST.mode = v; ST._gz = null; });
+    if(ST.mode === 'gauss'){ rlGaussWire(); return; }
     wireSlider('rbB', () => ST.beta, v => { ST.beta = v; }, v => (+v).toFixed(2), RL_BETA_LIM);
     for(const b of $('rbF').children) b.addEventListener('click', () => {
       ST.frame = b.dataset.f;
@@ -56,6 +67,7 @@ STAGES.relBoost = {
     });
   },
   frame(st, dt, ctx, W, H){
+    if(st.mode === 'gauss') return rlGaussFrame(st, ctx, W, H);
     st.phase += dt;
     const beta = st.frame === 'rest' ? 0 : st.beta;
     const gam = 1 / Math.sqrt(1 - st.beta * st.beta);
@@ -129,6 +141,7 @@ STAGES.relBoost = {
     if(x * x + y * y > 0.09){ st.probe = x; st.probeY = y; }
   },
   readout(st){
+    if(st.mode === 'gauss') return rlGaussReadout(st);
     const gam = 1 / Math.sqrt(1 - st.beta * st.beta);
     const lab = relBoostField(st.probe, st.probeY, st.beta);
     const rest = relBoostField(st.probe, st.probeY, 0);
@@ -159,10 +172,16 @@ STAGES.relBoost = {
     </div>`;
   },
   chip(st){
+    if(st.mode === 'gauss') return rlGaussChip(st);
     const gam = 1 / Math.sqrt(1 - st.beta * st.beta);
     const F = relBoostField(st.probe, st.probeY, st.frame === 'lab' ? st.beta : 0);
     return `<div class="k">frames &amp; fields — ${st.frame}</div><div>β = ${st.beta.toFixed(2)}, γ = ${gam.toFixed(3)}</div><div style="color:var(--c-warn)">|E| = ${fmtNum(Math.hypot(F.Ex, F.Ey), 3)}</div><div style="color:var(--c-neg)">B = ${fmtNum(F.Bz, 3)}</div>`;
   },
-  legend(){ return [['var(--c-warn)', 'E field lines (exact boosted Coulomb)'], ['var(--c-neg)', 'B into/out of page (appears with motion)'], ['var(--c-pos)', 'the charge']]; }
+  legend(st){
+    if(st && st.mode === 'gauss')
+      return [['var(--c-grad)', 'the sphere the flux is taken over'],
+              ['var(--c-warn)', 'E·n̂ pointing out'], ['var(--c-neg)', 'E·n̂ pointing in'],
+              ['var(--c-pos)', 'positive charges'], ['var(--mid)', 'which way each one is moving']];
+    return [['var(--c-warn)', 'E field lines (exact boosted Coulomb)'], ['var(--c-neg)', 'B into/out of page (appears with motion)'], ['var(--c-pos)', 'the charge']]; }
 };
 

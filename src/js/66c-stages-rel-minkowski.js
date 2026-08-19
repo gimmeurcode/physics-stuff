@@ -19,6 +19,7 @@ const rlMinkLine = (ctx, M, x0, t0, x1, t1, col, w, dash) =>
 STAGES.rlMink = {
   title: 'Minkowski diagram',
   derive(st){
+    if(st.mode === 'world') return rlMinkWlDerive(st);
     const n = v => fmtNum(v, 6);
     return {
       title:'Spacetime has a geometry, and it is not Euclidean',
@@ -57,10 +58,17 @@ STAGES.rlMink = {
     st.et = o.et === undefined ? 2.0 : o.et;
     st.grid = o.grid !== false;
     st.hyper = o.hyper !== false;
+    st.mode = o.mode === 'world' ? 'world' : 'event';
+    st.wkey = o.wkey || 'shuttle';
+    st._wl = null;
   },
   controls(){
     const st = ST;
-    return ctlRow('boost β', ctlSlider('rlMkB', -0.95, 0.95, 0.005, st.beta)) +
+    const head = ctlRow('what gets boosted',
+      ctSeg('rlMkM', st.mode, [['event', 'one event'], ['world', 'a whole worldline']]));
+    if(st.mode === 'world') return head + rlMinkWlControls(st);
+    return head +
+      ctlRow('boost β', ctlSlider('rlMkB', -0.95, 0.95, 0.005, st.beta)) +
       `<label class="chk"><input type="checkbox" id="rlMkG" ${st.grid?'checked':''}><span>the moving frame's own coordinate grid</span></label>
        <label class="chk"><input type="checkbox" id="rlMkH" ${st.hyper?'checked':''}><span>the calibration hyperbolae</span></label>
        <p class="help"><b>Click or drag in the diagram to move the event.</b> Teal axes are the lab frame,
@@ -72,16 +80,19 @@ STAGES.rlMink = {
        formulas.</p>`;
   },
   wire(){
+    ctWireSeg('rlMkM', v => { ST.mode = v; ST._wl = null; });
+    if(ST.mode === 'world'){ rlMinkWlWire(); return; }
     wireSlider('rlMkB', () => ST.beta, v => { ST.beta = v; }, rlBetaFmt, RL_BETA_LIM);
     $('rlMkG').addEventListener('change', e => { ST.grid = e.target.checked; });
     $('rlMkH').addEventListener('change', e => { ST.hyper = e.target.checked; });
   },
   pick(st, sx, sy){
-    if(!st.M) return;
+    if(!st.M || st.mode === 'world') return;
     st.ex = Math.max(-st.M.half, Math.min(st.M.half, st.M.ix(sx)));
     st.et = Math.max(-st.M.half, Math.min(st.M.half, st.M.it(sy)));
   },
   frame(st, dt, ctx, W, H){
+    if(st.mode === 'world') return rlMinkWlFrame(st, ctx, W, H);
     const half = 3;
     const size = Math.min(W * 0.52, H - 100);
     const cx = W * 0.33, cy = 46 + size / 2, sc = size / (2 * half);
@@ -196,6 +207,7 @@ STAGES.rlMink = {
     stageNote(ctx, 'click in the diagram to move the event  ·  the frames disagree about ct and x, and agree about (ct)² − x²', W, H);
   },
   readout(st){
+    if(st.mode === 'world') return rlMinkWlReadout(st);
     const b = st.beta, g = relGamma(b);
     const E = relBoost(st.et, st.ex, b);
     const s2 = relInterval(st.et, st.ex), kind = relIntervalKind(s2);
@@ -224,18 +236,97 @@ STAGES.rlMink = {
     </div>`;
   },
   chip(st){
+    if(st.mode === 'world') return rlMinkWlChip(st);
     const s2 = relInterval(st.et, st.ex);
     return `<div class="k">Minkowski</div>
       <div style="color:var(--c-pos)">β = ${fmtNum(st.beta, 3)}</div>
       <div style="color:var(--accent)">s² = ${fmtNum(s2, 4)}</div>
       <div style="color:var(--c-warn)">${relIntervalKind(s2)}</div>`;
   },
-  legend(){ return [['var(--c-grad)', 'lab axes  (ct, x)'], ['var(--c-pos)', "moving axes  (ct′, x′)"],
-                    ['var(--c-warn)', 'the light cone — identical in every frame'],
-                    ['var(--c-curl)', '(ct)² − x² = ±1, the calibration hyperbolae'],
-                    ['var(--accent)', 'your event, and the hyperbola it can never leave']]; }
+  legend(st){
+    if(st && st.mode === 'world')
+      return [['var(--c-grad)', 'the worldline, as the lab draws it'],
+              ['var(--c-pos)', 'the same worldline, as the moving observer draws it'],
+              ['var(--c-warn)', 'the light cone — 45° in both pictures, and that is the point'],
+              ['var(--accent)', 'the straight route between the same two events — the longest one'],
+              ['var(--faint)', 'the inscribed polygon, which overshoots']];
+    return [['var(--c-grad)', 'lab axes  (ct, x)'], ['var(--c-pos)', "moving axes  (ct′, x′)"],
+            ['var(--c-warn)', 'the light cone — identical in every frame'],
+            ['var(--c-curl)', '(ct)² − x² = ±1, the calibration hyperbolae'],
+            ['var(--accent)', 'your event, and the hyperbola it can never leave']]; }
 };
 
+/* ---- the chain of boosts the reader writes (Programme A item 11) -----------
+   The arithmetic is `rlChainParse` / `rlChainMeasure` in 46e-sr-frames.js; this
+   is the panel half. Cached against the text alone, because a chain of eight
+   hundred boosts is composed three times plus a shuffle and the chip asks for
+   it several times a second. */
+function rlVelChain(st){
+  const txt = String(st.chain === undefined ? '' : st.chain);
+  if(st._ch && st._ch.txt === txt) return st._ch;
+  const P = rlChainParse(txt, []);
+  const M = P.steps.length ? rlChainMeasure(P.steps) : null;
+  st.cerr = P.errs.length
+    ? P.errs.map(e => (e.line ? 'line ' + e.line + ': ' : '') + e.msg).join('  ·  ')
+    : '';
+  st._ch = { txt, P, M };
+  return st._ch;
+}
+
+/* the one-line verdict a derive rung prints */
+function rlVelChainVerdict(st){
+  const M = rlVelChain(st).M;
+  if(!M) return 'no boosts in the chain yet';
+  if(M.saturated)
+    return 'the velocity route ran out of digits at boost ' + M.satAt +
+           ', so the three are compared in rapidity, where they still agree';
+  return 'they differ by ' + fmtSig(Math.max(M.gapAB, M.gapBC), 3) +
+         ' — round-off, on a β of ' + fmtNum(M.betaB, 9);
+}
+function rlVelChainSat(st){
+  const M = rlVelChain(st).M;
+  if(!M) return 'write a chain and the shortfall from c is printed beside it';
+  if(M.saturated)
+    return 'here 1 − β is ' + fmtSig(M.shortfall, 4) +
+           ', which no double can hold — so β prints as exactly 1 and the rapidity is the only variable left';
+  return '1 − β = ' + fmtSig(M.shortfall, 5) + ' after ' + M.n + ' boosts, and it never reaches zero';
+}
+
+/* the second readout card */
+function rlVelChainCard(st){
+  const C = rlVelChain(st), M = C.M;
+  if(!M)
+    return `<div class="card tight"><div class="ttl">Your chain of boosts</div>
+      <p class="help" style="color:var(--c-neg)">${st.cerr || 'Nothing to compose — write one β per line.'}</p>
+    </div>`;
+  const sat = M.saturated;
+  return `<div class="card tight"><div class="ttl">Your chain — ${M.n} boost${M.n === 1 ? '' : 's'}, composed three ways</div>
+    ${kv('folding the velocity rule', sat ? '1 exactly — no digits left' : fmtNum(M.betaA, 12) + ' c')}
+    ${kv('tanh of the summed rapidities', sat ? '1 exactly — no digits left' : fmtNum(M.betaB, 12) + ' c')}
+    ${kv('read off the matrix product', sat ? '1 exactly — no digits left' : fmtNum(M.betaC, 12) + ' c')}
+    ${sat ? '' : kv('folding vs rapidity', fmtAgreeGross(M.betaA, M.betaB, Math.tanh(M.gross)))}
+    ${sat ? '' : kv('rapidity vs matrices', fmtAgreeGross(M.betaB, M.betaC, Math.tanh(M.gross)))}
+    ${kv('total rapidity  Σ artanh β', fmtNum(M.phi, 10))}
+    ${kv('γ = cosh φ', fmtSig(M.gammaB, 8) + (M.overflowAt ? '  — overflowed a double at boost ' + M.overflowAt : ''))}
+    ${kv('1 − |β|, computed from φ', fmtSig(M.shortfall, 6))}
+    ${kv('the same chain shuffled', fmtAgreeGross(M.betaA, M.betaShuffled, Math.tanh(M.gross)))}
+    ${kv('ΛᵀηΛ − η on the product', fmtGap(M.worstEta, M.etaScale))}
+    <p class="help">${sat
+      ? 'Past a total rapidity of about 19 there is <b>no double</b> between the composed speed and 1: ' +
+        '1 − tanh φ ≈ 2e<sup>−2φ</sup>, and here that is ' + fmtSig(M.shortfall, 4) + '. The velocity ' +
+        'route saturated at boost <b>' + M.satAt + '</b> and everything asked in that variable — γ, the ' +
+        'shortfall, the residual — lost its answer with it. This is not a numerical accident to be ' +
+        'guarded away: it is exactly why accelerator physicists quote rapidity and energy and never a beam speed.'
+      : 'Three routes that share no arithmetic: one folds the composition law, one adds hyperbolic angles ' +
+        'and takes a single tanh, and one multiplies 2×2 matrices and never meets either formula. ' +
+        'The matrix route also certifies that the product is still a boost — ΛᵀηΛ = η, printed against ' +
+        'the size of the terms that cancelled, because at large γ those entries are enormous and their ' +
+        'difference has few digits in it.'}
+    Collinear boosts <b>commute</b>, so shuffling your chain must change nothing — that row is the
+    measurement, not a claim. It would fail in 3+1 for boosts along different axes, and the failure is
+    the Wigner rotation.</p>
+  </div>`;
+}
 /* ---- 8 · velocity addition and rapidity ------------------------------------
    Why boosts never reach c: velocities do not add, rapidities do, and no finite
    sum of rapidities has a tanh of one. */
@@ -262,12 +353,17 @@ STAGES.rlVel = {
           'It is not that engines are too weak. Adding any two sub-light speeds gives a sub-light speed, always. c is not a barrier to be pushed through — it is an asymptote of the composition law itself.'),
         drvStep('rapidity is the quantity that does add',
           `φ ${dop('=')} artanh(${dv('v')}/${dv('c')}) ${dop('⇒')} φ_total ${dop('=')} φ₁ ${dop('+')} φ₂`,
-          `the panel adds ${st.n} identical boosts and shows the speed creeping towards c while rapidity climbs steadily`),
+          `your chain of ${(rlVelChain(st).M || {n:0}).n} boosts totals φ = ${n((rlVelChain(st).M || {phi:0}).phi)}, and the speed creeps towards c while that climbs steadily`),
         drvSay('and that is why rapidity is the natural variable',
           'Boosts are hyperbolic rotations, and rapidity is the hyperbolic angle. Angles add under composition; velocities do not. The awkward velocity formula is just the tanh of a simple sum — artanh is the transformation that makes it linear.'),
+        drvStep('the chain is composed three ways that share no arithmetic',
+          `fold ${dfrac(dv('w') + ' + β', '1 + ' + dv('w') + 'β')}, &nbsp; add artanh β, &nbsp; multiply Λ(β)`,
+          rlVelChainVerdict(st)),
+        drvSay('and the third route knows neither formula',
+          'It multiplies the 2×2 matrices and reads the boost back off the product. What that measures, beyond the answer, is that the product is STILL a boost — ΛᵀηΛ = η is checked on it rather than assumed. Collinear boosts also commute, so the panel shuffles your chain and composes it again; in 3+1 with boosts along different axes that would fail, and the failure is the Wigner rotation behind Thomas precession.'),
         drvStep('so repeated boosting never gets there',
           `tanh(${dv('n')}φ) ${dop('→')} 1`,
-          `after ${st.n} boosts of ${n(st.u)}c the panel shows the accumulated speed — still under c`),
+          rlVelChainSat(st)),
         drvSay('and nothing here is a limitation of engines or of fuel',
           'The barrier is arithmetic. tanh of any real number lies strictly between −1 and 1, so no finite sum of rapidities can reach c — a rocket that keeps accelerating gains rapidity at a steady rate forever and simply approaches the light cone asymptotically. The traveller feels a constant push the whole time and never notices a wall. The speed limit is not a force resisting you; it is the shape of the velocity addition law.'),
         drvSay('which is why the light limit is stable, not a coincidence',
@@ -282,24 +378,53 @@ STAGES.rlVel = {
   enter(st, o){
     st.u = o.u === undefined ? 0.75 : o.u;
     st.v = o.v === undefined ? 0.75 : o.v;
-    st.n = o.n === undefined ? 6 : o.n;
+    st.ckey = o.ckey || 'classic';
+    st.chain = o.chain !== undefined ? o.chain : RL_CHAINS[st.ckey] ? RL_CHAINS[st.ckey].text : '0.75 x6';
+    st.cerr = '';
+    st._ch = null;
   },
   controls(){
     const st = ST;
+    const C = rlVelChain(st);
     return ctlRow('u  (rocket, in lab)', ctlSlider('rlVeU', -0.99, 0.99, 0.005, st.u)) +
       ctlRow('v  (missile, aboard)', ctlSlider('rlVeV', -0.99, 0.99, 0.005, st.v)) +
-      ctlRow('repeat boosts', ctlSlider('rlVeN', 1, 30, 1, st.n)) +
       `<p class="help">A rocket moves at <b>u</b>; it fires a missile forward at <b>v</b> as measured
       aboard. Galileo says the lab sees <b>u + v</b> — 1.5c for u = v = 0.75c. What the lab actually sees
-      is <b>(u + v)/(1 + uv/c²)</b>. The lower plot tells the same story in <b>rapidity</b>,
-      <b>φ = artanh β</b>, which simply <i>adds</i>: the awkward formula above is nothing but
-      <b>tanh(φ₁ + φ₂)</b> expanded. Chain n identical boosts with the third slider and watch the
-      rapidity climb without limit while the speed crawls at c and never arrives.</p>`;
+      is <b>(u + v)/(1 + uv/c²)</b>, and the upper plot draws that whole curve.</p>` +
+      ctlRow('a chain of boosts', ctSeg('rlVeK', st.ckey,
+        Object.keys(RL_CHAINS).map(k => [k, RL_CHAINS[k].name]).concat([['custom', 'type your own']]))) +
+      `<div class="fld" style="align-items:stretch">
+        <textarea id="rlVeS" rows="6" spellcheck="false" autocomplete="off"
+          aria-label="a chain of boosts — one β per line, optionally ×N to repeat it"
+          data-audit="0.6 x3&#10;-0.2&#10;1/3"
+          style="flex:1;font:12px/1.5 var(--f-mono);resize:vertical">${esc(st.chain)}</textarea>
+      </div>
+      <div class="row wrap">${ctBtn('rlVeGo', 'Compose the chain')}</div>
+      <p class="help" id="rlVeMsg" style="color:${st.cerr ? 'var(--c-neg)' : 'var(--faint)'}">${st.cerr ||
+        (C.M ? C.M.n + ' boost' + (C.M.n === 1 ? '' : 's') + ', total rapidity φ = ' + fmtNum(C.M.phi, 6) +
+               ', γ = ' + fmtSig(C.M.gammaB, 6) : 'no boosts')}</p>
+      <p class="help">One boost per line: a <b>β</b>, or an expression for one (<b>1/2</b>,
+      <b>tanh(1)</b>), optionally followed by <b>×N</b> to repeat it. Lines beginning # are comments.
+      Each boost is measured <i>in the frame the previous one left you in</i>. The panel composes them
+      three ways that share no arithmetic — folding the velocity addition rule, adding the rapidities,
+      and multiplying the 2×2 Lorentz matrices — and prints the differences. ${(RL_CHAINS[st.ckey] || {}).why || ''}</p>`;
   },
   wire(){
     wireSlider('rlVeU', () => ST.u, v => { ST.u = v; }, v => fmtNum(+v, 4) + ' c', RL_BETA_LIM);
     wireSlider('rlVeV', () => ST.v, v => { ST.v = v; }, v => fmtNum(+v, 4) + ' c', RL_BETA_LIM);
-    wireSlider('rlVeN', () => ST.n, v => { ST.n = Math.round(v); }, v => Math.round(v) + ' boosts');
+    ctWireSeg('rlVeK', k => {
+      ST.ckey = k;
+      if(RL_CHAINS[k]) ST.chain = RL_CHAINS[k].text;
+      ST._ch = null; ST.cerr = '';
+    });
+    const apply = () => {
+      const box = $('rlVeS'); if(!box) return;
+      ST.chain = box.value; ST.ckey = 'custom'; ST._ch = null;
+      rlVelChain(ST);
+      buildStagePanel(); refreshStageReadout(); updateStageChip(); updateStageLegend();
+    };
+    const b = $('rlVeS'); if(b) b.addEventListener('change', apply);
+    const go = $('rlVeGo'); if(go) go.addEventListener('click', apply);
   },
   frame(st, dt, ctx, W, H){
     const P = rlPanes(W, H, 34);
@@ -326,33 +451,53 @@ STAGES.rlVel = {
     rlDot(ctx, A.X(st.u), A.Y(w), 5.5, rgbCss(TH.pos));
     rlText(ctx, A.X(st.u) + 9, A.Y(w), fmtNum(w, 5) + ' c', rgbCss(TH.pos), '11px ' + FONT_MONO);
 
-    const B = mkPlot(P.bot.x, P.bot.y + 14, P.bot.w, P.bot.h - 38, -1, 1, -4.4, 4.4);
-    plotFrame(ctx, B, 'u', 'rapidity  φ = artanh β',
-      'The same operation in rapidity — where it is ordinary addition');
-    plotZeroY(ctx, B);
-    plotTicksX(ctx, B, [-1, -0.5, 0, 0.5, 1], v => fmtNum(v, 2));
-    rlYTicks(ctx, B, [-4, -2, 0, 2, 4]);
-    const pu = new Float64Array(N), pw = new Float64Array(N);
-    const phiV = relRapidity(st.v);
-    for(let i = 0; i < N; i++){
-      const u = Math.max(-0.9999, Math.min(0.9999, xs[i]));
-      pu[i] = relRapidity(u); pw[i] = pu[i] + phiV;
+    /* the lower pane is the reader's chain, boost by boost: the speed climbing
+       towards a ceiling it never reaches, and the rapidity — rescaled to the
+       same box — going up as a straight line. One picture, the whole lesson. */
+    const C = rlVelChain(st), M = C.M;
+    const nb = M ? M.n : 0;
+    const B = mkPlot(P.bot.x, P.bot.y + 14, P.bot.w, P.bot.h - 38, 0, Math.max(1, nb), 0, 1.14);
+    plotFrame(ctx, B, 'boosts applied, one after another', 'β  (and φ, rescaled)',
+      'Your chain: the speed saturates, the rapidity does not');
+    /* the step is ROUNDED first and the ticks placed on its multiples, so
+       fmtTick is given a step whose decimals mean something (CLAUDE.md) */
+    const kStep = Math.max(1, rlTickStep(Math.max(1, nb), 6));
+    const kTicks = [];
+    for(let v = 0; v <= nb + 1e-9; v += kStep) kTicks.push(v);
+    plotTicksX(ctx, B, kTicks, v => fmtTick(v, kStep));
+    rlYTicks(ctx, B, [0, 0.25, 0.5, 0.75, 1]);
+    rlSegment(ctx, B.px, B.Y(1), B.px + B.pw, B.Y(1), rgbCss(TH.warn, 0.85), 1.4, [5, 4]);
+    rlText(ctx, B.px + 6, B.Y(1) - 10, 'c — the chain approaches it and never arrives',
+           rgbCss(TH.warn), '10px ' + FONT_MONO);
+    if(M && nb > 0){
+      const ks = new Float64Array(nb + 1), bs = new Float64Array(nb + 1), ps = new Float64Array(nb + 1);
+      const pMax = Math.max(1e-12, Math.abs(M.phiTrack[nb]));
+      for(let i = 0; i <= nb; i++){
+        ks[i] = i;
+        bs[i] = Math.min(1.1, Math.abs(M.track[i]));
+        ps[i] = Math.abs(M.phiTrack[i]) / pMax;
+      }
+      rlLine(ctx, B, ks, ps, rgbCss(TH.curl), 2.2, [5, 4]);
+      rlLine(ctx, B, ks, bs, rgbCss(TH.grad), 2.6);
+      for(let i = 0; i <= nb; i += Math.max(1, Math.round(nb / 24)))
+        rlDot(ctx, B.X(i), B.Y(bs[i]), 2.6, rgbCss(TH.grad, 0.8));
+      rlText(ctx, B.px + B.pw - 8, B.py + 15,
+        'φ = ' + fmtNum(M.phi, 5) + '   γ = ' + fmtSig(M.gammaB, 5),
+        rgbCss(TH.curl), '11px ' + FONT_MONO, 'right');
+      if(M.satAt){
+        rlSegment(ctx, B.X(M.satAt), B.py, B.X(M.satAt), B.py + B.ph, rgbCss(TH.neg, 0.7), 1.4, [3, 3]);
+        rlText(ctx, B.X(M.satAt) + 5, B.py + B.ph - 22,
+          'boost ' + M.satAt + ': β reaches 1.0 in float64', rgbCss(TH.neg), '10px ' + FONT_MONO);
+      }
+    } else {
+      rlText(ctx, B.px + B.pw / 2, B.py + B.ph / 2, 'no boosts in the chain',
+             rgbCss(TH.faint), '12px ' + FONT_UI, 'center');
     }
-    rlLine(ctx, B, xs, pu, rgbCss(TH.faint, 0.9), 1.6, [4, 4]);
-    rlLine(ctx, B, xs, pw, rgbCss(TH.curl), 2.4);
-    const phiU = relRapidity(st.u);
-    rlSegment(ctx, B.X(st.u), B.py, B.X(st.u), B.py + B.ph, rgbCss(TH.pos, 0.5), 1.2, [4, 4]);
-    rlDot(ctx, B.X(st.u), B.Y(Math.max(-4.4, Math.min(4.4, phiU + phiV))), 5.5, rgbCss(TH.pos));
-    rlText(ctx, B.px + B.pw - 8, B.py + 15,
-      'φ_u + φ_v = ' + fmtNum(phiU, 4) + ' + ' + fmtNum(phiV, 4) + ' = ' + fmtNum(phiU + phiV, 4),
-      rgbCss(TH.curl), '11px ' + FONT_MONO, 'right');
-    stageNote(ctx, 'the dashed lines are Galileo — they cross the light barrier without noticing it is there', W, H);
+    stageNote(ctx, 'the dashed line above is Galileo — it crosses the light barrier without noticing it is there  ·  ' +
+      'the dashed line below is rapidity, rescaled, and it is straight', W, H);
   },
   readout(st){
     const w = relVelAdd(st.u, st.v);
-    let chain = 0;
-    for(let i = 0; i < st.n; i++) chain = relVelAdd(chain, st.v);
-    const phiChain = st.n * relRapidity(st.v);
     return `<div class="card tight"><div class="ttl">One composition</div>
       ${kv('u', fmtNum(st.u, 5) + ' c')}
       ${kv('v', fmtNum(st.v, 5) + ' c')}
@@ -366,24 +511,20 @@ STAGES.rlVel = {
       ${kv('residual', fmtAgree(relRapidity(w), relRapidity(st.u) + relRapidity(st.v)))}
       <p class="help">The residual is zero because the composition law <i>is</i> the addition formula for
       tanh. Feed either speed exactly c and the rule returns c — it was built to.</p>
-    </div>
-    <div class="card tight"><div class="ttl">${st.n} boosts of ${fmtNum(st.v, 3)}c, one after another</div>
-      ${kv('resulting speed', fmtNum(chain, 9) + ' c')}
-      ${kv('resulting γ', fmtNum(relGamma(Math.min(0.999999999, Math.abs(chain))), 6))}
-      ${kv('total rapidity, n·φ_v', fmtNum(phiChain, 6))}
-      ${kv('tanh of it', fmtNum(Math.tanh(phiChain), 9))}
-      ${kv('shortfall from c', fmtNum(1 - Math.abs(chain), 4))}
-      <p class="help">The rapidity is <b>exactly</b> ${st.n} times one boost's, while the speed saturates.
-      This is what an accelerator is up against: energy buys rapidity, and rapidity buys speed only
-      logarithmically. The LHC's protons sit at 0.999999991c, and doubling the machine's energy would
-      move that to about 0.999999998c.</p>
-    </div>`;
+    </div>` + rlVelChainCard(st);
   },
+  /* Three rows, deliberately. The chip floats over the top-left of the upper
+     plot, and the chain rows took it to five — far enough down to bury the
+     light-barrier annotation it was meant to sit beside. The chain gets one
+     line, not two. */
   chip(st){
     const w = relVelAdd(st.u, st.v);
+    const M = rlVelChain(st).M;
     return `<div class="k">Velocity addition</div>
-      <div style="color:var(--faint)">Galileo: ${fmtNum(st.u + st.v, 4)} c</div>
-      <div style="color:var(--c-grad)">actual: ${fmtNum(w, 6)} c</div>`;
+      <div><span style="color:var(--faint)">Galileo ${fmtNum(st.u + st.v, 4)}</span>
+           <span style="color:var(--c-grad)"> → ${fmtNum(w, 6)} c</span></div>` +
+      (M ? `<div style="color:var(--c-curl)">chain of ${M.n}: φ = ${fmtNum(M.phi, 4)}, ${
+        M.saturated ? 'β = 1 in float64' : 'β = ' + fmtNum(M.betaA, 8)}</div>` : '');
   },
   legend(){ return [['var(--c-grad)', 'the relativistic sum'],
                     ['var(--faint)', 'u + v — the Galilean answer'],

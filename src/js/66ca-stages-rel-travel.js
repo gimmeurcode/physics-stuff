@@ -48,10 +48,17 @@ STAGES.rlTwin = {
     st.T = o.T === undefined ? 5 : o.T;
     st.sim = o.sim !== false;
     st.sig = o.sig !== false;
+    st.tmode = o.tmode === 'prog' ? 'prog' : 'sudden';
+    st.twmkey = o.twmkey || 'turn';
+    st._mot_twm = null;
   },
   controls(){
     const st = ST;
-    return ctlRow('travel speed β', ctlSlider('rlTwB', 0.2, 0.98, 0.005, st.beta)) +
+    const head = ctlRow('the turnaround',
+      ctSeg('rlTwM', st.tmode, [['sudden', 'instantaneous'], ['prog', 'an engine you programme']]));
+    if(st.tmode === 'prog') return head + rlMotControls(st, 'twm');
+    return head +
+      ctlRow('travel speed β', ctlSlider('rlTwB', 0.2, 0.98, 0.005, st.beta)) +
       ctlRow('half-trip (yr)', ctlSlider('rlTwT', 2, 12, 0.5, st.T)) +
       `<label class="chk"><input type="checkbox" id="rlTwS" ${st.sim?'checked':''}><span>the traveller's lines of simultaneity</span></label>
        <label class="chk"><input type="checkbox" id="rlTwG" ${st.sig?'checked':''}><span>the light signals each twin sends</span></label>` +
@@ -64,6 +71,8 @@ STAGES.rlTwin = {
       one twin changed frames.</p>`;
   },
   wire(){
+    ctWireSeg('rlTwM', v => { ST.tmode = v; ST._mot_twm = null; });
+    if(ST.tmode === 'prog'){ rlMotWire('twm'); return; }
     wireSlider('rlTwB', () => ST.beta, v => { ST.beta = v; ST.t = 0; }, rlBetaFmt, RL_BETA_LIM);
     wireSlider('rlTwT', () => ST.T, v => { ST.T = v; ST.t = 0; }, v => fmtNum(+v, 3) + ' yr each way');
     $('rlTwS').addEventListener('change', e => { ST.sim = e.target.checked; });
@@ -81,6 +90,7 @@ STAGES.rlTwin = {
     };
   },
   frame(st, dt, ctx, W, H){
+    if(st.tmode === 'prog') return rlMotFrameTwin(st, ctx, W, H, 'twm');
     const f = this.facts(st);
     const tMax = 2 * st.T * 1.08, xMax = Math.max(0.6, f.turnX * 1.9);
     const size = Math.min(W * 0.46, H - 96);
@@ -180,6 +190,7 @@ STAGES.rlTwin = {
     stageNote(ctx, 'proper time is the length of a worldline — and here the straight one is the longest', W, H);
   },
   readout(st){
+    if(st.tmode === 'prog') return rlMotReadout(st, 'twm');
     const f = this.facts(st);
     const travReceives = f.travSlowFor / f.k + f.travFastFor * f.k;
     const earthReceives = f.earthSlowFor / f.k + f.earthFastFor * f.k;
@@ -224,15 +235,18 @@ STAGES.rlTwin = {
     </div>`;
   },
   chip(st){
+    if(st.tmode === 'prog') return rlMotChip(st, 'twm');
     const f = this.facts(st);
     return `<div class="k">Twins</div>
       <div style="color:var(--c-grad)">Earth: ${fmtNum(f.earthTotal, 4)} yr</div>
       <div style="color:var(--c-pos)">traveller: ${fmtNum(f.travTotal, 4)} yr</div>`;
   },
-  legend(){ return [['var(--c-grad)', "the stay-at-home's worldline and signals"],
-                    ['var(--c-pos)', "the traveller's worldline, signals and simultaneity lines"],
-                    ['var(--c-warn)', 'the simultaneity lines bracketing the turnaround'],
-                    ['var(--c-neg)', 'redshifted reception']]; }
+  legend(st){
+    if(st && st.tmode === 'prog') return rlMotLegendTwin();
+    return [['var(--c-grad)', "the stay-at-home's worldline and signals"],
+            ['var(--c-pos)', "the traveller's worldline, signals and simultaneity lines"],
+            ['var(--c-warn)', 'the simultaneity lines bracketing the turnaround'],
+            ['var(--c-neg)', 'redshifted reception']]; }
 };
 
 /* ---- 10 · one g forever ----------------------------------------------------
@@ -277,10 +291,17 @@ STAGES.rlRocket = {
     st.dest = o.dest || 'galactic';
     st.a = 9.80665;
     st.probe = 0.5;
+    st.rmode = o.rmode === 'prog' ? 'prog' : 'dest';
+    st.romkey = o.romkey || 'oneg';
+    st._mot_rom = null;
   },
   controls(){
     const st = ST;
-    return rlSeg('rlRoD', st.dest, [['proxima','Proxima · 4.24 ly'],['galactic','galactic centre · 26 000 ly'],
+    const head = ctlRow('the flight plan',
+      ctSeg('rlRoM', st.rmode, [['dest', 'pick a destination'], ['prog', 'programme the engine']]));
+    if(st.rmode === 'prog') return head + rlMotControls(st, 'rom');
+    return head +
+      rlSeg('rlRoD', st.dest, [['proxima','Proxima · 4.24 ly'],['galactic','galactic centre · 26 000 ly'],
                                      ['andromeda','Andromeda · 2.5 Mly'],['edge','the visible edge · 46 Gly']]) +
       ctlRow('along the trip', ctlSlider('rlRoP', 0.01, 1, 0.005, st.probe)) +
       `<p class="help">Hold a comfortable 1 g for half the distance, turn over, decelerate for the rest,
@@ -290,6 +311,8 @@ STAGES.rlRocket = {
       is not, in any sense that matters.</p>`;
   },
   wire(){
+    ctWireSeg('rlRoM', v => { ST.rmode = v; ST._mot_rom = null; });
+    if(ST.rmode === 'prog'){ rlMotWire('rom'); return; }
     rlWireSeg('rlRoD', v => { ST.dest = v; });
     wireSlider('rlRoP', () => ST.probe, v => { ST.probe = v; }, v => fmtNum(+v * 100, 3) + '% of the way');
   },
@@ -298,6 +321,7 @@ STAGES.rlRocket = {
     return { proxima: 4.24 * LY, galactic: 26000 * LY, andromeda: 2.5e6 * LY, edge: 4.6e10 * LY }[st.dest];
   },
   frame(st, dt, ctx, W, H){
+    if(st.rmode === 'prog') return rlMotFrameShip(st, ctx, W, H, 'rom');
     const P = rlPanes(W, H, 34);
     /* the worldline, in the natural units c²/a and c/a */
     const A = mkPlot(P.top.x + 30, P.top.y + 14, Math.min(P.top.w - 60, 460), P.top.h - 38, -1.4, 4, -0.15, 4);
@@ -359,6 +383,7 @@ STAGES.rlRocket = {
     stageNote(ctx, "the gap between the two curves is the whole of the traveller's bargain", W, H);
   },
   readout(st){
+    if(st.rmode === 'prog') return rlMotReadout(st, 'rom');
     const D = this.dist(st), LY = 9.4607e15, YR = 3.15576e7;
     const full = relTrip(st.a, D), part = relTrip(st.a, Math.max(1e6, D * st.probe));
     const name = { proxima:'Proxima Centauri', galactic:'the galactic centre',
@@ -391,12 +416,15 @@ STAGES.rlRocket = {
     </div>`;
   },
   chip(st){
+    if(st.rmode === 'prog') return rlMotChip(st, 'rom');
     const YR = 3.15576e7, tr = relTrip(st.a, this.dist(st));
     return `<div class="k">1 g forever</div>
       <div style="color:var(--c-pos)">ship: ${fmtNum(tr.tau / YR, 4)} yr</div>
       <div style="color:var(--c-grad)">home: ${fmtNum(tr.t / YR, 4)} yr</div>`;
   },
-  legend(){ return [['var(--c-grad)', 'the worldline, and the home clock'],
+  legend(st){
+    if(st && st.rmode === 'prog') return rlMotLegendShip();
+    return [['var(--c-grad)', 'the worldline, and the home clock'],
                     ['var(--c-pos)', "the traveller's clock, and their proper-time ticks"],
                     ['var(--c-warn)', 'the light cone'],
                     ['var(--faint)', 'what Newton predicts — straight through the cone'],
