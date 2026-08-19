@@ -7216,3 +7216,84 @@ brute-force search with no continued fractions anywhere.
    under a wing's name with nothing to report it. `smoke.ps1` now walks the
    braces of all four registration objects in the SOURCE, which is the only place
    the defect exists; corrupted once and watched to fail.
+
+---
+
+## 2026-08-19 · Full-site third-party audit: visuals by eye, overlays gated, keyboard access, real frame cost
+
+The whole gate suite was run first and was green end to end - runtests 6682/0,
+runstagetests 1913/0, runall caught=0 over 769 demos, auditclaims 1633 claims
+bad=0, auditsides falsescale 0 presetgap 0, auditlink 769/769 restored, and the
+rest. What follows is what the gates could NOT see, found by rendering all 216
+stages headless at 1280x900 and reading every screenshot by hand, dark theme in
+full and light theme sampled. Physics spot-checks along the way all verified:
+PDG 2024 masses on atomSM and wsRegge, CODATA in the readouts, GW150914's
+chirp mass 28.7 Msun and ISCO 66.4 Hz, Onsager Tc 2.269, the cardioid's 3/2
+pi a^2, agTriangle's law-of-cosines chain, qm uncertainty products.
+
+1. **FIXED - canvas text under the DOM overlay boxes, the audit's headline
+   class.** Three boxes float over the canvas (chip top-left, legend
+   bottom-left, perf strip top-right) and canvas text knew about none of them
+   beyond plotFrame titles vs the chip. Ten stages' stageNote captions started
+   under the legend (atomBeta, atomBinding, emAmpere, emGauss, emGaussB,
+   emSandbox, qmBloch, qmCollapse, qmPacket, relBoost); three headings printed
+   under the perf strip (atomSM, ftConv, qmSlit); qm titles carried "probe"
+   printed through them by probeLine's above-the-frame label. The fix is
+   class-level in 60a: ctLegendZone and ctPerfZone beside the existing
+   ctChipZone; stageNote centres in the clear span (or rises above the box);
+   plotFrame's x-label dodges the legend (beside, else above), its rotated
+   y-label dodges the chip (below, else stepped right into the pane);
+   probeLine labels draw inside the frame beside the line. Per-stage: atomSM's
+   tile grid drops below the chip, rlClock's arm label steps right, rlDopp's
+   sky heading slides via ctTitleClearChip, cnRoots' two root labels
+   un-collided, emFaraday's Lenz label moved below the coil the magnet drove
+   through, emSandbox's force labels moved to the shaft (tip labels printed on
+   the other charge), qmSG's counters start clear of the legend. **The gate:
+   auditticks now reads all three boxes at 1280x900** - the width where the
+   class manifests - with a control heading at each visible box centre that
+   must be flagged; findings=0 after the fixes, and the probe-order race the
+   gate itself had (legend not yet populated when the recorded frame ran) is
+   fixed in it.
+2. **FIXED - ftPanes ran its lower plot to the canvas floor.** The known note
+   in src/js/CLAUDE.md ("the Fourier wing gets away with it") stopped being
+   true at 1280x900: every ft stage's caption printed through its lower axis
+   label. ftPanes now reserves the caption band with dspPanes' arithmetic, and
+   ftConv's custom four-pane grid reserves it too.
+3. **FIXED - two chips printed the long-form gap verdict.** ftConv and
+   agIdent grew ~490 px wide chips ("0 - they agree to every digit either
+   route has") covering half the canvas top and shoving pane titles into each
+   other; both now use fmtGapTight, per the existing convention.
+4. **FIXED - real frame cost, which auditperf cannot see.** auditperf counts
+   paint calls; a real-time sweep of ms/stageFrame found dcBirth at 153
+   ms/frame - re-running a seeded 26-point x 4000-trial birthday simulation
+   identically every frame - and mvCrit at 19 ms re-marching 22 contour
+   levels of a static picture. dcBirth caches the sim keyed on (domain, k,
+   trials); mvCrit renders heat+contours once per state change into an
+   offscreen canvas and blits, window coords in the key so pan/zoom rebuilds.
+   153 -> <1.5 ms and 18.8 -> <1.5 ms; the site-wide worst frame is now
+   mvField at 11.6 ms. These two were also why headless screenshot capture
+   stalled: under --virtual-time-budget the rAF pump multiplies a slow frame
+   into a stall, and wsCY's "VERY HEAVY" 4072 paint calls cost only 5.3 real
+   ms - paint count is not cost, in both directions.
+5. **FIXED - no keyboard path to the canvas.** The aria-label promised "click
+   or drag" with no keyboard equivalent. The canvas is now focusable; arrows
+   move the probe (extent/24, Shift x4) or a visible .kb-cursor on stages,
+   Enter clicks it through the same onPick path the pointer uses (down+up on
+   drag stages), +/- dollies, Ctrl+arrows orbit. auditkeys.ps1 (script #30)
+   dispatches real KeyboardEvents and asserts each promised state change;
+   corrupt-checked by disabling the tabIndex wiring and watching it fail.
+6. **FIXED - dead code, second sweep.** 68 unreferenced top-level declarations
+   across 29 files (scan counted word-boundary references over src, shell,
+   both test files and all harnesses; MASTER-PLAN 6.3's fifteen keep-alives
+   excluded; planning docs checked for named adopters - none). Recorded in
+   MASTER-PLAN 6.2 with the per-file list.
+7. **OK - the advisory lists were read by hand.** auditsides' 30 weak rows are
+   each the pedagogical point of their stage (Monte Carlo estimates, asymptotic
+   counts, a fold's three right answers); auditresid's 7 noscale rows are
+   physical differences, not residuals; audittext's 23 CHECK rows are all
+   prose telling the reader what to TYPE into an expression box, where ASCII
+   is the correct form.
+8. **NOTE - light theme sampled clean** (HOME, vcGreen, qmPacket, atomBinding,
+   ftConv, rlLens, smIsing): palettes correct, all fixes hold there.
+   auditcontrast passes both themes with worst ratios 4.51:1 against the
+   4.5:1 target.
