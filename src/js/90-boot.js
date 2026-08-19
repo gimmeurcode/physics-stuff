@@ -23,9 +23,6 @@ function setView(v){
   buildDisplayPanel(); buildFluxPanel(); buildCircPanel(); buildDescPanel(); buildPartPanel();
   syncProbeInputs(); refreshAll();
 }
-/* legacy name kept so the demo harness and any old callers still work */
-const setDim = d => setView(d===2 ? '2d' : '3d');
-
 /* distance at which the far corner of the domain box still clears the frame */
 function fitDistance(){
   return S.extent * Math.sqrt(3) / Math.tan(R.cam.fov/2) * 1.22;

@@ -25,7 +25,6 @@ function mvCompile(src){
   };
 }
 const mvGrad = (F, x, y) => ({ x:F.fx(x, y), y:F.fy(x, y) });
-const mvGradLen = (F, x, y) => Math.hypot(F.fx(x, y), F.fy(x, y));
 /* the directional derivative is a projection and nothing else */
 function mvDirDeriv(F, x, y, ux, uy){
   const L = Math.hypot(ux, uy) || 1;
@@ -77,11 +76,6 @@ function mvClassify(F, x, y){
            /* the two principal curvatures and the directions they act along */
            l1:H.eig.l1, l2:H.eig.l2, v1:H.eig.v1, v2:H.eig.v2 };
 }
-const MV_CRIT_COLOR = {
-  'local minimum':'pos', 'local maximum':'neg', saddle:'warn',
-  degenerate:'faint', 'not determined — the Hessian is not finite here':'faint'
-};
-
 /* ------------------------------------------------------ tangent plane ------- */
 /* L(x,y) = f(a,b) + f_x(a,b)(x−a) + f_y(a,b)(y−b), and the error it leaves. */
 function mvLinear(F, a, b){

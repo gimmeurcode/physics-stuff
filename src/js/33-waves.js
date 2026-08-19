@@ -13,7 +13,6 @@
 /* --------------------------------------------------- simple harmonic motion ---- */
 const wvOmegaSpring = (k, m) => Math.sqrt(k / m);
 const wvOmegaPendulum = (L, g) => Math.sqrt((g === undefined ? DY_G : g) / L);
-const wvOmegaPhysical = (m, g, d, I) => Math.sqrt(m * (g === undefined ? DY_G : g) * d / I);
 const wvPeriod = w => 2 * Math.PI / w;
 /* x(t) = A cos(ωt + φ), with the constants fitted to the initial conditions */
 function wvSHM(A, w, phi){
@@ -352,7 +351,6 @@ function wvStringRun(y0, L, v, N, opt){
 /* ----------------------------------------------------------------- sound ---- */
 const wvIntensity = (P, r) => P / (4 * Math.PI * r * r);
 const wvDB = I => 10 * Math.log10(I / 1e-12);
-const wvFromDB = dB => 1e-12 * Math.pow(10, dB / 10);
 /* beats: two nearby frequencies produce an envelope at their difference */
 function wvBeats(f1, f2, A){
   return { fBeat:Math.abs(f1 - f2), fCarrier:(f1 + f2) / 2,

@@ -185,4 +185,3 @@ const RL_MOTIONS = {
              t:null, x:null, phi:null,
              why:'An acceleration with a pole just past the end. The rapidity is −ln(3.01 − τ), which is finite here but heads for infinity — push τ₁ past 3.01 and the panel refuses, because reaching infinite rapidity in finite proper time is not a motion.' }
 };
-const rlMotionName = k => (RL_MOTIONS[k] ? RL_MOTIONS[k].name : 'your own programme');

@@ -2597,6 +2597,35 @@ afterwards, on 2026-08-13: **230 modules, smoke OK, 4160 passed / 0 failed.**
 | `flDrainTime` | tank drain time | its comment said "needs the ODE rather than the formula" and then returned the formula |
 | `mvCompile3` | compiled f(x,y,z) with first partials | its comment named two stages as callers; neither called it |
 
+**Second sweep, 2026-08-19: 68 declarations across 29 files.** The scan
+extracted every top-level `function`/`const`/`let`/`var` in `src/js` (2 948
+names) and counted word-boundary references across all of `src/js`,
+`shell.html`, `tests.js`, `tests-stages.js` and every `.ps1` harness; a name
+whose only occurrence was its own declaration was dead. The fifteen §6.3
+keep-alives were excluded, and the planning documents were checked for named
+adopters (none). Removed, by file: `isZero` (10); `PF_UNIV_MAX`, `pfSubset`
+(19d); `nqPx`, `nqPy`, `nqPxx`, `nqPyy`, `nqPxy` (21); `MV_CRIT_COLOR`,
+`mvGradLen` (24); `unSigWritten` (30a); `dyPower`, `dyMomentum`, `dyImpulse`,
+`dyGForce`, `dyGPot` (31); `rtOmegaFromTh`, `rtACentripetal`, `rtATangential`,
+`rtL`, `rtLpoint` (32); `wvOmegaPhysical`, `wvFromDB` (33); `flPressure` (34);
+`TM_NA`, `TM_U`, `tmPV`, `tmEntropyIso`, `tmQ`, `tmConduction`, `tmStefan`
+(35); `esEnergyDensity` (37); `laColBasis`, `laRowBasis` (38); `laPolyDeg`
+(38a); `wienPeak`, `photoKmax` (40); `cxPow`, `cxCos` (41); `dfWedge`,
+`dfHodge1to2`, `dfHodge0to3` (42); `NC_MP`, `ncQ`, `ncAttenuate`,
+`ncHalfValue`, `NC_SHIELDS` (44a); `SM_R`, `SM_H`, `SM_U` (44c);
+`wsStringLen`, `wsSuperStates`, `wsReggeAsymptote`, `wsYukawaRatio`,
+`wsRSWarp`, `wsSlowRollEta` (44d); `QCOLORS`, `CARRIERS` (45);
+`grEinsteinRadius` (46); `rlWlName`, `rlChainName` (46e); `rlFieldName` (46f);
+`rlMotionName` (46h); `ftPhase` (49); `dspLeak` (49a); `activeDivAt` (50c);
+`em3d` (60j); `setDim` (90 — its "legacy name kept so the demo harness still
+works" comment was stale; no harness references it). Most were engine-parity
+formulas written when a wing was planned and never adopted by its stages
+(`tmQ`, `dyMomentum`, `rtL`), duplicate constants (`SM_R`/`SM_H`/`SM_U`,
+`TM_NA`/`TM_U` — the used copies live in 35/44c under other prefixes), or
+preset-name accessors superseded by the `59b` entry accessors (`rl*Name`).
+Build re-verified green afterwards: 295 modules, smoke OK, 6682 + 1913
+passed / 0 failed.
+
 ## 6.3 Unadopted helpers deliberately KEPT
 
 Fifteen functions have no caller today and are kept because a named piece of

@@ -12,7 +12,6 @@ const FL_RHO_WATER = 1000;               // kg/m³ at 4 °C
 const FL_P_ATM = 101325;                 // Pa — one standard atmosphere
 
 /* ------------------------------------------------------------- statics ---- */
-const flPressure = (F, A) => F / A;
 const flDepth = (rho, h, p0) => (p0 === undefined ? FL_P_ATM : p0) + rho * DY_G * h;
 const flGauge = (rho, h) => rho * DY_G * h;
 /* Pascal's principle as the hydraulic lift: the same pressure, two areas */

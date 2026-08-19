@@ -10,11 +10,7 @@
 
 const TM_R = 8.314462618;                // J/(mol·K) — exact, since the 2019 SI
 const TM_KB = 1.380649e-23;              // J/K — exact, since the 2019 SI
-const TM_NA = 6.02214076e23;             // /mol — exact, since the 2019 SI
-const TM_U = 1.66053906892e-27;          // kg — the atomic mass unit
-
 /* ---------------------------------------------------------- kinetic theory ---- */
-const tmPV = (n, T) => n * TM_R * T;
 const tmRMS = (T, M) => Math.sqrt(3 * TM_R * T / M);          // M in kg/mol
 const tmMean = (T, M) => Math.sqrt(8 * TM_R * T / (Math.PI * M));
 const tmMostProbable = (T, M) => Math.sqrt(2 * TM_R * T / M);
@@ -385,7 +381,6 @@ function tmRunCycle(spec, N){
 }
 
 /* the entropy change of a reversible isothermal step, and the total for a cycle */
-const tmEntropyIso = (Q, T) => Q / T;
 function tmEntropyCycle(Qh, Th, Qc, Tc){
   const dSh = -Qh / Th, dSc = Qc / Tc;
   return { dSh, dSc, total:dSh + dSc,
@@ -408,10 +403,7 @@ function tmMicrostates(N, nLeft){
 }
 
 /* ------------------------------------------------------------ heat transfer ---- */
-const tmQ = (m, c, dT) => m * c * dT;
 const tmLatent = (m, L) => m * L;
-const tmConduction = (k, A, dT, L) => k * A * dT / L;
-const tmStefan = (e, A, T, Tenv) => 5.670374419e-8 * e * A * (Math.pow(T, 4) - Math.pow(Tenv || 0, 4));
 const TM_SUBSTANCE = {
   water: { name:'Water',    c:4186, cIce:2090, cSteam:2010, Lf:3.33e5, Lv:2.26e6, Tm:0, Tb:100 },
   al:    { name:'Aluminium',c:900,  Lf:3.97e5, Tm:660 },

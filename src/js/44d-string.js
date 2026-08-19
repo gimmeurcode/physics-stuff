@@ -63,7 +63,6 @@ const WS_M_ELECTRON_GEV = 0.51099895069e-3;                            // CODATA
 /* the three ways of naming the same scale */
 const wsTension     = ap => 1 / (2 * Math.PI * ap);        // GeV² if α′ in GeV⁻²
 const wsStringScale = ap => 1 / Math.sqrt(ap);             // M_s = 1/√α′, GeV
-const wsStringLen   = ap => Math.sqrt(ap);                 // ℓ_s = √α′, GeV⁻¹
 /* a tension in GeV² is a force once ħc is put back: GeV²/(ħc) = GeV/fm */
 const wsTensionGeVfm = ap => wsTension(ap) / (WS_HBARC_GEVM * 1e15);
 const wsTensionNewton = ap => wsTension(ap) * WS_GEV_J / (WS_HBARC_GEVM);
@@ -151,7 +150,6 @@ function wsBoseFermiStates(N, nb, nf){
    this wing are counted rather than quoted. */
 const wsEffectiveC  = (nb, nf) => nb + nf / 2;
 const wsD1D5States  = (N, k) => wsBoseFermiStates(N, 4 * k, 4 * k);
-const wsSuperStates = N => wsBoseFermiStates(N, 8, 8);
 /* ρ(M) ~ e^(β_H M) makes the canonical partition function diverge above T_H */
 const wsHagedornBeta = (ap, kind) => kind === 'super'
   ? 2 * Math.PI * Math.sqrt(2 * ap) : 4 * Math.PI * Math.sqrt(ap);
@@ -283,10 +281,6 @@ function wsVenezianoResidue(n, at){
   for(let k = 1; k <= n; k++) p *= (at + k);
   return p / Math.exp(wsLogFactorial(n));
 }
-/* Regge limit: s → ∞ at fixed t gives a POWER of s whose exponent is the
-   exchanged trajectory α(t) rather than a constant. That is the observation
-   Regge theory was built on, and it is what a resonance tower produces. */
-const wsReggeAsymptote = (s, at, ap) => wsGamma(-at) * Math.pow(ap * s, at);
 /* On the real axis the amplitude also carries a signature factor that
    oscillates between the poles. Leaving it out makes the check look like a
    30% failure when the exponent is in fact exact, so it is included. */
@@ -429,9 +423,6 @@ function wsADDMstar(n, R_m){
   const RinvGeV = R_m / WS_HBARC_GEVM;
   return Math.pow(Math.pow(WS_MPL_GEV, 2) / Math.pow(RinvGeV, n), 1 / (n + 2));
 }
-/* the Yukawa parametrisation the torsion-balance groups actually publish */
-const wsYukawaRatio = (r, alpha, lambda) => 1 + alpha * Math.exp(-r / lambda) * (1 + r / lambda);
-
 /* The measurements. Laboratory limits are 95% CL Yukawa exclusions; the
    collider limits are on the fundamental scale M_D from monojet searches at
    13 TeV. Quoted to the precision the collaborations quote them. */
@@ -445,7 +436,6 @@ const WS_ADD_COLLIDER = [
 ];  // TeV, ATLAS/CMS 13 TeV monojet, approximate 95% CL lower limits
 
 /* Randall–Sundrum: one warped extra dimension makes the hierarchy geometric */
-const wsRSWarp = (k, y) => Math.exp(-k * y);
 const wsRSHierarchy = krc => Math.exp(-Math.PI * krc);
 const wsRSkrc = (MhighGeV, MlowGeV) => Math.log(MhighGeV / MlowGeV) / Math.PI;
 const WS_J1_ZEROS = [3.8317059702, 7.0155866698, 10.1734681351, 13.3236919363, 16.4706300509];
@@ -617,7 +607,6 @@ const wsSpeciesCount = (m, Mpl, d) => Math.pow(Mpl / m, (d || 4) - 2);
    Returned as the ratio, so a reader sees how badly a potential passes or fails. */
 const wsDSRatio = (V, dV, Mpl) => V > 0 ? Mpl * Math.abs(dV) / V : Infinity;
 const wsSlowRollEps = (V, dV, Mpl) => 0.5 * Math.pow(Mpl * dV / V, 2);
-const wsSlowRollEta = (V, d2V, Mpl) => Mpl * Mpl * d2V / V;
 /* r = 16ε for single-field slow roll, which is what makes the conjecture testable */
 const wsTensorRatio = eps => 16 * eps;
 const WS_R_LIMIT = 0.036;    // BICEP/Keck 2021 95% CL, still the tightest direct bound

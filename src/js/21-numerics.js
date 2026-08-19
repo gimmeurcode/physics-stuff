@@ -423,15 +423,6 @@ const nqD4 = (f, x) => {
   const h = 3e-3;
   return (f(x - 2*h) - 4*f(x - h) + 6*f(x) - 4*f(x + h) + f(x + 2*h)) / (h*h*h*h);
 };
-const nqPx = (f, x, y) => (f(x + NQ_H1, y) - f(x - NQ_H1, y)) / (2 * NQ_H1);
-const nqPy = (f, x, y) => (f(x, y + NQ_H1) - f(x, y - NQ_H1)) / (2 * NQ_H1);
-const nqPxx = (f, x, y) => (f(x + NQ_H2, y) - 2 * f(x, y) + f(x - NQ_H2, y)) / (NQ_H2 * NQ_H2);
-const nqPyy = (f, x, y) => (f(x, y + NQ_H2) - 2 * f(x, y) + f(x, y - NQ_H2)) / (NQ_H2 * NQ_H2);
-const nqPxy = (f, x, y) => {
-  const h = NQ_H2;
-  return (f(x + h, y + h) - f(x + h, y - h) - f(x - h, y + h) + f(x - h, y - h)) / (4 * h * h);
-};
-
 /* the sup of |f⁽ᵏ⁾| on [a,b], sampled — this is the K in every textbook error
    bound, and printing a bound needs an honest K rather than a guessed one */
 function nqMaxDeriv(f, a, b, order, n){

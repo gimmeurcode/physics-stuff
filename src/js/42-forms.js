@@ -38,17 +38,8 @@ function dfD2(A, B, C, x, y, z){                 // divergence of a 2-form
   };
   return d(A, 0) + d(B, 1) + d(C, 2);
 }
-/* the wedge of two 1-forms, whose components are exactly the cross product —
-   which is why the cross product only exists in three dimensions */
-const dfWedge = (u, v) => [ u[1] * v[2] - u[2] * v[1],
-                            u[2] * v[0] - u[0] * v[2],
-                            u[0] * v[1] - u[1] * v[0] ];
-/* The Hodge star in 3D sends a 1-form to the 2-form with the same components,
-   and that identification is the *only* reason a curl can be treated as a
-   vector at all. In n dimensions curl is a 2-form and has n(n−1)/2 components —
+/* In n dimensions curl is a 2-form and has n(n−1)/2 components —
    3 when n = 3, which is the coincidence the whole of vector calculus rests on. */
-const dfHodge1to2 = u => u.slice();
-const dfHodge0to3 = f => f;
 const dfStarComponents = n => n * (n - 1) / 2;
 
 /* d∘d = 0, measured rather than asserted, at a point */

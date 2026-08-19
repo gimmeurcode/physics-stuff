@@ -147,10 +147,6 @@ function laNullBasis(M){
   }
   return basis;
 }
-/* the pivot columns of the ORIGINAL matrix are a basis for the column space */
-const laColBasis = M => laRREF(M).pivots.map(c => M.map(r => r[c]));
-const laRowBasis = M => { const { R, rank } = laRREF(M); return R.slice(0, rank); };
-
 /* Cramer's rule — kept because the syllabus asks for it, and because comparing
    its cost with elimination is the lesson. */
 function laCramer(A, b){

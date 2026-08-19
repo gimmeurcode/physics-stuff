@@ -12,7 +12,6 @@
    the unit tests now pin NC_MH and NC_ALPHA as RELATIONS to the atom wing's
    constants, so one stale refresh can no longer hide here. */
 const NC_U    = 931.49410372;      // atomic mass unit, MeV/c²
-const NC_MP   = 938.27208943;      // proton
 const NC_MN   = 939.56542194;      // neutron
 const NC_ME   = 0.51099895069;     // electron
 const NC_MH   = 938.7830747823;    // ¹H atom = m_p + m_e − 13.598 eV binding
@@ -266,8 +265,6 @@ function ncTime(s){
 /* ---- Q-values from masses ----------------------------------------------- */
 /* Q > 0 means the reaction releases energy and can happen spontaneously.
    Computing it from masses is the whole content of "mass is energy". */
-const ncQ = (inMass, outMass) => inMass - outMass;      // MeV, with c² = 1
-
 /* Fission and fusion Q-values are NOT precomputed here. They were, from quoted
    B/A figures, and that is what the accuracy rule forbids: a released energy
    spelled out as a literal cannot be checked by anything. `ncReactionQ` sums Q
@@ -347,16 +344,4 @@ const NC_ALPHA_EMITTERS = [
   { s:'²¹⁸Po', dZ:82, dA:214, Q:6.1147, half:1.86e2    },
   { s:'²¹⁴Po', dZ:82, dA:210, Q:7.8335, half:1.643e-4  },
   { s:'²¹²Po', dZ:82, dA:208, Q:8.9541, half:2.943e-7  }
-];
-
-/* ---- cross sections and attenuation ------------------------------------- */
-/* Beer–Lambert for γ rays, and the mean free path that goes with it. */
-const ncAttenuate = (I0, mu, x) => I0 * Math.exp(-mu * x);
-const ncHalfValue = mu => Math.LN2 / mu;
-const NC_SHIELDS = [
-  { s:'lead',     mu:0.703, rho:11.35 },   // cm⁻¹ at 1 MeV
-  { s:'iron',     mu:0.468, rho:7.87  },
-  { s:'concrete', mu:0.150, rho:2.30  },
-  { s:'water',    mu:0.0707, rho:1.00 },
-  { s:'air',      mu:7.8e-5, rho:1.2e-3 }
 ];

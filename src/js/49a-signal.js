@@ -203,20 +203,6 @@ function dspWinMetrics(kind, N, pad){
   };
 }
 
-/* the spectrum of a tone sitting `off` bins away from bin k0, windowed — the
-   leakage a reader actually sees. Amplitude 1 in, so a perfect window with no
-   leakage and no scalloping would read 1 at the nearest bin. */
-function dspLeak(kind, N, k0, off){
-  const re = new Float64Array(N), im = new Float64Array(N);
-  const f = (k0 + off) / N;
-  for(let n = 0; n < N; n++) re[n] = Math.cos(2 * Math.PI * f * n) * dspWindow(kind, n, N);
-  ftFFT(re, im);
-  const g = dspWinSums(kind, N).cg || 1;
-  const mag = new Float64Array(N / 2 + 1);
-  for(let k = 0; k <= N / 2; k++) mag[k] = 2 * Math.hypot(re[k], im[k]) / N / g;
-  return mag;
-}
-
 /* ---- sampling -------------------------------------------------------------
    `ftAlias` gives the folded frequency by arithmetic. This gives it by looking:
    transform the samples that were actually taken and find the largest bin, then

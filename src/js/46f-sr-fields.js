@@ -206,8 +206,6 @@ const RL_FIELDS = {
             why:'E·B = 0 and E² only just beats B², so the frame that removes B exists but is moving at 0.98c. Watch what that does to the numbers — this is where a formula that ignores conditioning starts printing nonsense.' }
 };
 const rlFieldVec = a => v3(a[0], a[1], a[2]);
-const rlFieldName = k => (RL_FIELDS[k] ? RL_FIELDS[k].name : 'your own field');
-
 /* The presets for the tensor stage, written as tensors rather than as fields,
    because the point of that stage is that the sixteen numbers come first. */
 const RL_TENSORS = {

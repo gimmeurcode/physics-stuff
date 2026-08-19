@@ -13,10 +13,6 @@
 const SM_KB   = 1.380649e-23;         // J/K, exact
 const SM_KBEV = 8.617333262e-5;       // eV/K
 const SM_NA   = 6.02214076e23;        // /mol, exact
-const SM_R    = 8.314462618;          // J/mol·K
-const SM_H    = 6.62607015e-34;       // J·s, exact
-const SM_U    = 1.66053906892e-27;    // kg per u
-
 /* ---- counting states ----------------------------------------------------- */
 /* The Einstein solid: N oscillators sharing q quanta. Its multiplicity is a
    binomial coefficient, and everything thermodynamic follows from how sharply

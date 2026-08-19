@@ -546,9 +546,7 @@ function sgChain(angles){
 }
 
 /* ----------------------------------------------------------------------------
-   Planck's law (dimensionless: x = hν/kT_ref), and the photoelectric line —
-   the two experiments that forced quantisation in the first place.
+   Planck's law (dimensionless: x = hν/kT_ref) — the experiment that forced
+   quantisation in the first place.
    ---------------------------------------------------------------------------- */
 const planckU = (nu, T) => nu <= 0 || T <= 0 ? 0 : (nu ** 3) / (Math.expm1(nu / T));
-const wienPeak = T => 2.821 * T;                       // ∂u/∂ν = 0
-const photoKmax = (nu, phi) => Math.max(0, nu - phi);  // K = hν − φ in units of φ

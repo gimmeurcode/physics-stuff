@@ -133,7 +133,6 @@ function esFluxSphere(charges3, r, n){
 const esCapPlate = (A, d, kappa) => (kappa === undefined ? 1 : kappa) * ES_EPS0 * A / d;
 const esCharge = (C, V) => C * V;
 const esEnergy = (C, V) => 0.5 * C * V * V;
-const esEnergyDensity = E => 0.5 * ES_EPS0 * E * E;
 /* series and parallel — the opposite of resistors, and the reason why is that
    capacitors in series must all carry the same charge */
 const esSeries = Cs => 1 / Cs.reduce((s, c) => s + 1 / c, 0);

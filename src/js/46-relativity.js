@@ -572,11 +572,6 @@ function grPhotonBend(GM, b, steps, sweepMax){
   return { sweep: NaN, deflection: NaN, path };   // captured — the ray never got out
 }
 
-/* Einstein-ring radius for a lens of mass GM at Dl, source at Ds */
-function grEinsteinRadius(GM, Dl, Ds){
-  const Dls = Ds - Dl;
-  return Math.sqrt(4 * GM / C2 * Dls / (Dl * Ds));
-}
 /* Shapiro delay: the extra round-trip radar time when the path grazes the Sun.
    Nothing is going slower than c — the path is simply longer than it looks. */
 const grShapiroRoundTrip = (GM, r1, r2, b) =>

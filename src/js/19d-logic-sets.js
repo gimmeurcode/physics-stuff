@@ -22,9 +22,6 @@
    between them say which infinities are the same size.
    ============================================================================ */
 
-/* 30 elements: 2³⁰ subsets is already past enumerating, and a bitmask stays
-   inside the range where a 32-bit integer is exact */
-const PF_UNIV_MAX = 30;
 /* the power set is drawn, so its cap is what fits on a canvas */
 const PF_SUBSET_CAP = 1024;
 
@@ -54,8 +51,6 @@ const pfInter = (a, b) => a & b;
 const pfDiff  = (a, b) => a & ~b;
 const pfSymm  = (a, b) => a ^ b;
 const pfComp  = (a, n) => pfFull(n) & ~a;
-const pfSubset = (a, b) => (a & ~b) === 0;
-
 /* the sets a reader can pick, each defined by a property rather than a list —
    which is what makes the identities below say something */
 const PF_SETS = {

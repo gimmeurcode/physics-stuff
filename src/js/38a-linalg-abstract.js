@@ -34,7 +34,6 @@
    content of "P_n is an n+1 dimensional vector space". */
 const laPolyEval = (c, x) => c.reduce((s, a, i) => s + a * Math.pow(x, i), 0);
 const laPolyTrim = c => { const d = c.slice(); while(d.length > 1 && Math.abs(d[d.length - 1]) < 1e-14) d.pop(); return d; };
-const laPolyDeg = c => laPolyTrim(c).length - 1;
 function laPolyAdd(a, b){
   const n = Math.max(a.length, b.length), out = new Array(n).fill(0);
   for(let i = 0; i < n; i++) out[i] = (a[i] || 0) + (b[i] || 0);

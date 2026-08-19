@@ -12,12 +12,8 @@
 /* the same four equations as linear motion, one symbol at a time */
 const rtTheta = (th0, w0, al, t) => th0 + w0 * t + 0.5 * al * t * t;
 const rtOmega = (w0, al, t) => w0 + al * t;
-const rtOmegaFromTh = (w0, al, dth) => Math.sqrt(Math.max(0, w0 * w0 + 2 * al * dth));
 /* the bridge to linear motion: every point of a rigid body at radius r */
 const rtVTangential = (w, r) => w * r;
-const rtACentripetal = (w, r) => w * w * r;
-const rtATangential = (al, r) => al * r;
-
 /* ------------------------------------------------------ moments of inertia ---- */
 /* Each body supplies its density profile so I = ∫r²dm can be integrated, and
    the closed form so the integral can be checked against it. */
@@ -215,8 +211,6 @@ const RT_RACE = [
 ];
 
 /* -------------------------------------------------------- angular momentum ---- */
-const rtL = (I, w) => I * w;
-const rtLpoint = (m, v, r, ang) => m * v * r * Math.sin(ang === undefined ? Math.PI / 2 : ang);
 const rtKErot = (I, w) => 0.5 * I * w * w;
 /* the skater: no external torque, so Iω is conserved and the kinetic energy is
    not — the difference is the work the skater's muscles do pulling in */

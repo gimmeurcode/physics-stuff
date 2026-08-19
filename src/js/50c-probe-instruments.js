@@ -6,7 +6,6 @@
 const inst = { flux:null, circ:null };
 /* the divergence to compare against: the planar one when the domain is the plane */
 const activeDiv = () => planar() ? S.field.div2 : S.field.div;
-const activeDivAt = (x,y,z) => activeDiv().ev(x,y,z);
 function recomputeInstruments(){
   const F=S.field, p=S.probe;
   inst.flux = planar()

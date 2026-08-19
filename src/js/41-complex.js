@@ -24,9 +24,7 @@ const cxScale= (a, s) => ({ re:a.re * s, im:a.im * s });
    but the only extension of the exponential that keeps e^(a+b) = e^a e^b. */
 const cxExp = a => ({ re:Math.exp(a.re) * Math.cos(a.im), im:Math.exp(a.re) * Math.sin(a.im) });
 const cxLog = a => ({ re:Math.log(cxAbs(a)), im:cxArg(a) });     // principal branch
-const cxPow = (a, b) => cxExp(cxMul(cxLog(a), b));
 const cxSin = a => ({ re:Math.sin(a.re) * Math.cosh(a.im), im:Math.cos(a.re) * Math.sinh(a.im) });
-const cxCos = a => ({ re:Math.cos(a.re) * Math.cosh(a.im), im:-Math.sin(a.re) * Math.sinh(a.im) });
 function cxSqrt(a){
   const r = Math.sqrt(cxAbs(a)), t = cxArg(a) / 2;
   return { re:r * Math.cos(t), im:r * Math.sin(t) };

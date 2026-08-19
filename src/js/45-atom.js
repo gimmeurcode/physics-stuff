@@ -210,7 +210,6 @@ const hydrogenEn = n => -AT_RYD_H / (n * n);
 /* ---- quark colour bookkeeping for the nucleon animation ----
    Gluon exchange swaps the colours of the two quarks involved; the baryon
    stays colour-neutral (one r, one g, one b) at every instant. */
-const QCOLORS = ['r', 'g', 'b'];
 function gluonSwap(cols, i, j){
   const out = cols.slice();
   out[i] = cols[j]; out[j] = cols[i];
@@ -233,20 +232,6 @@ function betaSampleKe(){
   }
   return Q / 3;
 }
-
-/* the cast of carriers, for legends and the atom stage */
-const CARRIERS = [
-  { id:'photon',   sym:'γ',  force:'electromagnetic', mass:'0',            range:'infinite',   acts:'electric charge',
-    note:'Virtual photons exchanged between the electron and the proton ARE the Coulomb attraction that binds the atom.' },
-  { id:'gluon',    sym:'g',  force:'strong',          mass:'0',            range:'~1 fm (confined)', acts:'colour charge',
-    note:'Eight gluons carry colour themselves, so they attract each other — the origin of confinement and of the flux tube.' },
-  { id:'wboson',   sym:'W±', force:'weak',            mass:'80.4 GeV',     range:'2.5×10⁻³ fm', acts:'weak isospin (all fermions)',
-    note:'So heavy that the interaction is essentially a contact event — hence slow decays and "weakness" at low energy.' },
-  { id:'zboson',   sym:'Z⁰', force:'weak',            mass:'91.2 GeV',     range:'2.4×10⁻³ fm', acts:'weak isospin',
-    note:'The neutral current: neutrinos scattering off matter without changing identity — discovered at CERN in 1973.' },
-  { id:'graviton', sym:'G?', force:'gravity',         mass:'0 (expected)', range:'infinite',   acts:'energy–momentum',
-    note:'Hypothetical: gravity has not been quantised experimentally. Shown dashed here — a conjecture, not an observation.' }
-];
 
 /* ---- the exact EM field of a uniformly moving charge (c = q = 1) ----
    E = (1-beta^2) r_hat / [r^2 (1-beta^2 sin^2 theta)^(3/2)], B = beta x E.

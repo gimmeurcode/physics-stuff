@@ -32,8 +32,6 @@ function emWireDim(){
     updateStageLegend();
   });
 }
-const em3d = st => !!(st && st.dim === '3d');
-
 /* ---- scene furniture ---- */
 function em3dBegin(ext){
   R.mode2d = false; R.extent = ext;

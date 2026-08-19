@@ -425,20 +425,6 @@ function unSigJustified(x, dx){
   if(!(dx > 0) || !isFinite(x) || x === 0) return null;
   return Math.max(1, Math.floor(Math.log10(Math.abs(x))) - Math.floor(Math.log10(dx)) + 1);
 }
-/* the digits a number actually carries, so a stage can say "you wrote nine and
-   four are meaningful" without the reader counting them */
-function unSigWritten(s){
-  const t = String(s).trim().replace(/^[+-]/, '');
-  const m = t.match(/^0*([0-9]*)(?:\.([0-9]*))?/);
-  if(!m) return 0;
-  let lead = (m[1] || '').replace(/^0+/, ''), frac = m[2] || '';
-  if(lead === '' && frac !== ''){
-    const f = frac.replace(/^0+/, '');
-    return f.length;
-  }
-  return (lead + frac).length;
-}
-
 /* ---- uncertainty propagation --------------------------------------------
    Two routes to the same error bar, and the gap between them is the wing's
    most useful number: first-order propagation is a linearisation, so it is

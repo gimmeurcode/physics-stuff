@@ -183,8 +183,6 @@ function dependsOn(nd, v){
   }
   return false;
 }
-const isZero = nd => nd.t==='n' && nd.v===0;
-
 /* ---- simplifier: load-bearing, not polish — raw derivative trees are unreadable ---- */
 function applyOp(o,x,y){
   switch(o){ case '+':return x+y; case '-':return x-y; case '*':return x*y; case '/':return x/y; case '^':return Math.pow(x,y); }

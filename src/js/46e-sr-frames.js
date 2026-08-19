@@ -401,8 +401,6 @@ const RL_WORLDLINES = {
               vmax:0.99, tau:null,
               why:'0.99c at t = 0, coasting to a stop. The integrand starts at √(1 − 0.9801) = 0.141 and climbs to 1, which is the hardest case here for both routes and the reason the acceptance is set by measurement.' }
 };
-const rlWlName = key => (RL_WORLDLINES[key] ? RL_WORLDLINES[key].name : 'your own worldline');
-
 /* ------------------------------------------------------------ boost chains */
 
 /* One boost per line: a β, or an expression for one, optionally repeated with
@@ -570,4 +568,3 @@ const RL_CHAINS = {
               phi:20 * Math.atanh(0.9), shortfall:null,
               why:'Twenty boosts of 0.9c. The rapidity is 29.4 and the shortfall from c is 5×10⁻²⁶ — far below float64, so the composed β is exactly 1.0 and route A has no answer left. That is not a bug in the arithmetic; it is why nobody quotes a beam speed.' }
 };
-const rlChainName = key => (RL_CHAINS[key] ? RL_CHAINS[key].name : 'your own chain');

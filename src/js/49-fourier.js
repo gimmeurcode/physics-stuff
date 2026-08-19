@@ -119,13 +119,6 @@ function ftAmplitude(re, im){
   }
   return out;
 }
-const ftPhase = (re, im) => {
-  const out = new Float64Array(re.length);
-  for(let k = 0; k < re.length; k++)
-    out[k] = (Math.hypot(re[k], im[k]) < 1e-12) ? 0 : Math.atan2(im[k], re[k]);
-  return out;
-};
-
 /* ---- Fourier series: the periodic case, done in closed form --------------- */
 /* Coefficients of the standard waveforms, unit amplitude and unit period, as
    the sine terms b_k of  x(t) = Σ b_k sin(2πkt). All are odd functions, so

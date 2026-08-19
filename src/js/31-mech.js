@@ -126,7 +126,6 @@ const dyPEs = (k, x) => 0.5 * k * x * x;
 const dyWork = (F, d, ang) => F * d * Math.cos(ang === undefined ? 0 : ang);
 /* work done by a varying force is the integral — the definition, not a special case */
 const dyWorkVar = (F, a, b) => nqAdaptive(F, a, b, 1e-11);
-const dyPower = (W, t) => W / t;
 /* a roller-coaster style track: energy conservation checked at every point of
    an integrated run, with friction removing exactly the work it does */
 function dyTrackRun(hOf, x0, v0, m, mu, dx, n){
@@ -149,8 +148,6 @@ function dyTrackRun(hOf, x0, v0, m, mu, dx, n){
 }
 
 /* ------------------------------------------------------------- momentum ---- */
-const dyMomentum = (m, v) => m * v;
-const dyImpulse = (F, dt) => F * dt;
 /* a one-dimensional collision at any elasticity e: e = 1 elastic, e = 0
    perfectly inelastic. Momentum is conserved for every e; energy only at e = 1. */
 function dyCollide(m1, u1, m2, u2, e){
@@ -188,9 +185,7 @@ function dyCollide2D(a, b, e){
 }
 
 /* ----------------------------------------------------------- gravitation ---- */
-const dyGForce = (m1, m2, r) => DY_G_GRAV * m1 * m2 / (r * r);
 const dyGField = (M, r) => DY_G_GRAV * M / (r * r);
-const dyGPot = (M, m, r) => -DY_G_GRAV * M * m / r;
 const dyOrbitV = (M, r) => Math.sqrt(DY_G_GRAV * M / r);
 const dyEscapeV = (M, r) => Math.sqrt(2 * DY_G_GRAV * M / r);
 const dyOrbitT = (M, r) => 2 * Math.PI * Math.sqrt(r * r * r / (DY_G_GRAV * M));
