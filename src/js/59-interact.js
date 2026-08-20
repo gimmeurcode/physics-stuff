@@ -176,8 +176,17 @@ function mxHtml(id, M, rowLbl, colLbl){
           Array.from({length:c}, (_, j) => `<td class="hd">${colLbl ? colLbl[j] : ''}</td>`).join('') + '</tr>';
   for(let i = 0; i < r; i++){
     h += `<tr><td class="hd">${rowLbl ? rowLbl[i] : ''}</td>` +
+      /* fmtEdit, never fmtNum. This is a box the reader types back into, and
+         fmtNum is a DISPLAY formatter: it emits U+2212 for a minus and real
+         superscripts for an exponent, so an entry of 1e-17 was written into the
+         input as "1.00×10⁻¹⁷" and parseFloat read it back as 1. Twelve other
+         matrix editors on five stages had the same hole and none of them had a
+         preset extreme enough to show it — found by the numerical-linear-algebra
+         wing's tiny-pivot matrix, which is exactly the sort of entry the rest of
+         the site never carries. Eight figures rather than four, because a
+         preset can turn on a difference in the seventh (4.000001 against 4). */
       M[i].map((v, j) =>
-        `<td><input class="mxc" data-i="${i}" data-j="${j}" value="${fmtNum(v, 4)}" ` +
+        `<td><input class="mxc" data-i="${i}" data-j="${j}" value="${fmtEdit(v, 8)}" ` +
         `inputmode="decimal" spellcheck="false" aria-label="row ${i+1} column ${j+1}"></td>`).join('') +
       '</tr>';
   }

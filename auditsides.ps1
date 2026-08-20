@@ -116,6 +116,26 @@ setTimeout(function(){
      the theorem's hypothesis failing, and it is exactly what the demo is for:
      it is where the residue theorem and Gauss's law come from. */
   var ALLOW = {
+    /* Attributed 2026-08-19, Programme C wing C16. All three rows come from ONE
+       demo — numlin 0.1, "A pivot of 10⁻¹⁷, and an answer that is simply wrong"
+       — which selects the tiny-pivot matrix and turns partial pivoting OFF. The
+       whole demo exists to show unpivoted elimination failing, so all three
+       measurements of that failure read as large gaps, and they are the lesson
+       rather than a defect: the same three rows on the same matrix with the
+       checkbox ticked are exact to sixteen digits, and every other preset in the
+       table is exact with pivoting either way.
+
+       What makes this believable rather than a convenient excuse is that the two
+       OTHER rows this stage's wing raised on its first run were real defects and
+       were fixed rather than listed here — the power iteration printing a 21%
+       disagreement instead of admitting it had not converged, and ρ(GS) being
+       compared with ρ(Jacobi)² on a matrix Young's theorem does not cover. */
+    'nlFact|readout|‖PA − LU‖, against ‖A‖':
+      'unpivoted elimination on a matrix with a 10⁻¹⁷ pivot: the multipliers reach 10¹⁷ and the factorisation itself is destroyed, so PA and LU differ by half of ‖A‖. With pivoting on, the same matrix and the same code give round-off. The panel prints the failure in words beside the number',
+    'nlFact|readout|largest difference between them':
+      'the same demo: substitution through the broken factors against row reduction, which pivots whatever this stage checkbox says. The two routes are genuinely computing different things there, and the difference IS the unstable one being wrong. Exact on every preset with pivoting on',
+    'nlFact|readout|largest error in x':
+      'the same demo, measured against an answer known in advance — b was built as A·(1,1,1), so the error is available and it is 1. That is the headline of the experiment: no exception, no NaN, no large residual, and no correct digits. κ for this matrix is 3.7, so the problem is easy and the algorithm is the entire failure',
     'vcGreen|readout|difference':
       'vortex round a circle: curl = 0 off the origin, circulation = 2pi. The hypothesis fails at one point',
     'vcGreen|readout|difference #2':

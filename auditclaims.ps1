@@ -941,6 +941,204 @@ setTimeout(function(){
     resid('NM_FUNCS', k, "max rel |df/dx - d(x)|", worst, 1e-6);
   });
 
+  /* ============================================== wing C16, four tables ====== */
+  /* NL_LU, NL_COND_2, NL_ITER and NL_QR_METHODS each assert things about their
+     own entries: a condition number, a growth factor, a spectral radius, an
+     exponent in an error bound.  Every one is recomputed here by a route that
+     does not read the declaration, and the qualitative names are treated as
+     claims too -- "nearly singular", "strictly diagonally dominant",
+     "Jacobi converges, Gauss-Seidel does not".
+     These four tables live in modules 78d and 78e, so runtests cannot see them
+     at all, exactly as for EIG_PRESETS and NM_FUNCS above. */
+  Object.keys(NL_LU).forEach(function(k){
+    var E = NL_LU[k], M = E.M;
+    var F = nlLU(M, true), Foff = nlLU(M, false);
+    var R = nlLUResid(F, M);
+    var kap = nlCond2(M);
+    push('NL_LU', k, 'measured: kappa2, growth on, growth off', E.n,
+         'kappa ' + fx(kap) + ', growth ' + fx(F.growth) + ' / ' + fx(Foff.growth), 0, true, '');
+    /* PA = LU is not a declaration but it is the table's reason to exist */
+    resid('NL_LU', k, 'PA - LU relative to max|A|', R.gap / R.scale, 1e-13);
+    /* every declared number */
+    if (E.cond !== undefined)   num('NL_LU', k, 'declared cond vs nlCond2', E.cond, kap, 1e-6);
+    if (E.growth !== undefined) num('NL_LU', k, 'declared growth vs nlLU', E.growth, F.growth, 1e-9);
+    /* and every claim the NAME makes */
+    if (/row swap/.test(E.n)) {
+      flag('NL_LU', k, 'needs a row swap: a11 is zero and pivoting swaps',
+           true, M[0][0] === 0 && F.swaps > 0, 'a11 ' + fx(M[0][0]) + ', swaps ' + F.swaps);
+      /* and without a swap the factorisation must genuinely not exist */
+      flag('NL_LU', k, '  ...and unpivoted elimination has no factorisation',
+           true, !(nlLU(M, false).minPiv > 0), 'minPiv ' + fx(nlLU(M, false).minPiv));
+    }
+    if (/pivot of/.test(E.n)) {
+      /* the whole point: well conditioned, and destroyed without pivoting */
+      var xT = []; for (var i = 0; i < M.length; i++) xT.push(1);
+      var b = laMatVec(M, xT);
+      var eOn  = Math.max.apply(null, nlLUSolve(F, b).map(function(v){ return Math.abs(v - 1); }));
+      var eOff = Math.max.apply(null, nlLUSolve(Foff, b).map(function(v){ return Math.abs(v - 1); }));
+      flag('NL_LU', k, 'the algorithm is the failure: kappa small, error large only without pivoting',
+           true, kap < 10 && eOn < 1e-12 && eOff > 0.1,
+           'kappa ' + fx(kap) + ', error on ' + fx(eOn) + ', off ' + fx(eOff));
+    }
+    if (/growth matrix/.test(E.n)) {
+      flag('NL_LU', k, 'partial pivoting makes no swaps and every multiplier is 1',
+           true, F.swaps === 0 && Math.abs(F.maxMult - 1) < 1e-14,
+           'swaps ' + F.swaps + ', maxMult ' + fx(F.maxMult));
+      num('NL_LU', k, 'growth is 2^(n-1)', Math.pow(2, M.length - 1), F.growth, 1e-12);
+    }
+    if (/Hilbert/.test(E.n)) {
+      /* the mirror image: the algorithm is faultless and kappa is the problem */
+      flag('NL_LU', k, 'growth under 2 while kappa is above 1e5',
+           true, F.growth < 2 && kap > 1e5, 'growth ' + fx(F.growth) + ', kappa ' + fx(kap));
+      /* the why-text names 4.8e5 */
+      num('NL_LU', k, 'the prose figure 4.8e5', 4.8e5, kap, 0.03);
+    }
+    if (/Poisson/.test(E.n)) {
+      num('NL_LU', k, 'cond against the closed form cot^2(pi/2(n+1))',
+          nlPoissonCond(M.length), kap, 1e-9);
+      flag('NL_LU', k, 'growth at most 2, and no swaps needed',
+           true, F.growth <= 2 + 1e-12 && F.swaps === 0,
+           'growth ' + fx(F.growth) + ', swaps ' + F.swaps);
+    }
+    if (/nearly dependent/.test(E.n))
+      flag('NL_LU', k, 'nearly dependent: invertible but kappa near 1e7',
+           true, Math.abs(laDet(M)) > 0 && kap > 1e6 && kap < 1e9, 'kappa ' + fx(kap));
+  });
+
+  Object.keys(NL_COND_2).forEach(function(k){
+    var E = NL_COND_2[k], S = nlSVDJacobi(E.M);
+    var kap = S.cond;
+    push('NL_COND_2', k, 'measured: sigma1, sigma2, kappa', E.n,
+         fx(S.sigma[0]) + ' / ' + fx(S.sigma[1]) + ' = ' + fx(kap), 0, true, '');
+    /* |det| = sigma1*sigma2 -- two routes, elimination and column rotation */
+    num('NL_COND_2', k, '|det| against the product of the singular values',
+        Math.abs(laDet(E.M)), S.sigma[0] * S.sigma[1], 1e-11);
+    /* the perturbation bound is attained by construction, so this is equality */
+    num('NL_COND_2', k, 'the worst perturbation attains kappa',
+        kap, nlKappaAttain(E.M, 1e-6).amp, 1e-4);
+    /* a name that quotes a number is a number to check */
+    /* The label reads "kappa = 19" with a Greek kappa, and this file is
+       deliberately ASCII-only, so the number is pulled off by its digits rather
+       than by matching a character that would become mojibake if PowerShell
+       read the script as ANSI. */
+    var named = /= ([\d.]+)/.exec(E.n);
+    if (named) num('NL_COND_2', k, 'the kappa named in the label', parseFloat(named[1]), kap, 1e-3);
+    if (/well conditioned/.test(E.n))
+      flag('NL_COND_2', k, 'well conditioned: kappa under 3', true, kap < 3, fx(kap));
+    if (/nearly singular/.test(E.n))
+      flag('NL_COND_2', k, 'nearly singular: kappa above 1e3', true, kap > 1e3, fx(kap));
+  });
+
+  Object.keys(NL_ITER).forEach(function(k){
+    var E = NL_ITER[k];
+    var A = E.sizeable ? E.mk(12) : E.mk();
+    var n = A.length;
+    var rhoJ = nlRhoGelfand(nlIterMatrix(A, 'jacobi', 1).G);
+    var rhoG = nlRhoGelfand(nlIterMatrix(A, 'gs', 1).G);
+    /* the second route: run the iteration, which never forms G */
+    var xT = []; for (var i = 0; i < n; i++) xT.push(Math.sin(1 + i));
+    var b = laMatVec(A, xT);
+    var runJ = nlIterate(A, b, 'jacobi', 1, 400, null, xT);
+    var runG = nlIterate(A, b, 'gs', 1, 400, null, xT);
+    push('NL_ITER', k, 'measured: rho(Jacobi), rho(Gauss-Seidel)', E.n,
+         fx(rhoJ) + ' / ' + fx(rhoG), 0, true, 'at n = ' + n);
+    /* the radius and the run must agree about convergence -- two routes */
+    flag('NL_ITER', k, 'Jacobi: rho < 1 agrees with the run converging',
+         rhoJ < 1, !runJ.diverged, 'rho ' + fx(rhoJ));
+    flag('NL_ITER', k, 'Gauss-Seidel: rho < 1 agrees with the run converging',
+         rhoG < 1, !runG.diverged, 'rho ' + fx(rhoG));
+    /* strict diagonal dominance, recomputed from the entries */
+    var dom = true;
+    for (var r = 0; r < n; r++) {
+      var s = 0;
+      for (var c = 0; c < n; c++) if (c !== r) s += Math.abs(A[r][c]);
+      if (!(Math.abs(A[r][r]) > s)) dom = false;
+    }
+    if (/strictly diagonally dominant/.test(E.n)) {
+      flag('NL_ITER', k, 'strictly diagonally dominant, as declared', true, dom, '');
+      flag('NL_ITER', k, '  ...and both methods therefore converge',
+           true, rhoJ < 1 && rhoG < 1, fx(rhoJ) + ' / ' + fx(rhoG));
+    }
+    /* the two counterexample names differ by which method is named first, and
+       matching that avoids the en-dash inside "Gauss-Seidel" entirely */
+    if (/^Jacobi converges/.test(E.n)) {
+      flag('NL_ITER', k, 'Jacobi converges and Gauss-Seidel does not, as the name says',
+           true, rhoJ < 1 && rhoG > 1, fx(rhoJ) + ' / ' + fx(rhoG));
+      flag('NL_ITER', k, '  ...and the counterexample is not diagonally dominant', false, dom, '');
+    }
+    if (/converges, Jacobi does not/.test(E.n)) {
+      flag('NL_ITER', k, 'Gauss-Seidel converges and Jacobi does not, as the name says',
+           true, rhoG < 1 && rhoJ > 1, fx(rhoJ) + ' / ' + fx(rhoG));
+      flag('NL_ITER', k, '  ...and this one is not dominant either', false, dom, '');
+    }
+    /* `ordered` claims Young's theorem applies, which is three closed forms */
+    if (E.ordered) {
+      num('NL_ITER', k, 'ordered: rho(Jacobi) = cos(pi/(n+1))',
+          Math.cos(Math.PI / (n + 1)), rhoJ, 1e-8);
+      num('NL_ITER', k, 'ordered: rho(Gauss-Seidel) = rho(Jacobi)^2', rhoJ * rhoJ, rhoG, 1e-8);
+      var wOpt = nlSorOpt(rhoJ);
+      /* twelve doublings, matching the stage: at eight the defective pair at the
+         optimum biases Gelfand's estimate low by about 1.4% */
+      num('NL_ITER', k, 'ordered: rho(SOR at omega_opt) = omega_opt - 1',
+          nlSorRho(rhoJ), nlRhoGelfand(nlIterMatrix(A, 'sor', wOpt).G, 12), 1e-3);
+      flag('NL_ITER', k, 'ordered: omega_opt really is a minimum of rho(omega)',
+           true,
+           nlRhoGelfand(nlIterMatrix(A, 'sor', wOpt - 0.15).G, 10) > nlSorRho(rhoJ) &&
+           nlRhoGelfand(nlIterMatrix(A, 'sor', wOpt + 0.15).G, 10) > nlSorRho(rhoJ),
+           'omega_opt ' + fx(wOpt));
+    } else {
+      /* the table must NOT claim Young where it does not hold, and the stage
+         withholds the closed form on exactly these entries */
+      flag('NL_ITER', k, 'not ordered: no closed form is declared for it', true,
+           E.ordered === undefined, '');
+    }
+    /* SOR at omega = 1 must be Gauss-Seidel, on every entry */
+    resid('NL_ITER', k, 'SOR at omega = 1 minus Gauss-Seidel',
+          nlRhoGelfand(nlIterMatrix(A, 'sor', 1).G) - rhoG, 1e-9);
+  });
+
+  /* NL_QR_METHODS declares the exponent in each bound.  Measured by a fit over
+     five decades of a matrix built to have the condition number asked for --
+     which is itself checked first, because a sweep against a kappa the matrices
+     did not have would be a fit through nothing. */
+  (function(){
+    var ks = NL_QR_KAPPAS, n = 8;
+    ks.forEach(function(kap){
+      var C = nlCondMat(n, kap, 4242);
+      num('NL_QR_METHODS', 'kappa=' + kap, 'the test matrix has the kappa it was built for',
+          kap, nlCond2(C.A), 1e-6);
+    });
+    Object.keys(NL_QR_METHODS).forEach(function(mk){
+      var M = NL_QR_METHODS[mk];
+      var sx = 0, sy = 0, sxx = 0, sxy = 0, m = 0, worstBack = 0;
+      ks.forEach(function(kap){
+        var C = nlCondMat(n, kap, 4242);
+        var F = M.build(C.A);
+        worstBack = Math.max(worstBack, laMaxDiff(laMul(F.Q, F.R), C.A));
+        var X = Math.log10(kap), Y = Math.log10(Math.max(nlOrthErr(F.Q), 1e-16));
+        sx += X; sy += Y; sxx += X * X; sxy += X * Y; m++;
+      });
+      var slope = (m * sxy - sx * sy) / (m * sxx - sx * sx);
+      /* every method must factor A correctly -- the property that does NOT
+         separate them, and the one a careless check would stop at */
+      resid('NL_QR_METHODS', mk, 'worst |A - QR| over the sweep', worstBack, 1e-13);
+      /* and the declared exponent.  The tolerances are asymmetric on purpose and
+         come from a measured sweep of n = 5..12 recorded in tests.js: classical
+         1.67-2.09, modified 0.76-0.98, Householder ~0.  The modified bound is an
+         upper bound this family does not attain, so the check is that the slope
+         lies BELOW its declared exponent and above zero, not that it equals it. */
+      if (M.slope === 2)
+        flag('NL_QR_METHODS', mk, 'classical: the eps*kappa^2 bound is attained, slope near 2',
+             true, Math.abs(slope - 2) < 0.35, 'slope ' + fx(slope));
+      else if (M.slope === 1)
+        flag('NL_QR_METHODS', mk, 'modified: grows with kappa but no faster than it',
+             true, slope > 0.4 && slope < 1.15, 'slope ' + fx(slope));
+      else
+        flag('NL_QR_METHODS', mk, 'Householder: no dependence on kappa at all',
+             true, Math.abs(slope) < 0.15, 'slope ' + fx(slope));
+    });
+  })();
+
   /* ========================================================= EIG_PRESETS ===== */
   /* Each preset's name is a claim about its spectrum.  They are cheap to check
      and nothing checks them. */
@@ -2307,6 +2505,306 @@ setTimeout(function(){
       flag('PF_LISTS', k, 'the constructed number is on no row of the list', true, D.allDiffer,
            '14 rows');
     });
+  })();
+
+  /* ============================================== wing C14, six tables ======= */
+  /* SN_FAMS, SN_ESTS, SN_MEAN_CIS, SN_PROP_CIS, SN_PRIORS and SN_PAIRS all
+     assert things about themselves, and four of them assert things that are
+     ONLY true under a hypothesis -- which is the whole subject of the wing, so
+     the hypotheses are recomputed here rather than trusted.
+
+     Every simulated route below is compared on the scale of its OWN standard
+     error at 4 se, with fixed seeds, because a fixed tolerance on a Monte Carlo
+     is a test of how many trials somebody picked.  The closed-form routes get
+     ordinary tolerances.  SN_ESTS and SN_PRIORS live in modules 43a and 43b so
+     runtests can see them; SN_PAIRS is in 79fc and cannot be unit-tested at
+     all, exactly as for NL_LU above. */
+  (function(){
+    /* -- SN_FAMS: the Fisher information, the MLE, and `regular` ------------- */
+    Object.keys(SN_FAMS).forEach(function(k){
+      var F = SN_FAMS[k];
+      var p = { th:F.th0 === 0 ? 0.8 : F.th0, sd:1.0 };
+      if (k === 'bern') p.th = 0.35;
+      var n = 25;
+      var Fi = snFisher(k, p, n, 4000, 424242, { sd:p.sd });
+      push('SN_FAMS', k, 'measured: n.I(theta), Var[score], -E[d2 l]', F.n,
+           fx(Fi.closed) + ' / ' + fx(Fi.scoreVar) + ' / ' + fx(Fi.obs), 0, true, '');
+      /* the score has mean zero wherever the identity holds -- and does not
+         where it does not, so the check is conditioned on the declaration */
+      if (F.regular) {
+        flag('SN_FAMS', k, 'declared regular: the score has mean zero',
+             true, Math.abs(Fi.scoreMean) < 4 * Fi.scoreMeanSE,
+             'mean ' + fx(Fi.scoreMean) + ' se ' + fx(Fi.scoreMeanSE));
+        flag('SN_FAMS', k, '  ...and Var[score] equals the declared n.I(theta)',
+             true, Math.abs(Fi.scoreVar - Fi.closed) < 4 * Fi.scoreVarSE,
+             fx(Fi.scoreVar) + ' vs ' + fx(Fi.closed) + ' se ' + fx(Fi.scoreVarSE));
+        /* The curvature AT THE TRUE theta is the one the identity is about.
+           Its tolerance carries a second floor: for several families l'' does
+           not depend on the data at all, so this route's sampling error is
+           exactly zero and 4.se would demand more digits than a central second
+           difference has.  1e-6 relative is that differencing floor. */
+        flag('SN_FAMS', k, '  ...and -E[d2 l] at the true theta agrees, which is the identity',
+             true, Math.abs(Fi.obsAtTruth - Fi.closed) <
+                   4 * Fi.obsAtTruthSE + 1e-6 * Math.abs(Fi.closed),
+             fx(Fi.obsAtTruth) + ' vs ' + fx(Fi.closed) + ' se ' + fx(Fi.obsAtTruthSE));
+        /* The curvature at the MLE is the OBSERVED information -- a different
+           quantity, biased high by O(1/n).  For a normal mean the curvature is
+           constant so the two coincide exactly; everywhere else they must not.
+           The SIZE of the bias is family-specific ((n+1)/n for the exponential,
+           1 + 1/(n.lambda) for Poisson, messier for Bernoulli), so what is
+           checked is the ORDER, by doubling n -- and asserting the difference
+           exists at all is what stops the wing quietly claiming agreement
+           again, which is what it did until this check was written. */
+        var ratio = Fi.obs / Fi.closed;
+        if (k === 'normal') {
+          num('SN_FAMS', k, 'observed information equals Fisher exactly (curvature is constant)',
+              1, ratio, 1e-6, 'ratio ' + fx(ratio));
+        } else {
+          flag('SN_FAMS', k, 'observed information at the MLE is biased HIGH',
+               true, ratio - 1 > 4 * Fi.obsSE / Fi.closed, 'ratio ' + fx(ratio));
+          var F2 = snFisher(k, p, 2 * n, 4000, 424243, { sd:p.sd });
+          var b1 = ratio - 1, b2 = F2.obs / F2.closed - 1;
+          num('SN_FAMS', k, 'and that bias is O(1/n): it halves when n doubles',
+              0.5, b2 / b1, 0.3, 'n ' + fx(b1) + ' -> 2n ' + fx(b2));
+        }
+      } else {
+        /* the declaration says the hypothesis FAILS; that is a claim, and a
+           table that marked a well-behaved family irregular would be wrong in
+           the direction no other check would catch */
+        flag('SN_FAMS', k, 'declared NOT regular: the identity must visibly fail',
+             true, Math.abs(Fi.scoreVar - Fi.closed) > 4 * Fi.scoreVarSE,
+             fx(Fi.scoreVar) + ' vs ' + fx(Fi.closed) + ' se ' + fx(Fi.scoreVarSE));
+      }
+      /* the closed-form MLE against a grid search that knows no formula */
+      var rng = snRng(9090), xs = [];
+      for (var i = 0; i < 60; i++) xs.push(F.sample(p, rng));
+      var C = snLikCurve(k, xs, F.thLo * 0.5, F.thHi * 1.6, 4000, { sd:p.sd });
+      var mle = F.mle(xs, p);
+      flag('SN_FAMS', k, 'declared mle() is the maximum of the likelihood',
+           true, Math.abs(C.gridMax - mle) <= 2 * C.step ||
+                 (k === 'unif' && C.gridMax >= mle - 2 * C.step),
+           'grid ' + fx(C.gridMax) + ' declared ' + fx(mle) + ' step ' + fx(C.step));
+      /* the support declared by logpdf really is the one the sampler uses */
+      var outside = 0;
+      for (i = 0; i < 400; i++) {
+        var v = F.sample(p, rng);
+        if (!isFinite(F.logpdf(v, p))) outside++;
+      }
+      resid('SN_FAMS', k, 'every drawn sample has finite log-density', outside, 0,
+            '400 draws');
+    });
+
+    /* -- SN_ESTS: truth() is the sampling distribution, recomputed ----------- */
+    var pairsChecked = 0;
+    Object.keys(SN_FAMS).forEach(function(f){
+      Object.keys(SN_ESTS).forEach(function(e){
+        var E = SN_ESTS[e];
+        if (E.only && E.only !== f) return;
+        if (E.approx) return;                 /* the median's form is asymptotic */
+        var p = { th:f === 'normal' ? 1.2 : SN_FAMS[f].th0, sd:1.4 };
+        if (f === 'bern') p.th = 0.35;
+        var D = snSampDist(f, p, 11, e, 14000, 20260819);
+        if (!D.truth) return;
+        pairsChecked++;
+        flag('SN_ESTS', f + '/' + e, 'declared E[theta-hat] against 14 000 experiments',
+             true, Math.abs(D.stats.mean - D.truth.mean) < 4 * D.biasSE,
+             'declared ' + fx(D.truth.mean) + ' measured ' + fx(D.stats.mean) +
+             ' se ' + fx(D.biasSE));
+        flag('SN_ESTS', f + '/' + e, 'declared Var[theta-hat] against the same',
+             true, Math.abs(D.vari - D.truth.vari) < 4 * D.varSE,
+             'declared ' + fx(D.truth.vari) + ' measured ' + fx(D.vari) +
+             ' se ' + fx(D.varSE));
+        /* `target` is what the estimator is FOR, and it is a separate claim
+           from truth(): an estimator can hit its declared mean while that mean
+           is the wrong quantity to be estimating */
+        flag('SN_ESTS', f + '/' + e, 'declared unbiased <=> truth().mean is the target',
+             Math.abs(D.truth.mean - D.target) < 1e-12,
+             Math.abs(D.stats.mean - D.target) < 4 * D.biasSE,
+             'target ' + fx(D.target) + ' E[est] ' + fx(D.truth.mean));
+      });
+    });
+    /* MASTER-PLAN 3.3a(a): a loop that found no pairs would pass silently */
+    flag('SN_ESTS', '-', 'the sweep found pairs with closed forms to check',
+         true, pairsChecked >= 8, pairsChecked + ' pairs');
+
+    /* -- SN_MEAN_CIS: the coverage each recipe actually delivers ------------- */
+    Object.keys(SN_MEAN_CIS).forEach(function(k){
+      var R = snCoverMean(k, 6, 0.95, 16000, 9001, 2, 3);
+      var want = (k === 'zPlugin') ? 2 * snTCdf(snZQuant(0.975), 5) - 1 : 0.95;
+      num('SN_MEAN_CIS', k, 'coverage against its own closed form', want, R.cover,
+          4 * R.se / Math.max(1e-300, want),
+          'se ' + fx(R.se) + '; the plug-in form is 2F_t(z)-1, the others the level');
+      /* the plug-in interval is in the table BECAUSE it falls short; if it ever
+         stopped falling short the wing's whole argument would be wrong */
+      if (k === 'zPlugin')
+        flag('SN_MEAN_CIS', k, 'and it really is short of the stated level at n = 6',
+             true, want < 0.93, fx(want));
+      else
+        flag('SN_MEAN_CIS', k, 'and it really does deliver the stated level',
+             true, Math.abs(R.cover - 0.95) < 4 * R.se, fx(R.cover));
+    });
+    /* the t interval must be the wider one -- that is what it is buying */
+    (function(){
+      var t = snCoverMean('t', 6, 0.95, 16000, 9001, 2, 3);
+      var z = snCoverMean('zPlugin', 6, 0.95, 16000, 9001, 2, 3);
+      flag('SN_MEAN_CIS', 't', 'the t interval is wider than the plug-in one',
+           true, t.width > z.width, fx(t.width) + ' vs ' + fx(z.width));
+    })();
+
+    /* -- SN_PROP_CIS: exact coverage, summed over the whole sample space ----- */
+    Object.keys(SN_PROP_CIS).forEach(function(m){
+      var n = 20, lev = 0.95;
+      var S = snCoverPropSweep(m, n, lev, 400);
+      var mn = S.reduce(function(a, q){ return Math.min(a, q.y); }, 1);
+      var mean = S.reduce(function(a, q){ return a + q.y; }, 0) / S.length;
+      push('SN_PROP_CIS', m, 'measured: worst and mean coverage over p, n = 20',
+           SN_PROP_CIS[m].n.split('  ')[0], fx(mn) + ' / ' + fx(mean), 0, true, '');
+      /* the exact sum against a simulation of the same thing -- two routes */
+      var ex = snCoverPropExact(m, n, 0.23, lev);
+      var sim = snCoverPropSim(m, n, 0.23, lev, 30000, 6060);
+      flag('SN_PROP_CIS', m, 'the exact finite sum matches 30 000 simulated runs',
+           true, Math.abs(ex - sim.cover) < 4 * Math.max(sim.se, 1e-4),
+           'exact ' + fx(ex) + ' sim ' + fx(sim.cover) + ' se ' + fx(sim.se));
+      /* Every interval must be ORDERED. Staying inside [0,1] is a separate
+         claim and only two of the four make it: the Wald interval running past
+         0 or 1 is a real and well-known defect of it, not of this code, and the
+         first version of this check called it a failure. So containment is
+         asserted where it is promised and ESCAPE is asserted where it is the
+         point — a Wald interval that stopped leaving [0,1] would mean the
+         formula had changed underneath the wing's argument. */
+      var badOrder = 0, outside = 0, k;
+      for (k = 0; k <= n; k++) {
+        var I = SN_PROP_CIS[m].make(k, n, lev);
+        if (!(I[0] <= I[1])) badOrder++;
+        if (I[0] < -1e-12 || I[1] > 1 + 1e-12) outside++;
+      }
+      resid('SN_PROP_CIS', m, 'all 21 intervals are ordered, lo <= hi', badOrder, 0, '');
+      if (m === 'wilson' || m === 'clopper')
+        resid('SN_PROP_CIS', m, 'declared to stay inside [0,1]: none of the 21 leaves it',
+              outside, 0, '');
+      else
+        flag('SN_PROP_CIS', m, 'runs outside [0,1], which is one of its known defects',
+             true, outside > 0, outside + ' of 21 intervals leave the unit interval');
+      /* the guarantee that names Clopper-Pearson, and only it */
+      if (m === 'clopper')
+        flag('SN_PROP_CIS', m, 'declared exact: coverage never falls below the level',
+             true, mn >= lev - 1e-12, 'worst ' + fx(mn));
+      if (m === 'wald')
+        flag('SN_PROP_CIS', m, 'declared to collapse at k = 0: zero width there',
+             true, SN_PROP_CIS.wald.make(0, n, lev)[1] -
+                   SN_PROP_CIS.wald.make(0, n, lev)[0] === 0, '');
+    });
+    /* the comparison the wing is built on, as a claim rather than as prose */
+    (function(){
+      var w = snCoverPropSweep('wald', 20, 0.95, 400)
+                .reduce(function(a, q){ return Math.min(a, q.y); }, 1);
+      var s = snCoverPropSweep('wilson', 20, 0.95, 400)
+                .reduce(function(a, q){ return Math.min(a, q.y); }, 1);
+      flag('SN_PROP_CIS', 'wilson vs wald', 'Wilson beats Wald by an order of magnitude ' +
+           'in the worst case', true, s > 10 * w, 'wilson ' + fx(s) + ' wald ' + fx(w));
+    })();
+
+    /* -- SN_PRIORS: the LABEL declares the parameters ----------------------- */
+    Object.keys(SN_PRIORS).forEach(function(k){
+      var P = SN_PRIORS[k];
+      /* "Beta(20, 20)" in the display name is a claim about a and b, and it is
+         the kind that goes stale silently when a table is edited */
+      var mm = /Beta\(([^,]+),\s*([^)]+)\)/.exec(P.n);
+      if (mm) {
+        var pa = mm[1].trim() === '1/2' ? 0.5 : (mm[1].indexOf(String.fromCharCode(189)) >= 0 ? 0.5 : parseFloat(mm[1]));
+        var pb = mm[2].trim() === '1/2' ? 0.5 : (mm[2].indexOf(String.fromCharCode(189)) >= 0 ? 0.5 : parseFloat(mm[2]));
+        num('SN_PRIORS', k, 'the a in its own label', pa, P.a, 1e-12, P.n);
+        num('SN_PRIORS', k, 'the b in its own label', pb, P.b, 1e-12, P.n);
+      }
+      /* the prior integrates to 1 through the same grid the posterior uses --
+         which is the check that the arcsine substitution resolves Beta(1/2,1/2) */
+      var G0 = snPostGrid(P.a, P.b, 0, 0, 4000);
+      var tot = 0;
+      for (var i = 0; i < G0.N; i++) tot += G0.dens[i] * G0.w[i];
+      resid('SN_PRIORS', k, 'the prior integrates to 1 on the grid', tot - 1, 1e-9, '');
+      num('SN_PRIORS', k, 'and its mean is a/(a+b)', P.a / (P.a + P.b), G0.mean, 1e-6, '');
+      /* the posterior by grid against the conjugate form, at both ends of the
+         data range -- k = 0 is where an unbounded prior actually bites */
+      [[0, 9], [4, 9], [9, 9]].forEach(function(d){
+        var G = snPostGrid(P.a, P.b, d[0], d[1], 3000);
+        var B = snBetaPost(P.a, P.b, d[0], d[1]);
+        num('SN_PRIORS', k, 'posterior mean at ' + d[0] + '/' + d[1] +
+            ': quadrature against the conjugate form', B.mean, G.mean, 1e-6, '');
+      });
+      /* the blend identity, which is exact */
+      var Bl = snPostBlend(P.a, P.b, 7, 19);
+      resid('SN_PRIORS', k, 'the posterior mean IS the weighted average',
+            Bl.blend - Bl.exact, 1e-12, 'prior worth ' + fx(Bl.nPrior) + ' observations');
+    });
+
+    /* -- SN_PAIRS: what each preset is FOR ---------------------------------- */
+    Object.keys(SN_PAIRS).forEach(function(k){
+      var E = SN_PAIRS[k];
+      var ex = snPermExact(E.a, E.b);
+      var tt = snTTest2(E.a, E.b);
+      var sm = snPermSampled(E.a, E.b, 20000, 20260819);
+      push('SN_PAIRS', k, 'measured: exact p, sampled p, Welch p', E.n,
+           fx(ex.ok ? ex.p : NaN) + ' / ' + fx(sm.p) + ' / ' + fx(tt.p), 0, true, '');
+      flag('SN_PAIRS', k, 'the enumeration is affordable at these group sizes',
+           true, ex.ok, ex.total + ' relabellings');
+      if (ex.ok) {
+        flag('SN_PAIRS', k, 'sampled agrees with the full enumeration',
+             true, Math.abs(ex.p - sm.p) < 4 * Math.max(sm.se, 1 / 20000),
+             'exact ' + fx(ex.p) + ' sampled ' + fx(sm.p));
+        /* an exact p-value is a count over a count, so it is a whole multiple
+           of 1/total -- a route that had silently switched to sampling would
+           not be */
+        resid('SN_PAIRS', k, 'the exact p is a whole multiple of 1/total',
+              ex.p * ex.total - Math.round(ex.p * ex.total), 1e-9,
+              'total ' + ex.total);
+        /* the count in the entry's own prose is a claim about C(N, n1) */
+        var cm = /all (\d+) relabellings/.exec(E.why);
+        if (cm) num('SN_PAIRS', k, 'the relabelling count named in its own prose',
+                    parseFloat(cm[1]), ex.total, 1e-12, '');
+        var fm = /(\d+)\/(\d+) = ([0-9.]+)/.exec(E.why);
+        if (fm) num('SN_PAIRS', k, 'the smallest reachable p named in its prose',
+                    parseFloat(fm[3]), parseFloat(fm[1]) / parseFloat(fm[2]), 2e-3, '');
+      }
+      /* the property each preset exists to show, recomputed */
+      if (k === 'clear')
+        flag('SN_PAIRS', k, 'declared "every test agrees": both are significant',
+             true, ex.p < 0.05 && tt.p < 0.05, 'perm ' + fx(ex.p) + ' t ' + fx(tt.p));
+      if (k === 'none')
+        flag('SN_PAIRS', k, 'declared "no difference": neither test is significant',
+             true, ex.p > 0.1 && tt.p > 0.1, 'perm ' + fx(ex.p) + ' t ' + fx(tt.p));
+      if (k === 'outlier')
+        flag('SN_PAIRS', k, 'declared "two tests that disagree": they must actually disagree',
+             true, ex.p < 0.05 && tt.p > 0.1, 'perm ' + fx(ex.p) + ' t ' + fx(tt.p));
+      if (k === 'tiny')
+        flag('SN_PAIRS', k, 'declared "four against four"',
+             true, E.a.length === 4 && E.b.length === 4,
+             E.a.length + ' vs ' + E.b.length);
+    });
+
+    /* -- the two wash-out rates, which the wing states as a result ----------- */
+    (function(){
+      var W = snPriorWash(SN_PRIORS.sceptic, SN_PRIORS.keen, 0.5, 200000, 700);
+      var fit = function(key){
+        var sx = 0, sy = 0, sxx = 0, sxy = 0, m = 0;
+        W.forEach(function(q){
+          var v = (key === 'tv') ? q.y : Math.abs(q.meanA - q.meanB);
+          if (q.x < 20 || !(v > 0)) return;
+          var X = Math.log(q.x), Y = Math.log(v);
+          sx += X; sy += Y; sxx += X * X; sxy += X * Y; m++;
+        });
+        return (m * sxy - sx * sy) / (m * sxx - sx * sx);
+      };
+      num('SN_PRIORS', 'wash', 'the posterior MEANS converge like 1/n', -1, fit('mean'), 0.06, '');
+      num('SN_PRIORS', 'wash', 'the DISTRIBUTIONS converge only like 1/sqrt(n)',
+          -0.5, fit('tv'), 0.12, '');
+      flag('SN_PRIORS', 'wash', 'so the two rates genuinely differ',
+           true, fit('mean') < fit('tv') - 0.35,
+           'mean ' + fx(fit('mean')) + ' tv ' + fx(fit('tv')));
+      var bad2 = 0;
+      W.forEach(function(q){ if (!q.exact) bad2++; });
+      resid('SN_PRIORS', 'wash', 'every swept point sits at exactly the requested proportion',
+            bad2, 0, W.length + ' points');
+    })();
   })();
 
   } catch (ex) {
