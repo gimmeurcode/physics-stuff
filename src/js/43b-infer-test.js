@@ -573,11 +573,31 @@ const SN_PRIORS = {
        not announce itself either. The cell count therefore grows with √n, and
        `cells` in the result says what was actually used so a caller can check
        rather than assume. */
+/* The three numbers that decide the grid, named rather than buried, because
+   PROSE USED TO RESTATE THEM AS LITERALS and the restatement went stale the
+   moment the count stopped being fixed — seven sentences across the stage and
+   the demo list still said "2000 cells" and "700 cells" after the count began
+   growing with √n. Anything that wants to tell a reader the size asks
+   `snGridN` or reads `cells` off the result; nothing spells a digit again. */
+const SN_GRID_MIN = 2000;      /* floor: enough for the small-n pictures    */
+const SN_GRID_MAX = 20000;     /* ceiling: past this a frame costs too much */
+const SN_GRID_PER = 120;       /* cells per unit of √n — the posterior's own
+                                  width is ~1/(2√n), so this many cells per
+                                  √n keeps ~60 of them across the bulk       */
+/* how many cells `snPostGrid` will actually use, without running it — so a
+   slider's ctlWhy can state the real limit instead of asserting a stale one */
+const snGridN = (n, floor) =>
+  Math.min(SN_GRID_MAX, Math.max(floor || SN_GRID_MIN,
+                                 Math.ceil(SN_GRID_PER * Math.sqrt(n + 1))));
+/* the n past which the ceiling binds and the posterior stops gaining cells:
+   beyond it the bulk spans a shrinking number of them, which is the honest
+   reason to hold a trials slider rather than "the grid has 2000 cells" */
+const snGridSatN = () => Math.ceil(Math.pow(SN_GRID_MAX / SN_GRID_PER, 2)) - 1;
+
 function snPostGrid(a0, b0, k, n, N){
   /* enough cells that the posterior's own width spans a good many of them.
      The substitution coarsens the middle by π/2, which is included. */
-  const want = Math.ceil(120 * Math.sqrt(n + 1));
-  const M = Math.min(20000, Math.max(N || 2000, want));
+  const M = snGridN(n, N);
   const xs = new Array(M), w = new Array(M), lg = new Array(M);
   for(let i = 0; i < M; i++){
     const t = (i + 0.5) / M;
@@ -692,6 +712,10 @@ function snPriorWash(pA, pB, prop, nMax, N){
     let tv = 0;
     for(let i = 0; i < GA.N; i++) tv += Math.abs(GA.dens[i] - GB.dens[i]) * GA.w[i];
     out.push({ x:n, y:0.5 * tv, meanA:GA.mean, meanB:GB.mean, k,
+               /* the cell count is not fixed along this sweep — it grows with
+                  √n — so each point carries the one it was computed at, and
+                  any prose about the resolution reads it rather than guessing */
+               cells:GA.cells,
                /* the proportion actually achieved, so a point that could not sit
                   at the requested one is visible rather than silent */
                got:k / n, exact:Math.abs(k / n - prop) < 1e-12 });

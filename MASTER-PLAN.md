@@ -28,7 +28,7 @@ carried forward.
 (first full-gate day was 2026-08-15).**
 `build` 308
 modules · `smoke` OK (wings=48, stages=226,
-seelinks=148) · `runtests` **6941 passed, 0 failed** · `runstagetests` **2141
+seelinks=148) · `runtests` **6948 passed, 0 failed** · `runstagetests` **2149
 passed, 0 failed** · `runall` demos=820
 controls=9645 **caught=0 OK** · `auditsides` falsescale=0 presetgap=0 **OK**
 (both ratchets at zero since 2026-08-15) · `auditresid` **findings=0**
@@ -189,9 +189,9 @@ The date belongs on one line above the table, not on fourteen rows inside it.
 | source modules | **308** | `./build.ps1` |
 | harness scripts | **30** | `Get-ChildItem *.ps1` — **that command is the authority, not this number.** Every one must appear in §1.6 and §4.2 — `./auditdocs.ps1` checks |
 | deployable size | **7 792 704 bytes** (7.79 MB) | `./measure.ps1`. **`build.ps1` prints a smaller figure, which is a CHARACTER count** — the Unicode maths symbols cost ~57 KB more as UTF-8 bytes. Both are far inside any upload limit. **A fresh `git clone` builds ~15.6 KB smaller**: `.gitattributes` normalises line endings to LF and 54 of the source files carried CRLF when that was measured on 2026-08-14, which is 15 627 carriage returns. The app is identical — but this is why the row says *measure*, not *quote* |
-| source lines | ~111147 (all of `src/`) | `./measure.ps1`; `./map.ps1` reports `src/js` alone |
-| unit tests | **6941 passed, 0 failed** | `./runtests.ps1` |
-| stage-level assertions | **2141, 0 failed** | `./runstagetests.ps1`. Deliberately worded as *assertions*: `auditdocs` reads the phrase `N passed` as the unit-test count wherever it appears, so the natural wording made this row contradict the one above it |
+| source lines | ~111283 (all of `src/`) | `./measure.ps1`; `./map.ps1` reports `src/js` alone |
+| unit tests | **6948 passed, 0 failed** | `./runtests.ps1` |
+| stage-level assertions | **2149, 0 failed** | `./runstagetests.ps1`. Deliberately worded as *assertions*: `auditdocs` reads the phrase `N passed` as the unit-test count wherever it appears, so the natural wording made this row contradict the one above it |
 | `mkPlot` call sites | **331** | `./measure.ps1` |
 | permalink round trips | **819 of 819 exact**, 11 demos measured stochastic | `./auditlink.ps1` |
 | declared table claims | **1866, bad=0** | `./auditclaims.ps1` |
@@ -1530,9 +1530,10 @@ existing engine supplies is one route, and the work is the second one.**
 
 ### 3.3b What C14 cost, and the five things worth carrying to C19
 
-**Eight defects. Two came from the gates that already existed, four from the
-gates written for this wing, and two from tests of my own that failed the first
-time they ran.** Not one came from reading the code. Five generalise.
+**Nine defects. Two came from the gates that already existed, four from the
+gates written for this wing, two from tests of my own that failed the first time
+they ran — and the ninth from re-reading the wing against its own fixes, which
+is the only one reading the code would ever have found.** Six generalise.
 
 1. **A Monte Carlo needs its own verdict formatter, and `fmtAgree` is the wrong
    one.** Every other wing compares two routes by asking whether the gap is at
@@ -1604,6 +1605,47 @@ demo and nowhere else. The fix is to carry the typed route as an **option on a
 picker**, which makes it reachable by pointer, by keyboard and by the gate at
 once. Check this for any new reader-supplied input: *if the default state cannot
 reach it, no gate can.*
+
+**6. A ninth defect, found on 2026-08-20 by re-reading the wing against its own
+fixes: the prose still described the program the fixes replaced.** Item 2 above
+changed `snPostGrid` from a fixed grid to one that follows √n over an
+arcsine-spaced abscissa. **Seven sentences did not follow it** — two help panels,
+two derivation `note`s, a `drvStep` and the demo list still said "2000 cells" or
+"700 cells", and the trials slider's `ctlWhy` still justified its limit with
+"the grid has 2000 cells and past this the posterior is narrower than one of
+them", a reason that had stopped existing. Worse, the paragraph explaining the
+quadrature still carried the **exact claim item 2 was written to repudiate** —
+"Midpoint never looks at them" — so the page taught the misconception the code
+had been corrected for. An eighth site on `snLike` told the reader the MLE was
+"found by walking a grid of 1400 points" while the readout beside it reported a
+peak refined by parabola or bisection.
+
+Three things generalise, and the third is the one worth carrying:
+
+- **The engine already returned `cells` so a caller could check rather than
+  assume, and no caller ever called it.** A value provided for a purpose is not
+  thereby used for it; grep the accessor before believing the purpose is served.
+- **Every gate was green, and correctly so.** The arithmetic was right; the
+  defect was that the page described a different program from the one it was
+  running. No gate reads a page for that, which is why this survived a full
+  audit — and why the class needs its own check rather than a sharper eye.
+- **A gate for it must render TWICE.** A literal is indistinguishable from a
+  correct number in one render; it is only wrong *relative* to a second. The
+  check renders each panel at n = 25 and n = 5000 and asserts the figure both
+  **matches** the engine and **moves**. Corrupting the note back to `2000` fails
+  only the "moves" half — the half that exists for exactly this — which is what
+  makes the pair the right shape rather than either alone.
+
+Fixed by naming the constants (`SN_GRID_MIN`/`MAX`/`PER`) and exposing
+`snGridN(n, floor)` and `snGridSatN()`, so a sentence interpolates the parameter
+instead of spelling it; `snPriorWash` now carries `cells` per point, because
+along that sweep the count is not one number. `tests.js` pins the accessor's
+three regimes and asserts `snPostGrid` agrees with it — and pinning
+`snGridSatN` **failed on its first run**, because "the first n whose √n demand
+exceeds the ceiling" and "the first n whose count equals the ceiling" differ by
+one step: the rule reaches exactly 20000 once without being clamped. The
+definition had to be stated precisely because it is a sentence the reader is
+shown, not an internal integer.
 
 **The tier-2 prediction, and where it broke.** "Extends an existing engine by a
 named function or two" held for C16 and did not hold here. `43-probstat.js`

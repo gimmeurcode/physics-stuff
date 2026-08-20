@@ -15942,9 +15942,49 @@ ok('and the table itself still has exactly the five orders it always had',
          Math.abs(Gn.vari / Bn.vari - 1) < 1e-4,
          'cells ' + Gn.cells + ' mean ' + Gn.mean + ' vs ' + Bn.mean +
          ' var ratio ' + Gn.vari / Bn.vari);
+      /* asked of the accessor, not of a restated 120/20000 — a gate that
+         re-spells a constant goes stale exactly as the prose did */
       ok('snPostGrid: and it grew its cell count to do so, rather than trusting 700',
-         Gn.cells >= Math.min(20000, 120 * Math.sqrt(nn)), Gn.cells);
+         Gn.cells === snGridN(nn, 700), Gn.cells + ' vs ' + snGridN(nn, 700));
     });
+    /* ---- the accessor the panels and the ctlWhy read, pinned ---------------
+       Prose that names the grid size now ASKS for it. That makes snGridN part
+       of the contract rather than an implementation detail, so its three
+       regimes — floor, √n, ceiling — are pinned here, and `snPostGrid` is
+       asserted to agree with it rather than the two drifting apart. */
+    ok('snGridN: below the crossover the floor governs',
+       snGridN(1, SN_GRID_MIN) === SN_GRID_MIN && snGridN(25, SN_GRID_MIN) === SN_GRID_MIN,
+       snGridN(25, SN_GRID_MIN));
+    ok('snGridN: in the middle it follows √n',
+       snGridN(5000, SN_GRID_MIN) === Math.ceil(SN_GRID_PER * Math.sqrt(5001)),
+       snGridN(5000, SN_GRID_MIN));
+    ok('snGridN: and it never exceeds the ceiling',
+       snGridN(1e9, SN_GRID_MIN) === SN_GRID_MAX, snGridN(1e9, SN_GRID_MIN));
+    ok('snGridN: it is monotone in n, so more data never buys a coarser grid',
+       [1, 10, 100, 1000, 10000, 100000, 1e7].every(function(v, i, a){
+         return i === 0 || snGridN(v, SN_GRID_MIN) >= snGridN(a[i - 1], SN_GRID_MIN);
+       }), '');
+    /* snGridSatN is what the trials slider's ctlWhy states as its reason, so a
+       wrong value there is a wrong sentence on the page, not just a wrong int.
+
+       It is the smallest n at which the √n rule ASKS for more than the ceiling
+       allows — which is not the same as the smallest n whose count equals the
+       ceiling, because the rule reaches exactly 20000 one step earlier without
+       being clamped. The first draft of this assertion tested the second
+       reading and failed; the definition is the one worth stating precisely,
+       since it is the sentence the reader is shown. */
+    var rawWant = function(n){ return Math.ceil(SN_GRID_PER * Math.sqrt(n + 1)); };
+    ok('snGridSatN: it is the first n whose √n demand exceeds the ceiling',
+       rawWant(snGridSatN()) > SN_GRID_MAX && rawWant(snGridSatN() - 1) <= SN_GRID_MAX,
+       snGridSatN() + ': ' + rawWant(snGridSatN() - 1) + ' then ' + rawWant(snGridSatN()));
+    ok('snGridSatN: and the delivered count is pinned at the ceiling from there on',
+       snGridN(snGridSatN(), SN_GRID_MIN) === SN_GRID_MAX &&
+       snGridN(10 * snGridSatN(), SN_GRID_MIN) === SN_GRID_MAX, '');
+    ok('snGridN: snPostGrid uses exactly what the accessor promises',
+       [[1, 1, 0, 1], [0.5, 0.5, 3, 40], [20, 20, 900, 3000]].every(function(q){
+         return snPostGrid(q[0], q[1], q[2], q[3], SN_GRID_MIN).cells ===
+                snGridN(q[3], SN_GRID_MIN);
+       }), '');
     close('snBetaPost: the posterior is Beta(a+k, b+n−k)', Bt.a, a0 + k, 1e-12);
     /* the credible interval, two routes */
     var Ig = snCredibleGrid(G, 0.95), Ib = snCredibleBeta(Bt.a, Bt.b, 0.95);

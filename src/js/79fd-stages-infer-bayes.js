@@ -146,8 +146,16 @@ STAGES.snBayes = {
                  ST.n = Math.max(1, Math.round(v));
                  if(ST.k > ST.n) ST.k = ST.n;
                }, v => Math.round(v) + ' trials',
+               /* The reason is READ OFF the engine's own constants rather than
+                  restated: this ctlWhy used to assert "the grid has 2000 cells",
+                  which stopped being true the day the count began following √n
+                  and went on being displayed for as long as it was a literal. */
                () => ({ lo:1, hi:100000,
-                 why:'Held here. The grid has 2000 cells and past this the posterior is narrower than one of them, so the picture stops being a picture.' }));
+                 why:'Held here. The grid follows √n so the posterior keeps its resolution as n ' +
+                     'grows — but only up to ' + SN_GRID_MAX + ' cells, which it reaches at ' +
+                     'n ≈ ' + snGridSatN() + '. Past that the posterior goes on narrowing like ' +
+                     '1/√n while the grid does not, and by this many trials the picture is ' +
+                     'a spike a few cells wide.' }));
     wireSlider('snBl', () => ST.level, v => { ST.level = v; },
                v => fmtNum(100 * v, 4) + '%', snLimLevel);
     wireSlider('snBpr', () => ST.prop, v => { ST.prop = v; }, v => 'p = ' + fmtNum(v, 3),
@@ -270,14 +278,21 @@ STAGES.snBayes = {
       ${kv('the two, compared', fmtAgree(G.mean, B.mean))}
       ${kv('variance, grid against formula', fmtAgree(G.vari, B.vari))}
       ${kv('the posterior is', 'Beta(' + fmtNum(B.a, 5) + ', ' + fmtNum(B.b, 5) + ')')}
-      <p class="help">The grid route multiplies the prior by the likelihood at 2000 values of p and
-      divides by the area underneath — arithmetic that would work for <i>any</i> prior, including
-      ones with no closed form, and which is how the calculation is really done outside the two or
-      three textbook cases. The conjugate formula works only because a Beta prior and a binomial
-      likelihood multiply to a Beta. They agree to eight figures, which checks both.</p>
-      <p class="help">The grid uses the <b>midpoint</b> rule rather than Simpson, and deliberately:
-      the Jeffreys prior is unbounded at 0 and 1 — integrable, but a rule that evaluates the
-      endpoints returns an infinity there. Midpoint never looks at them.</p>
+      <p class="help">The grid route multiplies the prior by the likelihood at ${N.G.cells} values of
+      p and divides by the area underneath — arithmetic that would work for <i>any</i> prior,
+      including ones with no closed form, and which is how the calculation is really done outside the
+      two or three textbook cases. The conjugate formula works only because a Beta prior and a
+      binomial likelihood multiply to a Beta. They agree to eight figures, which checks both.</p>
+      <p class="help"><b>Two things a plain uniform grid gets wrong here</b>, and both are quiet.
+      The Jeffreys prior behaves like p<sup>−1/2</sup> at 0 — integrable, but infinite. A midpoint
+      rule never <i>evaluates</i> the endpoint, so it returns a finite number, and that is exactly
+      why it is dangerous: not looking at a singularity is not the same as resolving it, and the
+      posterior mean came back 2.2% wrong at k = 0 with nothing raised and no infinity printed. So
+      the cells are laid out in t with p = sin²(πt/2), whose Jacobian vanishes at both ends at
+      precisely the rate an inverse square root diverges. And a posterior after n observations is
+      only about 1/(2√n) wide, so a <i>fixed</i> count stops resolving it as n grows: the count
+      follows √n instead, and the ${N.G.cells} above is the one actually used rather than a number
+      quoted from the source.</p>
     </div>
     <div class="card tight"><div class="ttl">The estimate, and what the prior was worth</div>
       ${kv('the data alone say', fmtSig(N.mle, 6) + '  = ' + st.k + '/' + st.n)}
@@ -495,8 +510,12 @@ STAGES.snBayes = {
         drvSay('and a note on how this curve was computed',
           'k must be a whole number, so an observed proportion of exactly ½ is unavailable at odd n. The sweep therefore steps in whichever size makes the requested proportion attainable — 2 here at p = ½, 5 at p = 2/5. Without that the curve alternates up and down at small n, and it looks like noise in the distance when it is really a change in the data being compared.')
       ],
-      note:'Both posteriors are computed on a grid of 700 cells by the midpoint rule, so the ' +
-           'distance is an integral over the whole shape rather than a comparison of summaries.'
+      /* the count is NOT constant along this sweep — it follows √n — so the two
+         ends of the range are read off the points themselves */
+      note:'Both posteriors are computed on the same arcsine-spaced grid, so the distance is an ' +
+           'integral over the whole shape rather than a comparison of summaries. The grid follows ' +
+           '√n: ' + N.W[0].cells + ' cells at n = ' + N.W[0].x + ', ' +
+           N.W[N.W.length - 1].cells + ' at n = ' + N.W[N.W.length - 1].x + '.'
     };
     const G = N.G, B = N.B, Bl = N.Bl;
     return {
@@ -510,7 +529,7 @@ STAGES.snBayes = {
         drvSay('the proportionality is doing all the work that is left',
           'The product of prior and likelihood is not a density — it does not enclose unit area — so it must be divided by its own integral. That integral is the only hard part of Bayesian computation, and in general it is a high-dimensional one that has to be sampled rather than evaluated. Here it is one dimension and the grid does it directly.'),
         drvStep('so the posterior is reached twice',
-          `∫ f(${dv('p')})·L(${dv('p')}) d${dv('p')} on 2000 cells, against (a${dop('+')}k, b${dop('+')}n${dop('−')}k)`,
+          `∫ f(${dv('p')})·L(${dv('p')}) d${dv('p')} on ${G.cells} cells, against (a${dop('+')}k, b${dop('+')}n${dop('−')}k)`,
           `mean ${fmtSig(G.mean, 8)} against ${fmtSig(B.mean, 8)} — ` + fmtAgree(G.mean, B.mean)),
         drvSay('and the conjugate form says exactly what a prior is',
           'Beta(a, b) meeting k successes in n gives Beta(a + k, b + n − k): the prior\'s parameters are simply added to the counts. So a Beta(20, 20) prior is literally worth 38 prior observations, and the posterior mean is the weighted average of the prior mean and the data\'s proportion with those counts as the weights. There is nothing metaphorical about "how much the prior is worth" — it is a number of observations.'),
@@ -525,8 +544,10 @@ STAGES.snBayes = {
         drvSay('what it costs',
           'A prior. That is a real cost and this wing does not pretend otherwise: the wash-out view measures how long it takes to stop mattering, and the answer is "not long, unless the prior was extreme". What is bought is the ability to say a probability about the quantity of interest, which no amount of frequentist machinery will ever provide.')
       ],
-      note:'The grid is 2000 midpoint cells over (0, 1); the conjugate formula shares nothing with ' +
-           'it but the data. Both credible intervals are equal-tailed.'
+      note:'The grid is ' + G.cells + ' cells over (0, 1), spaced by p = sin²(πt/2) so the ' +
+           'Jeffreys prior\'s endpoint singularities integrate cleanly, and its count follows √n ' +
+           'so the posterior keeps its resolution as the data grow; the conjugate formula shares ' +
+           'nothing with it but the data. Both credible intervals are equal-tailed.'
     };
   }
 };

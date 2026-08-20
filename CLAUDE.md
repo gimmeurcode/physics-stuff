@@ -149,7 +149,7 @@ presets with the widest dynamic range, which is why only a preset sweep finds it
    scope means a single stray character takes the whole app down, and the unit
    suite only sees the engine section (10-49) and would not notice. Then
    `./runtests.ps1` must print `0 failed`
-   (6941 unit tests), and `./runstagetests.ps1` must print `0 failed` — it calls
+   (6948 unit tests), and `./runstagetests.ps1` must print `0 failed` — it calls
    stage helpers **directly** inside the booted bundle, which is the only way the
    stages' own arithmetic (modules ≥ 50, invisible to `runtests`) is tested; a
    stage defect class fixed adds its two-route test to `tests-stages.js` the

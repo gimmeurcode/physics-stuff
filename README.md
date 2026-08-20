@@ -335,7 +335,7 @@ Published copy: https://claude.ai/code/artifact/289811c9-07a8-4419-87cc-b4b55e04
 - `js/49b-signal-filter.js` — and what it takes to CHANGE one: difference-equation
   filters with two routes to their response, FIR design by windowed sinc, group delay
   three ways, and stability from the roots of the denominator — pure, unit-tested.
-- `tests.js` — 6941 unit tests: parser, symbolic differentiation, the operators,
+- `tests.js` — 6948 unit tests: parser, symbolic differentiation, the operators,
   physics writers, RK4 mechanics, quantum eigen-relations, the Schrödinger equation
   checked numerically against the plotted packet, barrier unitarity/continuity,
   SEMF landmarks, field-tensor invariants, and all four Maxwell equations verified

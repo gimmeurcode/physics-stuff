@@ -425,7 +425,15 @@ STAGES.snLike = {
       `<p class="help"><b>${N.F.n}.</b> ${N.F.note}</p>
       <p class="help">The curve is the log-likelihood of <i>one</i> sample of ${st.n} observations —
       the same sample throughout, fixed by the seed. Its peak is the maximum likelihood estimate,
-      found here by walking a grid of 1400 points, which knows no formula; the formula's answer is
+      found here by walking a grid of ${N.C.pts.length - 1} points, which knows no formula${
+        N.C.how === 'parabola'
+          ? ', and then fitting a parabola through the best three — a raw grid maximum is only ' +
+            'good to one step, so comparing it against the formula would report the grid rather ' +
+            'than any disagreement'
+          : N.C.how === 'edge'
+            ? ', and then bisecting for the edge, because this family\'s maximum is a cliff rather ' +
+              'than a stationary point and no parabola fits through it'
+            : ''}; the formula's answer is
       marked beside it. Its <b>curvature at the peak</b> is the information, and it is what a
       package is reporting when it prints a standard error next to an estimate.</p>
       ${N.F.regular ? '' : `<p class="help"><b>This family breaks the rules the other four obey.</b>

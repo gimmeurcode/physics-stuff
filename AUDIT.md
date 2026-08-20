@@ -7472,3 +7472,67 @@ incomplete.
 **Not run, and why:** auditcontrast (no colour changed), auditmarks (no
 `pvFeatures` call), auditartifact (the wrapper is untouched). MASTER-PLAN 4.3a
 rule 5.
+
+## 2026-08-20 · Programme C wing C14 — statistical inference, and the prose that outlived its fix
+
+Eight modules, five stages (`snEst`, `snLike`, `snCI`, `snTest`, `snBayes`), 26
+experiments and a theory essay with nine statement cards. A seeded RNG
+throughout — nothing in the wing calls `Math.random()`, so every printed number
+is reproducible and lives in the permalink. The regularized incomplete beta the
+site lacked gives the t, Beta and binomial CDFs at once; the four interval
+recipes are checked by **exact finite-sum coverage** rather than by simulation.
+
+**Eight defects were found while building it, none by reading the code** —
+recorded in full in `MASTER-PLAN.md` §3.3b. Two came from gates that already
+existed, four from gates written for this wing, two from tests that failed the
+first time they ran.
+
+**A ninth was found on 2026-08-20 by re-reading the wing against its own
+fixes, and it is the one worth recording here**, because every gate was green
+while it stood. The fix for defect 2 changed `snPostGrid` from a fixed 2000-cell
+uniform grid to one that follows √n over an arcsine-spaced abscissa. **The prose
+did not follow it.** Seven sentences — two help panels, two derivation-ladder
+`note`s, a `drvStep` and the demo list — still said "2000 cells" or "700 cells";
+the trials slider's `ctlWhy` still justified its limit by a fact that had ceased
+to be one; and the paragraph explaining the quadrature still carried the exact
+claim the fix was written to repudiate, "Midpoint never looks at them", so the
+page taught the misconception the code had been corrected for. An eighth site on
+`snLike` described the MLE as "found by walking a grid of 1400 points" while the
+readout beside it reported a peak refined by parabola or bisection.
+
+The arithmetic was right throughout. The defect was that **the page described a
+different program from the one it was running**, and no gate reads a page for
+that — which is why it survived the wing's own eight-defect sweep and a
+full-site audit. `snPostGrid` had returned `cells` since the fix, for exactly
+this purpose, and nothing had ever called it.
+
+**Fixed by making the parameter askable rather than spellable:** `SN_GRID_MIN`,
+`SN_GRID_MAX`, `SN_GRID_PER`, `snGridN(n, floor)` and `snGridSatN()`, with every
+sentence interpolating the value and `snPriorWash` carrying `cells` per point
+(along that sweep the count is not one number). **The gate renders twice.** A
+literal cannot be told from a correct number in a single render — it is only
+wrong relative to a second — so `tests-stages.js` renders the panels at n = 25
+and n = 5000 and asserts the figure both matches the engine **and moves**.
+Corrupting the note back to `2000` was run and **failed only the "moves"
+half**, which is the half that exists for this class. `tests.js` pins the
+accessor's three regimes and asks it rather than re-spelling `120` and `20000`,
+since a gate that restates a constant rots exactly as the prose did — and
+pinning `snGridSatN` **failed on its first run**, because "the first n whose √n
+demand exceeds the ceiling" and "the first n whose count equals the ceiling"
+differ by one step.
+
+**Green on:** smoke (wings=48, stages=226, seelinks=148), runtests 6948/0,
+runstagetests 2149/0, runall demos=820 controls=9645 caught=0 jsErrors=0
+calcNaN=0, auditclaims 1866 bad=0, auditsides falsescale=0 presetgap=0
+(weak=35, capped=7), auditresid findings=0 (noscale=8, read by hand), auditlink
+findings=0 across 820 trips, auditpanel bad=0, audittext + auditscan AUDIT OK,
+auditartifact states=3 bad=0, auditdocs bad=0.
+
+**Not run, and why:** auditcontrast (no colour changed), auditmarks (no
+`pvFeatures` call), auditzoom/auditframe/auditsize/auditviewport (nothing
+touched `mkPlot`, a viewport or a layout), auditticks (no canvas text changed —
+every edit was HTML panel prose), auditperf (no `frame()` changed),
+auditcustom (no typed box or its wiring changed), auditkeys (no keyboard layer
+changed), auditderive (the ladder's *content* changed, not its structure; the
+two changed rungs are covered by the new two-render check). MASTER-PLAN 4.3a
+rule 5.

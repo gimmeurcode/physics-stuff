@@ -41,7 +41,7 @@ vector-calculus.html   (5 409 933 bytes on 2026-08-14, the deployable artifact)
 ```powershell
 ./build.ps1        # src/ -> vector-calculus.html          (~1 s)
 ./smoke.ps1        # does the bundle parse and boot at all?              (~10 s)
-./runtests.ps1     # 6941 engine unit tests, must say "0 failed"   (~30 s)
+./runtests.ps1     # 6948 engine unit tests, must say "0 failed"   (~30 s)
 ./runstagetests.ps1 # stage helpers called directly, two routes each (~30 s)
 ./measure.ps1      # the headline counts, from the booted app         (~15 s)
 ./auditdocs.ps1    # do these documents still describe the site?     (~1 min)

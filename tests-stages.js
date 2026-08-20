@@ -4347,6 +4347,77 @@ function sok(name, cond, detail){
         missed === 0, missed);
   })();
 
+  /* ---- PROSE THAT NAMES A COMPUTED PARAMETER MUST READ IT, NOT RESTATE IT --
+     The grid under the posterior stopped being a fixed 2000 cells when the
+     count began following √n, and seven sentences across the stage panel, the
+     derivation ladder and the demo list went on saying "2000 cells" and "700
+     cells" for as long as they were literals. Nothing could see it: the
+     arithmetic was right, so runstagetests, auditsides and auditclaims were all
+     green, and the only defect was that the page described a different program
+     from the one it was running.
+
+     A literal cannot be distinguished from a correct number by reading one
+     render — it is only wrong RELATIVE to a second one. So the gate renders
+     each panel at two sizes and asserts the figure both MATCHES the engine and
+     MOVES. A restated constant fails the second half however right it looks.
+
+     Corrupted once before being trusted: pinning the derive note back to a
+     literal 2000 failed the "moves" assertion at n = 5000, and pinning it to
+     the wrong engine call failed the "matches" one. */
+  (function(){
+    var savedST = ST;
+    /* the count the engine will use, asked without running the quadrature */
+    var wantSmall = snGridN(25, 2000), wantBig = snGridN(5000, 2000);
+    sok('snBayes: the two probe sizes really do want different grids',
+        wantSmall !== wantBig, wantSmall + ' vs ' + wantBig);
+
+    /* every integer of three digits or more that the rendered text contains */
+    var ints = function(s){
+      return (String(s).replace(/<[^>]*>/g, ' ').match(/\d[\d,]{2,}/g) || [])
+        .map(function(t){ return parseInt(t.replace(/,/g, ''), 10); });
+    };
+    var renderBayes = function(n){
+      var st = {}; STAGES.snBayes.enter(st, { view:'post', prior:'jeff', k:14, n:n });
+      var d = STAGES.snBayes.derive(st);
+      var txt = d.note + ' ' + d.steps.map(function(s){
+        return [s.lbl, s.eq, s.sub, s.prose].filter(Boolean).join(' ');
+      }).join(' ');
+      ST = st;
+      try { txt += ' ' + STAGES.snBayes.controls(); } catch(e){ txt += ' controls-threw:' + e; }
+      return { txt:txt, cells:STAGES.snBayes.cur(st).G.cells };
+    };
+    var A = renderBayes(25), B = renderBayes(5000);
+    ST = savedST;
+
+    sok('snBayes: the engine grid follows √n rather than sitting at a constant',
+        A.cells === wantSmall && B.cells === wantBig, A.cells + ' / ' + B.cells);
+    sok('snBayes: the panels PRINT the cell count they actually used (n = 25)',
+        ints(A.txt).indexOf(A.cells) >= 0, A.cells + ' not among ' + ints(A.txt).join(','));
+    sok('snBayes: the panels PRINT the cell count they actually used (n = 5000)',
+        ints(B.txt).indexOf(B.cells) >= 0, B.cells + ' not among ' + ints(B.txt).join(','));
+    /* the half that a stale literal fails: the figure has to MOVE */
+    sok('snBayes: and no panel still carries the count as a fixed literal',
+        ints(B.txt).indexOf(A.cells) < 0,
+        'the n = 25 count ' + A.cells + ' still appears at n = 5000');
+    sok('snBayes: nothing claims midpoint alone RESOLVES the endpoint singularity',
+        !/midpoint never (looks at|evaluates)[^.]*\.(?![^.]*sin)/i.test(A.txt) &&
+        !/never (looks at|evaluates) them\./i.test(A.txt), '');
+
+    /* the same class on the likelihood stage: a grid whose size is a literal in
+       one sentence and an argument in the code, plus a peak whose refinement
+       the prose omitted entirely while the readout reported it */
+    var sl = {}; STAGES.snLike.enter(sl, { fam:'uniform', view:'curve', n:40 });
+    ST = sl;
+    var lc = '';
+    try { lc = STAGES.snLike.controls(); } catch(e){ lc = 'controls-threw:' + e; }
+    ST = savedST;
+    var C = STAGES.snLike.cur(sl).C;
+    sok('snLike: the help text prints the grid it actually walked',
+        ints(lc).indexOf(C.pts.length - 1) >= 0, (C.pts.length - 1) + ' / ' + ints(lc).join(','));
+    sok('snLike: and says which refinement located the peak, not just the grid',
+        C.how === 'raw' || /parabola|bisect/i.test(lc), C.how);
+  })();
+
   /* ---- the wing's own verdict formatter, as the stages call it ----------- */
   (function(){
     /* the property that makes it the right formatter here: it must be able to

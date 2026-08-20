@@ -586,3 +586,22 @@ one-liner and it will find yours.
   `ok:false` with the count, because a partial enumeration returns a wrong
   *exact* answer that looks exactly like a right one. Same family as
   `rlMotFrameTwin` and `ctUnitMarks`.
+- **Prose that names an algorithm's parameter must READ it, never restate it.**
+  When `snPostGrid`'s cell count stopped being a fixed 2000 and began following
+  √n, **seven sentences went on saying "2000 cells" and "700 cells"** — across
+  the stage's help panels, two derivation-ladder `note`s, a `drvStep` and the
+  demo list — and one `ctlWhy` justified a slider's limit with a reason that had
+  ceased to exist. Every gate stayed green, because the *arithmetic* was right:
+  the only defect was that the page described a different program from the one
+  it was running, and no gate reads a page for that. The engine already returned
+  `cells` for exactly this purpose and nothing called it. So: expose the
+  parameter (`snGridN`, `snGridSatN`, `SN_GRID_MIN`/`MAX`/`PER`), have every
+  sentence interpolate it, and **put the value in the sweep's per-point rows**
+  when it varies along one (`snPriorWash` now carries `cells`).
+  **The gate has to render TWICE.** A literal is indistinguishable from a
+  correct number in a single render — it is only wrong *relative* to another —
+  so the check in `tests-stages.js` renders the panels at two sizes and asserts
+  the figure both matches the engine **and moves**. Corrupting the note back to
+  a literal fails only the second half, which is the half that exists for this.
+  And a gate that re-spells the constant rots the same way: `tests.js` asks
+  `snGridN` rather than writing `120` and `20000` again.
