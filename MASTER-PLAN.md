@@ -24,21 +24,22 @@ carried forward.
 | wondering if something was checked | `AUDIT.md` (the accuracy record) |
 | about to reopen a settled question | **§1.7** first — several are already decided with reasons |
 
-**Verified 2026-08-19, after Programme C wing C15 — signal processing (first
-full-gate day was 2026-08-15).**
-`build` 275
-modules · `smoke` OK (wings=46, stages=216,
-seelinks=122) · `runtests` **6682 passed, 0 failed** · `runstagetests` **1514
-passed, 0 failed** · `runall` demos=694
-controls=7617 **caught=0 OK** · `auditsides` falsescale=0 presetgap=0 **OK**
+**Verified 2026-08-19, after Programme C wing C14 — statistical inference
+(first full-gate day was 2026-08-15).**
+`build` 308
+modules · `smoke` OK (wings=48, stages=226,
+seelinks=148) · `runtests` **6941 passed, 0 failed** · `runstagetests` **2141
+passed, 0 failed** · `runall` demos=820
+controls=9645 **caught=0 OK** · `auditsides` falsescale=0 presetgap=0 **OK**
 (both ratchets at zero since 2026-08-15) · `auditresid` **findings=0**
-noscale=7 · `auditcustom` **bad=0 OK** over the 141
-stages carrying typed input · `auditclaims` 1322 claims
+noscale=8 · `auditcustom` **bad=0 OK** over the 153
+stages carrying typed input · `auditclaims` 1866 claims
 **bad=0 OK** · `auditframe` cut=3, all three allowed by name **OK** ·
 `auditsize` **findings=0** · `auditviewport` 16 sizes **bad=0** · `auditpanel`
 **bad=0** · `auditzoom` **findings=0** · `auditlink`
-**findings=0** · `auditperf` 2 heavy stages, 2-D mean 125 ·
-`auditderive` **flagged=0** · `auditticks` **findings=0** · `audittext` +
+**findings=0** · `auditperf` 2 heavy stages, 2-D mean 114 ·
+`auditderive` **flagged=0** · `auditticks` **findings=0** · `auditkeys`
+**bad=0** · `audittext` +
 `auditscan` **0 HIGH** · `auditdocs` **bad=0 OK**.
 `auditcontrast`, `auditmarks` and `auditartifact` were **not run** — nothing
 this session touched a colour, `pvFeatures` or the artifact wrapper, and §4.3a
@@ -180,22 +181,22 @@ The date belongs on one line above the table, not on fourteen rows inside it.
 
 | quantity | value | how it was measured |
 |---|---|---|
-| wings | **43** | `./measure.ps1` (and `./smoke.ps1` → `wings=46`) |
-| guided experiments | **694** | `./measure.ps1`, from `WINGS[*].groups[*].items` in the booted app |
-| demo groups | **130** | same. **Do not grep `src/` for this** — patterns return 89 or 105 |
-| experiments driving a canvas stage | **609** | same (the other 85 drive the field pipeline) |
-| canvas stages | **198** | `./smoke.ps1` → `stages=216`; `./measure.ps1` confirms `unreachablestages=none` |
-| source modules | **275** | `./build.ps1` |
-| harness scripts | **29** | `Get-ChildItem *.ps1` — **that command is the authority, not this number.** Every one must appear in §1.6 and §4.2 — `./auditdocs.ps1` checks |
-| deployable size | **6 771 780 bytes** (6.77 MB) | `./measure.ps1`. **`build.ps1` prints a smaller figure, which is a CHARACTER count** — the Unicode maths symbols cost ~57 KB more as UTF-8 bytes. Both are far inside any upload limit. **A fresh `git clone` builds ~15.6 KB smaller**: `.gitattributes` normalises line endings to LF and 54 of the source files carried CRLF when that was measured on 2026-08-14, which is 15 627 carriage returns. The app is identical — but this is why the row says *measure*, not *quote* |
-| source lines | ~97460 (all of `src/`) | `./measure.ps1`; `./map.ps1` reports `src/js` alone |
-| unit tests | **6682 passed, 0 failed** | `./runtests.ps1` |
-| stage-level assertions | **1514, 0 failed** | `./runstagetests.ps1`. Deliberately worded as *assertions*: `auditdocs` reads the phrase `N passed` as the unit-test count wherever it appears, so the natural wording made this row contradict the one above it |
-| `mkPlot` call sites | **295** | `./measure.ps1` |
-| permalink round trips | **694 of 694 exact**, 11 demos measured stochastic | `./auditlink.ps1` |
-| declared table claims | **1322, bad=0** | `./auditclaims.ps1` |
-| "See it in the laboratory" links | **100, all resolving** | `./smoke.ps1` → `seelinks=122` |
-| statement cards | **106, 91 with proofs, 100 linked to an experiment** | `./auditscan.ps1` |
+| wings | **48** | `./measure.ps1` (and `./smoke.ps1` → `wings=48`) |
+| guided experiments | **820** | `./measure.ps1`, from `WINGS[*].groups[*].items` in the booted app |
+| demo groups | **152** | same. **Do not grep `src/` for this** — patterns return 89 or 105 |
+| experiments driving a canvas stage | **735** | same (the other 85 drive the field pipeline) |
+| canvas stages | **226** | `./smoke.ps1` → `stages=226`; `./measure.ps1` confirms `unreachablestages=none` |
+| source modules | **308** | `./build.ps1` |
+| harness scripts | **30** | `Get-ChildItem *.ps1` — **that command is the authority, not this number.** Every one must appear in §1.6 and §4.2 — `./auditdocs.ps1` checks |
+| deployable size | **7 792 704 bytes** (7.79 MB) | `./measure.ps1`. **`build.ps1` prints a smaller figure, which is a CHARACTER count** — the Unicode maths symbols cost ~57 KB more as UTF-8 bytes. Both are far inside any upload limit. **A fresh `git clone` builds ~15.6 KB smaller**: `.gitattributes` normalises line endings to LF and 54 of the source files carried CRLF when that was measured on 2026-08-14, which is 15 627 carriage returns. The app is identical — but this is why the row says *measure*, not *quote* |
+| source lines | ~111147 (all of `src/`) | `./measure.ps1`; `./map.ps1` reports `src/js` alone |
+| unit tests | **6941 passed, 0 failed** | `./runtests.ps1` |
+| stage-level assertions | **2141, 0 failed** | `./runstagetests.ps1`. Deliberately worded as *assertions*: `auditdocs` reads the phrase `N passed` as the unit-test count wherever it appears, so the natural wording made this row contradict the one above it |
+| `mkPlot` call sites | **331** | `./measure.ps1` |
+| permalink round trips | **819 of 819 exact**, 11 demos measured stochastic | `./auditlink.ps1` |
+| declared table claims | **1866, bad=0** | `./auditclaims.ps1` |
+| "See it in the laboratory" links | **148, all resolving** | `./smoke.ps1` → `seelinks=148` |
+| statement cards | **154, 126 with proofs, 148 linked to an experiment** | `./auditscan.ps1` |
 
 **The stale numbers this table replaced.** Each row was true when it was
 written, and every one was found by hand rather than by any gate:
@@ -216,7 +217,7 @@ other figure is a live claim and is checked.
 ## The invariant that must hold on every build
 
 ```
-./build.ps1     → 295 modules, no error
+./build.ps1     → 308 modules, no error
 ./smoke.ps1     → smoke OK        (parses, boots, nav agrees, no ctText shift)
 ./runtests.ps1  → 0 failed
 ./auditdocs.ps1 → bad=0 OK        (the documents still describe the site)
@@ -249,7 +250,7 @@ If those do not pass, nothing else matters and nothing else is worth running.
 src/head.html      <- <meta>, title
 src/styles.css     <- the whole design system
 src/shell.html     <- the DOM skeleton (header, canvas, dock, rail, palette)
-src/js/*.js        <- 295 modules, concatenated in ORDINAL filename order
+src/js/*.js        <- 308 modules, concatenated in ORDINAL filename order
         |
         v  ./build.ps1
 vector-calculus.html   (5 409 933 bytes on 2026-08-14, the deployable artifact)
@@ -261,7 +262,7 @@ Everything on screen is computed live from the actual mathematics.
 **Never edit `vector-calculus.html`.** It is overwritten on every build. The same
 goes for `MAP.md` — run `./map.ps1`.
 
-## 1.2 The forty-six wings
+## 1.2 The forty-eight wings
 
 The wing order **is the curriculum** — a wing sits where its prerequisites are
 already behind it. That order is written in three separate places (the topbar
@@ -279,7 +280,8 @@ Grouped as the seven menus present them:
    calculus, differential forms, potential theory
 4. **Linear algebra & data** — systems/matrices/determinants, vector spaces &
    orthogonality, eigenvalues/diagonalisation/SVD, discrete maths &
-   combinatorics, probability & statistics, numerical methods
+   combinatorics, probability & statistics, numerical methods, numerical linear
+   algebra
 5. **Advanced methods** — Laplace transforms, linear systems of ODEs, nonlinear
    dynamics & the phase plane, complex functions & contour integrals, Fourier,
    probability & statistics, numerical methods
@@ -335,7 +337,7 @@ that is `em3dBegin`'s job), `dockLegend:true`.
   shows them. Measured 2026-08-17 by `./auditscan.ps1`: **92 statements, 80 with
   proofs, 86 linked to an experiment**, **0 wings without one**.
 - **The plot viewport** (`59c-plot-view.js`) gives every `mkPlot` box pan, zoom
-  and clip — **308 call sites** in `src/`, of which `./auditzoom.ps1` sees **167
+  and clip — **331 call sites** in `src/`, of which `./auditzoom.ps1` sees **167
   live plots across 108 stages** in the default state (the rest are behind a mode
   switch). **Identity at rest is the invariant**: with no reader
   interaction `mkPlot` returns exactly the four numbers it was handed, which is
@@ -378,8 +380,8 @@ script exists that this table does not describe.
 
 | script | time | must print | sees what nothing else does |
 |---|---|---|---|
-| `build.ps1` | ~1 s | `295 modules` | — |
-| `auditperf.ps1` | ~40 s | *(a ranking)* | **where a frame goes** — paint calls, path ops, 3D primitives sorted, and **the bytes a refresh rewrites when nothing has changed**, for all 216 stages. Nothing else measures cost at all, and *both* guesses made without it were wrong: that 3D was the expensive part, and that unbatched strokes were. Its panel column used to report the panel's **size**, which could not see its own fix — it reports **writes** now |
+| `build.ps1` | ~1 s | `308 modules` | — |
+| `auditperf.ps1` | ~40 s | *(a ranking)* | **where a frame goes** — paint calls, path ops, 3D primitives sorted, and **the bytes a refresh rewrites when nothing has changed**, for all 226 stages. Nothing else measures cost at all, and *both* guesses made without it were wrong: that 3D was the expensive part, and that unbatched strokes were. Its panel column used to report the panel's **size**, which could not see its own fix — it reports **writes** now |
 | `measure.ps1` | ~15 s | *(the Part 0 table)* | the headline counts, **from the booted app** — wings, groups, experiments, stage-driven vs field, and any stage no demo reaches. Static greps over `src/` for the group count return 89 or 105 depending on the pattern; the app says 118. Also the artifact's real **byte** size, which `build.ps1` does not print |
 | `smoke.ps1` | ~10 s | `smoke OK` | whether the bundle **parses and boots at all**; nav/home/`NAV_GROUP_OF` agreement; every stage carries all nine methods; all 86 see-links resolve; `ctText` argument shifts; **markup inside canvas text**, which the canvas draws as its own tags and nothing else can see |
 | `runtests.ps1` | ~30 s | `0 failed` | engine arithmetic (modules 21–49 only) |
@@ -395,11 +397,11 @@ script exists that this table does not describe.
 | `auditsides.ps1` | ~2 min | `auditsides OK` *(a ratchet)* | whether the two routes a theorem stage computes **actually agree, on every preset the reader can select**. `auditresid` asks whether a difference is printed *with its scale*; this one reads the number. It drives the real segmented controls over the whole preset product — **791 combinations across 78 demos, 5676 panel renders, 134 distinct two-route claims**, none of which anything had ever read — and classifies each claim by the verdict `fmtGap` renders. **FALSE-SCALE**: the routes agree to round-off and the panel reports ~100%, because `fmtAgree` derives its scale as `max(|a|,|b|)` and both routes vanished (`dyMoment` at e = 1 printed `1.78×10⁻¹⁵ (100% — agreeing to 0 figures)` under prose promising they "match exactly"; `smBoltz` managed it at **1.81×10⁻¹⁷⁰**). **Found 10, fixed 10 the same day** by `fmtAgreeGross` and a gross per vanishing integral, so **its baseline is 0 and one new instance fails the build**. **PRESET-GAP**: the same claim is exact on one preset and poor on another — the cylinder-normal detector, and it needs no hand-chosen tolerance because the stage's own best preset sets the standard. The **ratchet on `$BASE_PRESET` reached 0 on 2026-08-15** — the whole backlog attributed, so a new row of either class fails the build; eleven honest exceptions are whitelisted **with their reasons** and nothing else is. **weak** rows are advisory: a 14-slice Riemann sum is *supposed* to disagree |
 | `auditmarks.ps1` | ~1 min | *(old → new scores)* | whether the **key points drawn on a plot are real**. `pvFeatures` marked a break wherever a step beat 12× the curve's *median* step — which asks whether this part is steeper than the rest, not whether the curve is broken — so any curve with a long flat tail grew a picket fence of false poles. **2303 → 20 markers** across the stages, with controls proving `tan` and `1/x` keep their real poles: the first attempt scored 2303 → 10 and **silently dropped tan's pole**, which is the whole argument for having a control |
 | `auditdocs.ps1` | ~1 min | `bad=0 OK` | whether **these documents still describe the site**. It re-measures wings, experiments, groups, stages, modules, tests, see-links, scripts and artifact size, then reads every live `.md` and fails on a contradiction; checks that every `*.ps1` on disk is described in §1.6 and §4.2 and listed in `AI-GUIDE.md`; and that every file path a document names exists. **An undated number is a live claim; a number on a line carrying a `YYYY-MM-DD`, or under a dated heading, is a record and is exempt** — that is the only escape hatch, and it is honest because it says when the figure was true. **`-Fix` rewrites the stale counts** (exactly the digits it verified, printing each substitution — then read the diff). **`-SkipTests` makes the run partial and it says so**, because a `bad=0` from a run that did not look is worse than no gate. Nothing else reads a `.md` at all, and eight false counts had survived every other gate indefinitely |
-| `auditzoom.ps1` | ~1 min | `findings=0` | pan/zoom on all 216 stages, **and mkPlot's identity-at-rest** |
+| `auditzoom.ps1` | ~1 min | `findings=0` | pan/zoom on all 226 stages, **and mkPlot's identity-at-rest** |
 | `auditframe.ps1` | ~1 min | `auditframe OK` | how much of each curve falls outside its window, classified `LINE`/`POLE`/`MINOR`/`CUT`. **A gate since 2026-08-15** — §3.10 asked for it, and the work was never the exit code but attributing the four stages that were cut. Two were real and are fixed; three are allowed **by name, with the mathematics that makes each one honest**, and it warns when an allowlist entry stops cutting so a stale name cannot wave a new defect through |
 | `auditsize.ps1` | ~2 min | `findings=0` | eight canvas shapes — layouts that only break at another aspect ratio |
 | `auditviewport.ps1` | ~3 min | `bad=0` | sixteen real window sizes, and the page *around* the canvas |
-| `audittext.ps1` | ~4 min | harvest written | what every panel **says** — drives all 769 experiments, harvests `textContent` |
+| `audittext.ps1` | ~4 min | harvest written | what every panel **says** — drives all 820 experiments, harvests `textContent` |
 | `auditscan.ps1` | ~20 s | 0 HIGH | ASCII stand-ins, leaked markup, empty panels, `NaN` in the harvest |
 | `auditprose.ps1` | ~1 s | *(an inventory)* | essays that decline to justify a result; named theorems with no statement card |
 | `auditcontrast.ps1` | ~1 s | — | WCAG contrast and the 12 px type floor |
@@ -411,7 +413,7 @@ script exists that this table does not describe.
 
 **One blind spot is known and unfixed:**
 
-1. ~~`runtests.ps1` extracts only modules 21–49, so none of the 216 stages' own
+1. ~~`runtests.ps1` extracts only modules 21–49, so none of the 226 stages' own
    arithmetic is unit-tested.~~ **Covered 2026-08-15 by `./runstagetests.ps1`**
    (Programme D item 3): the suite in `tests-stages.js` calls stage helpers
    directly inside the booted bundle. The *corpus* is seeded, not exhaustive —
@@ -442,7 +444,7 @@ become mojibake that fails to parse. This has bitten twice.
 - **One coherent unit per session, ending green** (reaffirmed 2026-08-13): one
   wing, or one engine plus its stages. Not smaller — a cold session re-derives
   context, so a half-finished edit is the most expensive state to stop in.
-- **The formal layer is complete in scope** — all 46 wings carry statements;
+- **The formal layer is complete in scope** — all 48 wings carry statements;
   what is left is depth (Part 3.8), not architecture.
 - **The single-file, no-dependency artifact is the design**, not a limitation.
   Do not introduce a bundler, a framework, or a network request.
@@ -596,9 +598,9 @@ time:
 all sort between `60-` and `61-`. **Keep the letter even for a lone file** so the
 next insertion has room. Aim for **under ~600 lines / ~50 KB per file**.
 
-**Name collisions are silent.** All 295 modules share one script scope. Prefix
+**Name collisions are silent.** All 308 modules share one script scope. Prefix
 every engine function with its wing (`nq ga pc mv ig vc od ct ck rl qm dy tm la
-sk lp mx fn lt sy ph cx df ag pb nm nc sl sm pv em es at ws fl op rt wv`) and
+sk lp mx fn lt sy ph cx df ag pb nm nc sl sm pv em es at ws fl op rt wv sn`) and
 **grep case-sensitively before choosing a name**.
 
 ## 2.5 Drawing rules
@@ -1377,14 +1379,13 @@ found only by diffing.
 | 3 | ~~**Abstract linear maps and inner product spaces**~~ | **DONE 2026-08-16** | `vecspace` wing — `laAbstract` and `laInnerFn` (`78ca`), engine `38a-linalg-abstract.js`. **laAbstract**: an operator on P_n becomes a matrix, built column by column from the basis, and checked against applying the operator through the parser and recovering coordinates by *sampling and solving* — so the check reads no coefficient list; on integers the two agree **exactly**. Rank–nullity, nilpotency, and x·d/dx diagonal with the degrees as eigenvalues. **laInnerFn**: ⟨f,g⟩ = ∫fgw dx, Gram–Schmidt on the monomials producing **Legendre** (checked against Rodrigues to 1e-9) or **Chebyshev** (compared by its zeros, which no normalisation moves) from the same code; the Gram matrix is the identity to 1e-12; projection verified best against 400 random competitors; Parseval exact. 23 unit tests + 13 stage tests |
 | 4 | ~~**Existence and uniqueness for ODEs**~~ | **DONE 2026-08-17** | `ode` wing — `odExist` and `odUnique` (`71d`), engine `26a-ode-exist.js`, a new first group of six demos at the head of the wing. Three constructions, each of which is a proof: **Picard's iteration** on a grid (cumulative Simpson, whose own order was measured at 4 by halving — 15.9, 16.0, 16.0, 15.7 — so the 5×10⁻¹² floor is truncation and a finer grid is the cure, not a relative floor); **Euler's polygons** for Peano, with the observed orders measured at 0.92→0.96, 1.93→1.97, 3.93→3.96; and **the variational equation** v′ = F_y·v as the exact amplification the perturbation ratio must converge on. **The Lipschitz constant is scanned at five separations, never at one** — 3∛(y²) returns a perfectly respectable 21 at δ = 0.003 and only its refusal to settle gives it away (ratio exactly ∛4 = 1.5874 for ever, against ≤ 1.0059 for every convergent preset). `OD_FIELDS` — engine code with **no caller since it was written**, which is what "computed but never shown" meant — now drives both stages and gained `x0, y0, a, b, lip` plus two counterexamples; `auditclaims` recomputes `lip` and `esc` by routes the table does not own (264 claims, up from 249). The escape time is measured **twice**: marching in x, and integrating dx/dy = 1/F in y — agreeing to 8.8×10⁻¹². The home card had promised "slope fields · Euler's method against Heun and RK4 with each observed order measured" since it was written and the wing delivered none of it; it does now |
 | 5 | **PDEs — heat, wave, Laplace, separation of variables** | **a wing** | see C6 below — the largest single gap in the site |
-| 6 | **Numerical linear algebra — LU, QR, conditioning** | **a wing** | see C16 below. The linear-algebra wings solve systems without ever asking whether the answer can be trusted, and a condition number is exactly what this laboratory is built to measure rather than assert |
+| 6 | ~~**Numerical linear algebra — LU, QR, conditioning**~~ | **DONE 2026-08-19** | the `numlin` wing (C16, §3.3). Five stages, 23 experiments, `38b-numlin.js`. The linear-algebra wings below it solve systems without ever asking whether the answer can be trusted; this one separates the two reasons it cannot be — an unstable ALGORITHM and an ill-conditioned PROBLEM — and refuses to let either stand in for the other. The κ = 3.7 matrix on which unpivoted elimination loses every digit and the Hilbert matrix on which a flawless factorisation still returns nothing are the same experiment run twice. Nine defects, four of them in the gates rather than the code; §3.3a |
 
 Items 1–4 are small and sit inside wings that already exist. **They are the
 cheapest real subject matter available and should be taken before Programme C.**
-**B1, B2, B3 (2026-08-16) and B4 (2026-08-17) are done. What is left of
-Programme B is items 5 and 6, and both are whole wings** — PDEs (C6) and
-numerical linear algebra (C16) — so they are taken through Programme C, not
-here.
+**B1, B2, B3 (2026-08-16), B4 (2026-08-17) and B6 (2026-08-19) are done.
+The only gap left in Programme B is item 5**, PDEs — a whole wing, taken
+through Programme C as **C6**, which is also the largest single gap in the site.
 
 ## 3.3 Programme C — the 22 missing wings
 
@@ -1464,12 +1465,153 @@ stages, prose and cards.** What each one actually cost is in the right column.
 
 | | wing | what it adds |
 |---|---|---|
-| 7 | **C16 Numerical linear algebra** | LU, QR and a condition number beside `laSolve`/`laSVD`. Also syllabus gap B6 |
-| 8 | **C14 Statistical inference** | estimators, likelihood, CIs, tests onto `43-probstat.js` |
+| ~~7~~ | ~~**C16 Numerical linear algebra**~~ — **DONE 2026-08-19** as the `numlin` wing, last in the linear-algebra group because it needs floating point from `numer` as well as matrices from the three wings before it. Five stages, 23 experiments, `38b-numlin.js`. Also closes syllabus gap **B6** | The tier-2 prediction — "extends an existing engine by a named function or two" — held better than tier 1's did, and still under-counted: `38-linalg.js` supplied every primitive below the new routines (`laMul`, `laInv`, `laSolve`, `laEigSym`, `laSVD`) and none were re-implemented, but `38b` is still 500 lines, because the wing's whole subject is the **difference** between two ways of computing the same thing and each of those is a second route somebody has to write. What it adds: LU with the pivot search switchable, three QR constructions rather than one, a **one-sided Jacobi SVD** (because `laSVD` reaches σ through AᵀA, which squares κ and loses σ_min entirely past κ ≈ 10⁸ — measured, and now the subject of an experiment rather than a limitation), the three stationary splittings with Gelfand's radius, and conjugate gradients. Nine defects, in §3.3a |
+| ~~8~~ | ~~**C14 Statistical inference**~~ — **DONE 2026-08-19** as the `infer` wing, immediately after probability. Five stages, 26 experiments, `43a-infer.js` + `43b-infer-test.js` | The tier-2 prediction failed here in the direction tier 1's kept failing: `43-probstat.js` supplied `pbStats`, `pbHist`, `pbNormCdf` and `pbGamma` and **nothing else**, because the probability wing's whole content is distributions that are given and this wing's is the inverse problem. What the two new modules add is a **seeded** stream (nothing calls `Math.random()`, so every readout is reproducible and every gate deterministic), a regularized incomplete beta the site did not have — which is the t CDF, the Beta CDF and the binomial CDF at once — exact finite-sum coverage for a proportion, exact permutation enumeration under a cap, and posteriors by quadrature against conjugacy. Eight defects, in §3.3b |
 | 9 | **C19 Chaos and fractals** | Lyapunov exponents and a bifurcation sweep onto `39-odeadv.js`, which already draws phase portraits |
 | 10 | **C20 Information and entropy** | Shannon entropy, coding, Landauer — small, and ties `44c-statmech.js` to computation |
 | 11 | **C13 Analysis** | mostly prose and limit visualisers; the Gibbs discussion already needs it |
 | 12 | **C9 Tensors and index notation** | largely notation and display. **Do this before C10, C17 and C21**, which use it |
+
+### 3.3a What C16 cost, and the four things worth carrying to C14
+
+**Nine defects, and not one was found by reading the code.** Two came from the
+screenshot, one from `runall`'s absence (it passed while the defect stood), five
+from `runstagetests`, and two from `auditsides`. Four generalise.
+
+1. **A gate that cannot fail is not a gate, and "no result" is how it hides.**
+   Three assertions in the first `tests-stages.js` block passed *vacuously*.
+   `nlKrylov`'s advantage test read `kSD === null || kSD/kCG > 2` — and `kSD`,
+   the step at which steepest descent reaches 10⁻⁶, is `null` at every size the
+   stage runs, because on the Poisson matrix that needs 470 steps and the slider
+   stops at 200. The whole comparison had never once been evaluated. **When a
+   test's condition contains a null-tolerant branch, check that the branch is
+   not the one always taken.**
+2. **…and the fix for that was wrong in a way that only a SECOND size showed.**
+   Replacing the step count with "how many CG steps match where steepest descent
+   finished" is well defined and still measures the wrong thing: it divides by
+   how far steepest descent happened to get, so it read **12× at n = 10 and
+   4.6× at n = 36 — shrinking**, on a quantity that must grow. The honest
+   measure is a **rate** (steps per decade, fitted), and fitting *that* needed a
+   third correction, because the plotted run is too short to be asymptotic and
+   the opening steps of any descent method are fast. Three attempts, each
+   failing on a different preset. This is `SITE-RULES` rule zero point 6 in a
+   numerical costume: a necessary condition is not a sufficient one.
+3. **A residual of exactly zero makes an error bound vacuous, and the bound is
+   what has to be floored.** `relErr ≤ κ · relResid` is the theorem; one preset
+   returned a computed residual of **exactly** 0, so the right-hand side was 0
+   and the assertion was violated by any error at all. The backward error can
+   never be below ε whatever the arithmetic returns, so the bound to read
+   against is `κ·max(relResid, ε)`. Same family as `fmtAgreeGross`, one layer
+   up: a quantity that can legitimately vanish cannot be a denominator.
+4. **Gelfand's formula converges to ρ(G) from above, with a polynomial factor
+   the m-th root does not remove.** `‖Gᵐ‖ ≈ C·m^p·ρᵐ`, and both terms bias the
+   estimate: the Frobenius norm sees *both* of ±cos(π/(n+1)), so C = √2 and the
+   Jacobi radius read 3.4×10⁻⁴ high, while SOR at its optimum has **defective**
+   eigenvalue pairs, so p = 1 and it read 8×10⁻³ high. A tolerance loose enough
+   for both would have hidden a genuinely wrong radius. The cure is a second
+   difference in the logarithm — `L₃ − 2L₂ + L₁` kills `ln C` and `p·ln 2ʲ`
+   together, because doubling makes `ln m` uniformly spaced — and it is exact
+   whatever C and p are. **An estimator that converges is not the same as an
+   estimator that has converged**, and this one announces its bias as an
+   O(1/m) residual rather than as noise.
+
+The other five: a display formatter in twelve editable matrix boxes site-wide
+(§6.5); a factorisation that does not exist being printed as ∞ through
+`fmtNum`'s "∞", invisible to `runall`'s grep; a power iteration printing a 21%
+disagreement instead of admitting it had not converged; ρ(GS) compared with
+ρ(Jacobi)² on a matrix Young's theorem does not cover; and a preset labelled
+`κ ≈ 20` whose κ is 39.
+
+**And one prediction that held.** The tier-2 estimate said "extends an existing
+engine by a named function or two". Every primitive underneath the new routines
+came from `38-linalg.js` unchanged, exactly as promised — and the wing was still
+a session and a half, for the reason tier 1 recorded six times: **what an
+existing engine supplies is one route, and the work is the second one.**
+
+### 3.3b What C14 cost, and the five things worth carrying to C19
+
+**Eight defects. Two came from the gates that already existed, four from the
+gates written for this wing, and two from tests of my own that failed the first
+time they ran.** Not one came from reading the code. Five generalise.
+
+1. **A Monte Carlo needs its own verdict formatter, and `fmtAgree` is the wrong
+   one.** Every other wing compares two routes by asking whether the gap is at
+   round-off. A simulated quantity sits a distance of order `sd/√trials` from
+   the truth and is *supposed* to — so `fmtAgree` reports every correct
+   simulation in this wing as a 3% failure, and a fixed tolerance instead is a
+   test of how many trials somebody picked. `snAgreeSamp(vals, theory)` takes
+   the **draws** and derives both the estimate and its standard error from them,
+   so a caller cannot pass the wrong scale; `snAgreeMC` is for when the draws
+   are out of scope. The property that makes it right is worth stating: it calls
+   a gap of 4×10⁻⁴ at 40 σ a disagreement and one of 0.05 at 0.1 σ agreement —
+   **the opposite verdict to the one the sizes suggest**, which no round-off
+   formatter can produce. `tests.js` pins both directions.
+2. **"Midpoint never evaluates the endpoint" is not the same claim as "midpoint
+   resolves the endpoint", and the first version's comment asserted the first
+   while needing the second.** Beta(½, ½) behaves like x^(−½) at 0. A midpoint
+   rule returns a finite number there — which is exactly why the defect was
+   invisible: the posterior mean was **2.2% wrong at k = 0** with nothing
+   raised, no infinity, and no NaN. The cure is the arcsine substitution
+   x = sin²(πt/2), whose Jacobian vanishes at precisely the rate an inverse
+   square root diverges. The **second** half of the same defect had the opposite
+   shape: a fixed 700-cell grid stops resolving a posterior of width 1/(2√n)
+   around n = 10⁵, and the wash-out sweep runs to 2×10⁵ — so the cell count now
+   grows with √n and the result reports `cells` so a caller can check rather
+   than assume. Neither half announces itself; both were found by comparing
+   against a closed form at a preset the default is not.
+3. **The observed information is not the Fisher information, and the default
+   preset is where that is invisible.** The wing shipped drawing "−ℓ″ at the
+   peak" as a third route to n·I(θ) and claiming agreement. For a **normal
+   mean** ℓ″ = −n/σ² is constant and does not care where it is evaluated, so the
+   claim is exactly true — and every unit test in place used the normal family.
+   `./auditclaims.ps1` driving the other four found it at once: the exponential
+   gives (n+1)/n, Poisson 1 + 1/(nλ), Bernoulli something messier. **The size of
+   the bias is family-specific and only its ORDER generalises**, so what is
+   asserted now is O(1/n), measured by doubling n — and the first replacement
+   asserted 1 + 1/n for all three and failed on two of them. This is §3.3a
+   item 4 in a new costume: an estimator that *converges* to a quantity is not
+   an estimator that *has* converged to it.
+4. **A second route that is only as good as its own grid reports the grid, not a
+   disagreement — and `auditsides` reads that as a preset gap, correctly.** Two
+   rows were exact at the default and 10⁻⁵ out elsewhere for no reason but where
+   a peak fell between two samples. Widening a tolerance would have been the
+   wrong fix twice over. What was done instead: a **parabola** through the three
+   points at a smooth maximum (O(step²)), **bisection for the edge** where the
+   maximum is a cliff and one neighbour is −∞ (exact), and, for the credible
+   interval, interpolation inside the cell — plus the discovery that the
+   interpolation alone did nothing, because the CDF was accumulating to each
+   cell's **right edge** while being paired with the cell's **centre**, a
+   systematic half-cell offset that no interpolation between the points can
+   remove. **The method is chosen by looking at the curve, not by naming the
+   family**, so a future family with a moving support is handled without being
+   told about it.
+5. **A cache key must contain every field `enter` sets, and the failure looks
+   exactly like an unwired control.** `snTest` gained `own` and `sheet` after
+   its key was written, so the typed box accepted keystrokes and the picture
+   never moved; `./auditcustom.ps1` reported it as "rendered but apparently not
+   wired", which is the right symptom and the wrong cause. The defect is
+   available to any stage the moment a field is added, so `tests-stages.js` now
+   perturbs **every** field of **every** stage in this wing and asserts the
+   cache misses — and that gate was corrupted once and watched to fail before
+   being trusted.
+
+**And one blind spot worth naming, because it is the gate's own.**
+`auditcustom` enters a stage in its **default** state and then sweeps the
+segmented controls. A typed box reachable only through a demo's `opts` is
+therefore rendered by no pass and exercised by nothing — the blind spot that
+script's own comments were written about, re-entered by putting `own:true` in a
+demo and nowhere else. The fix is to carry the typed route as an **option on a
+picker**, which makes it reachable by pointer, by keyboard and by the gate at
+once. Check this for any new reader-supplied input: *if the default state cannot
+reach it, no gate can.*
+
+**The tier-2 prediction, and where it broke.** "Extends an existing engine by a
+named function or two" held for C16 and did not hold here. `43-probstat.js`
+supplied four helpers and no more, because the probability wing is about
+distributions that are given and this wing is the inverse problem — a different
+subject wearing adjacent vocabulary. **Read a tier-2 estimate as a claim about
+the ARITHMETIC, never about the work**: what an existing engine supplies is one
+route, and the second one is the wing.
 
 **Tier 3 — needs machinery that does not exist. Budget several sessions each.**
 
@@ -2102,7 +2244,7 @@ the gate that would have caught it, then the single-stage items.
 3. **J2** — a break must be a *discontinuity*, not a steep step. Compare against
    the step the neighbouring samples predict, not the median of all of them, and
    require the jump to survive a refinement. Measure the false-positive count
-   across all 216 stages before and after.
+   across all 226 stages before and after.
 4. **J3** — one owner for the ticks.
 5. **J9** — **DONE**, and it was not the bug it looked like. See the entry in the
    progress table.
@@ -2122,7 +2264,7 @@ the gate that would have caught it, then the single-stage items.
 | **J1** the gate | **DONE 2026-08-15.** `auditframe` fails on a `CUT` now, which is what §3.10 asked for. The exit code was five minutes; the fortnight-old part was attributing the four stages it flagged, and the split was **two real, three honest**. Real: **`odSpring` fitted its y-window to the response curve at the reader's damping while drawing three curves — and the LIGHTEST damping has the tallest peak**, so the most instructive curve of the three was the one clipped (max 5.71 against a window ending at 2.24), and its feature caption then floated at the top of the canvas with no marker under it. The fit and the draw now share one list, so they cannot disagree. **`wsADD`** pinned a slider-dependent curve to a hard-coded top of 12 and overflowed it at the defaults. Honest, allowed by name with reasons: `srTaylor` (Taylor polynomials diverging from a window fitted to the function — the divergence *is* the lesson), `atomForces` (a symlog window sized to hold its own ±1000 MeV ticks, against a Yukawa well that genuinely reaches −70 GeV), `odSeries` (truncated power series outside the radius of convergence, with the R = 1 lines drawn beside them). Negative control: `wsADD`'s window put back, gate failed |
 | **J1** clipping | **DONE, and it was four lines in one file.** `plotCurve` always clipped; **everything else went through `ctPath`, `ctFill`, `ctDot` and `ctArrow`, none of which did** — 310 + 155 call sites inheriting one omission. They clip now. The new **`ctClip`** (61a) is what `pvClip` could not be: `pvClip` skips a `ctBox` because §2.5 frees an aspect-true diagram to point an ARROW past its frame, and that exemption is right for arrows and wrong for curves — the phase plane is a ctBox, and its trajectories were crossing the trace–determinant chart beside it. Curves, fills and markers now clip to any framed box; only `ctArrow` keeps the plot-only rule. Verified by screenshot |
 | **J3** doubled ticks | **DONE.** `ctGrid` labelled at `+4px` with 3 figures and `pvDrawAxes` at `+3px` with 4, **both at once** on a moved view — two minus signs a pixel apart, which is the `=40`. `ctGrid` now yields the whole grid to `pvDrawAxes` once the view has moved, because pv's ticks follow the window and a stage's are a fixed list chosen for the author's window |
-| **compute** | **DONE** (asked for separately). `refreshAll` was evaluating the field, its divergence, curl and Jacobian at the probe and rebuilding five panels of HTML **into elements with `display:none`** on every one of the 216 stages, because `applyWingSections` hides the field panels but nothing stopped them being recomputed. It now returns early while a stage is active. Safe because the hiding is all-or-nothing, and the route back always runs `applyField` after `stageExit` |
+| **compute** | **DONE** (asked for separately). `refreshAll` was evaluating the field, its divergence, curl and Jacobian at the probe and rebuilding five panels of HTML **into elements with `display:none`** on every one of the 226 stages, because `applyWingSections` hides the field panels but nothing stopped them being recomputed. It now returns early while a stage is active. Safe because the hiding is all-or-nothing, and the route back always runs `applyField` after `stageExit` |
 | **J9** round-off as measurement | **DONE, and the hypothesis recorded here was wrong in both halves.** It said `gapWork` reached the formatter as an exact zero because `fmtNum(1.499e-4, 3)` returns `0.00015`. Measured on the bundle: `gapWork` is **1.4988e-4, not zero**, and `fmtNum(1.499e-4, 3)` returns **`"0"`**. `fmtNum`'s exponent term is clamped at zero, so below 1 its `sig` counts DECIMALS, not FIGURES — swept, the dead zone is exactly **[1e-4, 5×10⁻ˢⁱᵍ)**, bounded below only because the scientific branch takes over at 1e-4. **But the formatter was the outermost of three layers.** The real defect: `dyForceRun` (31a) integrated ∫F·dx by **trapezoid in dx, second order, under an RK4 trajectory that is fourth**. Halving h showed it converging at exactly h² (ratio 3.999, 4.000, 4.000), so the panel was measuring its own truncation error, not the work–energy theorem. It shows up as 7.8% because the answer is exponentially small — the default law is a damped oscillator run eight damping times, whose net work is the 1.9e-3 J residue of a **13.47 J** sum, a **cancellation factor of 7 × 10³**. Across the laws the help text itself suggests, `-4x - 1.2v` disagreed by **100%** while the chip said "they differ by 0" in `--c-pos`, the affirmative colour. **The fix is ∫F·dx = ∫F·v dt by composite Simpson** — the same line integral (v is signed, so doubling back still subtracts; it is not ∫F dt, the impulse), at the order the stepper has. Not invented here: **`rtSpinRun` (32a) is this routine's rotational twin and has always done it**, and `dyForceRun` already forced `n` even with no Simpson to use it. Pinned against the closed form of m x″ + c x′ + k x = 0: measured order **2.00 → 4.00**, relative gap **7.8e-2 → 2.5e-6**, same cost. New `nqCumSimpson` (21) gives the running integral the ledger plot draws from, and its last entry **is** the composite Simpson total, so panel and picture cannot drift (measured: `Us[n] + wCons = 0` exactly). Also found: `gapEnergy` was never a third check — W_non = W_tot − W_cons by linearity, so it is \|gapPath ∓ gapWork\|, and it equalled `gapWork` to ten figures. New `fmtSig`/`fmtGap` (10) print residuals as figures with the relative gap and a figures-agreed verdict; `ckEngF`/`ckGap` (48a) floor circuit quantities against scales `ckMeasure` now returns, because ε·κ(A)·‖x‖ for a 1 Ω–1 MΩ circuit is ~1e-13 A on a milliamp solution — that *is* the 29.7 fA — and Johnson noise in a 1 kΩ resistor at 300 K is 4 pA/√Hz, a hundred times larger. **20 tests added; the J9 test was corrupted back to the trapezoid once and watched to fail, reporting order 1.9995.** The old tests passed the broken code because their tolerances were absolute against a fixed 4.32 J scale — the new one is relative to the answer, which is what makes it bite |
 | **J4** axis-title collision | **DONE 2026-08-15.** Measured first: **60 plots on 41 stages** drew the rotated y-title through their own tick numbers at the fixed `P.px − 34`. `plotFrame` now computes the labels ctGrid will draw — same step, same `fmtTick` — measures them, and places the title clear of that gutter. The ckLab sub-defect (axis titled `(s)` over ticks that print their own `ms` via `ckEng`) fixed by removing the second unit from the title, scope and spectrum both; the wsRegge double x-label row was already gone (removed in an earlier session — verified by `auditticks`, which finds no duplicate row there) |
 | **J6** headings under the chip | **DONE 2026-08-15.** The class fix is `ctTitleClearChip` (60a): both title owners — `plotFrame` and `ctFrame` — read the live chip rect and slide a title sideways out from under it, so no stage has to know the chip exists. Population measured by the new gate: **5 stages** had fixed captions in the chip zone (agIdent, ftFast, ftConv, rlWire, slSemi) — the three photographed ones were already clean. `./auditticks.ps1` now fails on any ≥11px text anchored inside the visible chip, with a drawn-at-chip-centre control |
@@ -2270,10 +2412,11 @@ is sequenced by *what makes the next piece of work cheaper*, not by subject.
 6. ~~**Programme A, EM and atom**~~ — **DONE 2026-08-16.** All six editors
    (emFaraday, atomSM, emWave, emSandbox, atomForces, atomSim) landed over
    2026-08-15/16; both wings closed, every acceptance test in §3.1 measured.
-7. ~~**Programme B items 1–4**~~ — **DONE.** B1, B2, B3 on 2026-08-16
+7. ~~**Programme B items 1–4, and 6**~~ — **DONE.** B1, B2, B3 on 2026-08-16
    (`clImplicit`, `emDielectric`, `laAbstract` + `laInnerFn`); **B4 on
-   2026-08-17** (`odExist`, `odUnique`). B5 and B6 are whole wings and are
-   taken through Programme C.
+   2026-08-17** (`odExist`, `odUnique`); **B6 on 2026-08-19**, as the `numlin`
+   wing through Programme C. **B5 (PDEs) is the last one left**, and it is a
+   whole wing — C6, and the largest single gap in the site.
 8. ~~**Programme A, relativity**~~ — **CLOSED 2026-08-19. All twenty-one.**
    Item 1 (`rlMetric`) landed 2026-08-18 on `46a-gr-metric.js`, with items 2–5
    the same day on `46b`, `46c` and `46d`. The sixteen special-relativity
@@ -2310,10 +2453,15 @@ is sequenced by *what makes the next piece of work cheaper*, not by subject.
      parameterisation** (`rlGaussFlux`'s polar axis) — and a coarse Gauss rule's
      error is **not signed**, which the first version of its test asserted.
 9. **Programme C**, in the **cheapest-first order in §3.3**, not curricular
-   order. **C2, C4 and C15 have all landed (2026-08-19)** — complex numbers,
-   coordinate systems and signal processing — leaving **19 wings**; next is C3
-   (units, dimensions and uncertainty). Four things from those sessions worth
-   carrying forward:
+   order. **Tier 1 is CLOSED — all six (C1–C5, C15) landed 2026-08-19 — and the
+   first two of tier 2, C16 and C14, landed the same day**, closing syllabus
+   gap B6 with the first of them. That leaves **fourteen wings**, and the next
+   is **C19, chaos and fractals**, onto `39-odeadv.js`, which already draws
+   phase portraits. **Read §3.3b before starting it** — C14's record is the
+   freshest, and its fifth item (a cache key that does not cover every field
+   `enter` sets) plus its blind-spot note (a typed box the default state cannot
+   reach is exercised by no gate) both apply directly to any new stage. Five
+   things from the earlier sessions worth carrying forward:
 
    - **the tier-1 estimate holds for the engine and not for the wing.** Both
      were listed as cheap because an engine existed. Neither existing engine
@@ -2338,6 +2486,13 @@ is sequenced by *what makes the next piece of work cheaper*, not by subject.
      and reached 70. Nothing was wrong with the code. Fix it by removing the
      control, not by widening the table — the record is now fixed at two seconds
      and `runstagetests` asserts it at six different rates.
+   - **a test whose condition can be satisfied by "no result" has never run.**
+     C16's first stage-test block contained three assertions that passed
+     vacuously, one of them the headline comparison of the whole wing — the
+     quantity it divided by was `null` at every size the stage can reach, so the
+     branch that actually evaluated the claim was never taken. Check that a
+     null-tolerant branch is not the only branch. §3.3a has the full record, and
+     the two further attempts it took to get that one measurement right.
 
 10. **Programmes G and H** as they become annoying.
 11. **Programme A, string theory** — after taking the decision in §3.1.
@@ -2452,7 +2607,7 @@ Consolidated. Every one of these has cost real debugging time in this repo.
 
 **Fatal, and invisible to the unit suite**
 
-- **Silent name collisions.** One script scope, 295 modules. Prefix and grep
+- **Silent name collisions.** One script scope, 308 modules. Prefix and grep
   case-sensitively first.
 - **A template hole inside a template hole** is a parse error that takes the
   whole app down while `runtests` still reports passing. `./smoke.ps1` after
@@ -2625,7 +2780,7 @@ formulas written when a wing was planned and never adopted by its stages
 (`tmQ`, `dyMomentum`, `rtL`), duplicate constants (`SM_R`/`SM_H`/`SM_U`,
 `TM_NA`/`TM_U` — the used copies live in 35/44c under other prefixes), or
 preset-name accessors superseded by the `59b` entry accessors (`rl*Name`).
-Build re-verified green afterwards: 295 modules, smoke OK, 6682 + 1913
+Build re-verified green afterwards: 308 modules, smoke OK, 6682 + 1913
 passed / 0 failed.
 
 ## 6.3 Unadopted helpers deliberately KEPT

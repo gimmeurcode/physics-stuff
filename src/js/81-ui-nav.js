@@ -21,7 +21,7 @@
 const NAV_GROUP_OF = {
   proof:'pre', algebra:'pre', functions:'pre', trig:'pre', cnum:'pre',
   limits:'calc', deriv:'calc', integral:'calc', series:'calc', ode:'calc',
-  linsys:'lin', vecspace:'lin', eigen:'lin', discrete:'lin', prob:'lin', numer:'lin',
+  linsys:'lin', vecspace:'lin', eigen:'lin', discrete:'lin', prob:'lin', infer:'lin', numer:'lin', numlin:'lin',
   laplace:'deq', systems:'deq', phase:'deq',
   vectors:'mv', curves:'mv', partial:'mv', coords:'mv', vector:'mv', forms:'mv', potential:'mv',
   units:'phys',

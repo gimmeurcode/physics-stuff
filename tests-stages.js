@@ -3509,6 +3509,889 @@ function sok(name, cond, detail){
   })();
 })();
 
+
+/* ============================================================================
+   NUMERICAL LINEAR ALGEBRA — the five stages' own arithmetic  (wing C16)
+
+   These call cur() directly on synthetic states, which is the only way to reach
+   what the stages compute: the modules are numbered 78d and 78e, far outside
+   the 21–49 window runtests extracts, and runall proves a stage RUNS rather
+   than that it is right.
+
+   The rule this block is written to: drive the presets the default is not.
+   Every preset in all four tables is driven, and the two 3×3 matrices whose
+   whole purpose is to break the diagonal-dominance rule of thumb are driven in
+   both directions.
+   ============================================================================ */
+(function(){
+
+  /* ---- nlFact: the factorisation, and both ways a solve goes wrong --------- */
+  (function(){
+    var S = STAGES.nlFact, bad = 0, worstResid = 0;
+    Object.keys(NL_LU).forEach(function(key){
+      [true, false].forEach(function(piv){
+        var st = {}; S.enter(st, { key:key, pivot:piv });
+        var N = S.cur(st);
+        /* x by substitution against x by row reduction — two routes sharing
+           only the matrix. Asserted only with PIVOTING ON, and the reason is
+           the point of the stage rather than a convenience: laSolve pivots
+           whatever this checkbox says, so with pivoting off the two routes are
+           genuinely computing different things and the tiny-pivot preset makes
+           them differ by 1. The first version of this test asserted agreement
+           unconditionally and failed on exactly the preset that exists to break
+           it — the assertion was wrong, not the stage. */
+        if(piv && N.rref.x && N.x){
+          var scale = Math.max.apply(null, N.x.map(Math.abs)) || 1;
+          if(!(N.gapX / scale < 1e-8)){
+            bad++;
+            STG_LOG.push('   nlFact ' + key + ' pivot=true' +
+                         ': substitution and RREF disagree by ' + N.gapX);
+          }
+        }
+        /* where the unpivoted routes DO disagree, the stage must be reporting a
+           large error too — a disagreement with a small reported error would
+           mean the panel was hiding it */
+        if(!piv && N.rref.x && N.x && Number.isFinite(N.gapX) && N.gapX > 1e-6 && !(N.err > 1e-6)){
+          bad++;
+          STG_LOG.push('   nlFact ' + key + ' pivot=false: routes differ by ' + N.gapX +
+                       ' while the panel reports an error of only ' + N.err);
+        }
+        /* the determinant from the pivots against laDet, where the pivots exist */
+        var ds = Math.max(Math.abs(N.det), Math.abs(N.detR));
+        if(!N.broke && ds > 0 && Math.abs(N.det - N.detR) / ds > 1e-8){
+          bad++;
+          STG_LOG.push('   nlFact ' + key + ' pivot=' + piv + ': det routes disagree, ' +
+                       N.det + ' vs ' + N.detR);
+        }
+        /* The backward-error identity: relErr ≤ κ · (backward error). The
+           backward error is floored at ε whatever the computed residual comes
+           out as — the `dep` preset returns a residual of EXACTLY zero, and
+           reading the bound as κ·0 made it vacuously violated by any error at
+           all. A zero residual does not mean a zero error, which is the
+           stage's own headline. The factor of 4 is for the norm mismatch: both
+           quantities are 2-norms and the theorem is stated in the ∞-norm. */
+        if(Number.isFinite(N.RE.relErr) &&
+           N.RE.relErr > 4 * N.kappa * Math.max(N.RE.relResid, 2.22e-16) + 1e-14){
+          bad++;
+          STG_LOG.push('   nlFact ' + key + ' pivot=' + piv + ': error exceeds κ·max(residual, ε), ' +
+                       N.RE.relErr + ' vs ' + N.kappa * Math.max(N.RE.relResid, 2.22e-16));
+        }
+        if(piv) worstResid = Math.max(worstResid, N.R.gap / (N.R.scale || 1));
+      });
+    });
+    sok('nlFact: every preset, pivoting on and off — two routes to x, two to det, and the κ bound',
+        bad === 0, bad);
+    sok('nlFact: with pivoting on, PA = LU holds to round-off on all six presets',
+        worstResid < 1e-13, worstResid);
+
+    /* the point of the tiny-pivot preset, asserted rather than described:
+       the SAME matrix is solved exactly with pivoting and destroyed without,
+       and its condition number is small, so κ cannot be the explanation */
+    var son = {}, soff = {};
+    S.enter(son, { key:'tiny', pivot:true });
+    S.enter(soff, { key:'tiny', pivot:false });
+    var A = S.cur(son), B = S.cur(soff);
+    sok('nlFact: the tiny-pivot matrix is solved exactly with pivoting', A.err < 1e-12, A.err);
+    sok('nlFact: and destroyed without it', B.err > 0.1, B.err);
+    sok('nlFact: while κ stays small, so the failure is the algorithm and not the problem',
+        A.kappa < 10 && Math.abs(A.kappa - B.kappa) < 1e-9, A.kappa);
+    sok('nlFact: and the growth factor is what changed', B.Foff.growth / A.Fon.growth > 1e10,
+        A.Fon.growth + ' -> ' + B.Foff.growth);
+
+    /* Wilkinson: no swaps, every multiplier 1, growth exactly 2ⁿ⁻¹. The
+       stage's preset declares growth 64, and this recomputes it. */
+    var sw = {}; S.enter(sw, { key:'growth', pivot:true });
+    var W = S.cur(sw);
+    sok('nlFact: Wilkinson — partial pivoting makes no swaps', W.F.swaps === 0, W.F.swaps);
+    sok('nlFact: every multiplier is 1', Math.abs(W.F.maxMult - 1) < 1e-14, W.F.maxMult);
+    sok('nlFact: and the growth factor is 2ⁿ⁻¹ regardless',
+        Math.abs(W.F.growth - Math.pow(2, W.n - 1)) < 1e-9, W.F.growth);
+
+    /* the Hilbert preset is the mirror image: growth 1, error large */
+    var sh = {}; S.enter(sh, { key:'hilb', pivot:true });
+    var Hs = S.cur(sh);
+    sok('nlFact: on Hilbert the algorithm is faultless — growth under 2', Hs.F.growth < 2, Hs.F.growth);
+    /* measured 3.49e-13 against 9.96e-17, a factor of 3500 — the first version
+       of this asserted "six orders" from an estimate rather than a measurement */
+    sok('nlFact: and the error is still three orders above the residual',
+        Hs.RE.relErr > 1e3 * Hs.RE.relResid, Hs.RE.relErr + ' vs ' + Hs.RE.relResid);
+    /* and the withheld case: no factorisation without a swap, and the panel
+       reports that rather than an infinity */
+    var sb = {}; S.enter(sb, { key:'swap', pivot:false });
+    var Bk = S.cur(sb);
+    sok('nlFact: with pivoting off, the zero-pivot preset reports no factorisation at all',
+        Bk.broke === true && Bk.x === null);
+    sok('nlFact: and nothing derived from it is printed as a number',
+        !/∞|Infinity/.test(S.readout(sb) + S.chip(sb)),
+        (S.readout(sb).match(/∞|Infinity/) || [''])[0]);
+    var sb2 = {}; S.enter(sb2, { key:'swap', pivot:true });
+    sok('nlFact: and with pivoting on the same matrix factors normally',
+        S.cur(sb2).broke === false && S.cur(sb2).err < 1e-12, S.cur(sb2).err);
+  })();
+
+  /* ---- nlQR: the three constructions, and the exponents ------------------- */
+  (function(){
+    var S = STAGES.nlQR, bad = 0;
+    [4, 8, 12].forEach(function(n){
+      [3, 5, 7].forEach(function(lk){
+        var st = {}; S.enter(st, { n:n, lk:lk });
+        var N = S.cur(st);
+        /* the construction is checked before anything is concluded from it */
+        if(Math.abs(N.kapMeas / N.kapNow - 1) > 1e-6){
+          bad++;
+          STG_LOG.push('   nlQR n=' + n + ' lk=' + lk + ': matrix has κ=' + N.kapMeas +
+                       ' but was asked for ' + N.kapNow);
+        }
+        /* all three factor A correctly — the property that does NOT separate
+           them, and the one a careless check would stop at */
+        ['hh', 'mgs', 'cgs'].forEach(function(k){
+          if(!(N.now[k].back < 1e-13)){
+            bad++;
+            STG_LOG.push('   nlQR ' + k + ' n=' + n + ' lk=' + lk + ': ‖A − QR‖ = ' + N.now[k].back);
+          }
+        });
+        /* and the ordering that does separate them, at every κ above the floor */
+        if(lk >= 5 && !(N.now.cgs.orth > N.now.mgs.orth && N.now.mgs.orth > N.now.hh.orth)){
+          bad++;
+          STG_LOG.push('   nlQR n=' + n + ' lk=' + lk + ': the three orthogonality errors are not ordered — ' +
+                       N.now.cgs.orth + ' ' + N.now.mgs.orth + ' ' + N.now.hh.orth);
+        }
+      });
+    });
+    sok('nlQR: nine (n, κ) settings — κ as constructed, all three reconstructing A, and the ordering',
+        bad === 0, bad);
+
+    /* the measured exponents, which are the stage's headline claim. Ranges
+       rather than points, and they come from a sweep of n = 5…12 recorded in
+       tests.js: classical 1.67–2.09, modified 0.76–0.98, Householder ~0. */
+    var st8 = {}; S.enter(st8, { n:8, lk:5 });
+    var N8 = S.cur(st8);
+    sok('nlQR: the classical Gram–Schmidt slope lands on 2', Math.abs(N8.slope.cgs - 2) < 0.35, N8.slope.cgs);
+    sok('nlQR: the modified slope grows but stays under κ',
+        N8.slope.mgs > 0.55 && N8.slope.mgs < 1.15, N8.slope.mgs);
+    sok('nlQR: and Householder has no κ dependence', Math.abs(N8.slope.hh) < 0.15, N8.slope.hh);
+    /* the fit must not be dragged by the ε floor: the first version of this
+       measurement started at κ = 10² and read 1.63 instead of 2 */
+    sok('nlQR: the sweep starts above the machine-ε floor', NL_QR_KAPPAS[0] >= 1e3, NL_QR_KAPPAS[0]);
+  })();
+
+  /* ---- nlCond: all three views ------------------------------------------- */
+  (function(){
+    var S = STAGES.nlCond, bad = 0;
+    /* geometry: κ is the axis ratio, and |det| is the product of the σ */
+    Object.keys(NL_COND_2).forEach(function(k){
+      var st = {}; S.enter(st, { view:'ellipse', ckey:k });
+      var N = S.cur(st);
+      var prod = N.S.sigma[0] * N.S.sigma[1];
+      if(Math.abs(Math.abs(N.det) - prod) / prod > 1e-10){
+        bad++; STG_LOG.push('   nlCond ' + k + ': |det| ' + N.det + ' vs σ₁σ₂ ' + prod);
+      }
+      /* the bound is attained by construction, so this is an equality test */
+      if(Math.abs(N.K.amp / N.kappa - 1) > 1e-4){
+        bad++; STG_LOG.push('   nlCond ' + k + ': amplification ' + N.K.amp + ' does not attain κ ' + N.kappa);
+      }
+    });
+    sok('nlCond ellipse: |det| = σ₁σ₂ and the perturbation bound is attained, on all four matrices',
+        bad === 0, bad);
+    /* the preset NAMES are claims about κ, and this is where they are checked */
+    var stT = {}; S.enter(stT, { view:'ellipse', ckey:'thin' });
+    sok('nlCond: the "κ = 19" preset has κ = 19', Math.abs(S.cur(stT).kappa - 19) < 0.05, S.cur(stT).kappa);
+    var stN = {}; S.enter(stN, { view:'ellipse', ckey:'nearly' });
+    var kn = S.cur(stN).kappa;
+    sok('nlCond: the "nearly singular" preset really is — κ above 10³', kn > 1e3, kn);
+    var stR = {}; S.enter(stR, { view:'ellipse', ckey:'round' });
+    sok('nlCond: and the "well conditioned" one is not — κ under 3', S.cur(stR).kappa < 3, S.cur(stR).kappa);
+
+    /* amplification: the worst direction attains κ, ordinary ones stay under */
+    var stA = {}; S.enter(stA, { view:'amplify', an:6 });
+    var NA = S.cur(stA), badA = 0;
+    NA.rows.forEach(function(r){
+      if(r.meas < 1e12 && Math.abs(r.amp / r.meas - 1) > 1e-3) badA++;
+      r.others.forEach(function(o){ if(o > r.meas * (1 + 1e-6)) badA++; });
+    });
+    sok('nlCond amplify: the worst direction attains κ at every decade and nothing exceeds it',
+        badA === 0, badA);
+
+    /* residual against error: the residual must NOT grow with n and the error
+       must, which is the entire content of the view */
+    var stH = {}; S.enter(stH, { view:'resid', hn:12 });
+    var NH = S.cur(stH);
+    var first = NH.rows[0], last = NH.rows[NH.rows.length - 1];
+    sok('nlCond resid: the residual stays at round-off across every size',
+        NH.rows.every(function(r){ return r.resid < 1e-13; }),
+        Math.max.apply(null, NH.rows.map(function(r){ return r.resid; })));
+    sok('nlCond resid: the error grows by more than eight orders over the sweep',
+        last.err / Math.max(first.err, 1e-18) > 1e8, first.err + ' -> ' + last.err);
+    sok('nlCond resid: and never breaches the κ·ε ceiling',
+        NH.rows.every(function(r){ return r.err <= r.kap * 2.22e-16 * 4 + 1e-14; }),
+        NH.rows.filter(function(r){ return r.err > r.kap * 2.22e-16 * 4 + 1e-14; }).length);
+    sok('nlCond resid: κ grows by roughly a factor of 15 per row',
+        (function(){
+          var ok2 = true;
+          for(var i = 1; i < NH.rows.length; i++){
+            var g = NH.rows[i].kap / NH.rows[i - 1].kap;
+            if(!(g > 5 && g < 60)) ok2 = false;
+          }
+          return ok2;
+        })());
+  })();
+
+  /* ---- nlIter: the rate, twice, on every preset --------------------------- */
+  (function(){
+    var S = STAGES.nlIter, bad = 0;
+    Object.keys(NL_ITER).forEach(function(key){
+      var st = {}; S.enter(st, { key:key, n:12, w:1.5, sweeps:300 });
+      var N = S.cur(st);
+      ['jacobi', 'gs', 'sor'].forEach(function(k){
+        /* ρ(G) below 1 and the run converging must be the SAME answer. This is
+           the two-route check the whole stage exists for: one route squares a
+           matrix, the other sweeps equations, and neither knows the other. */
+        var says = N.rho[k] < 1;
+        var does = !N.runs[k].diverged;
+        if(says !== does){
+          bad++;
+          STG_LOG.push('   nlIter ' + key + '/' + k + ': ρ = ' + N.rho[k] +
+                       ' but the run ' + (does ? 'converged' : 'diverged'));
+        }
+        /* and where a rate could be fitted, the two must agree numerically */
+        if(says && Number.isFinite(N.fit[k].rate) && Math.abs(N.fit[k].rate / N.rho[k] - 1) > 0.08){
+          bad++;
+          STG_LOG.push('   nlIter ' + key + '/' + k + ': fitted ' + N.fit[k].rate +
+                       ' against ρ ' + N.rho[k]);
+        }
+      });
+    });
+    sok('nlIter: on every preset, ρ(G) and the run agree about convergence and about the rate',
+        bad === 0, bad);
+
+    /* Young's closed forms, on the one preset entitled to them */
+    var sp = {}; S.enter(sp, { key:'poisson', n:16, w:1.5, sweeps:200 });
+    var P = S.cur(sp);
+    sok('nlIter: on the Poisson matrix ρ(Jacobi) = cos(π/(n+1))',
+        Math.abs(P.rho.jacobi - Math.cos(Math.PI / (P.n + 1))) < 1e-8, P.rho.jacobi);
+    sok('nlIter: ρ(Gauss–Seidel) is its square',
+        Math.abs(P.rho.gs - P.rho.jacobi * P.rho.jacobi) < 1e-8, P.rho.gs);
+    sok('nlIter: the golden-section minimum of ρ(ω) lands on Young\'s ω_opt',
+        Math.abs(P.best.w - P.wOpt) < 5e-3, P.best.w + ' vs ' + P.wOpt);
+    sok('nlIter: and the radius there is ω_opt − 1',
+        Math.abs(P.best.rho - P.rhoOpt) < 5e-4, P.best.rho + ' vs ' + P.rhoOpt);
+    sok('nlIter: the Poisson matrix is flagged as the one Young applies to', P.ordered === true);
+
+    /* the two counterexamples, which are the reason the wing carries them */
+    var sj = {}; S.enter(sj, { key:'jacOnly', w:1.5, sweeps:60 });
+    var J = S.cur(sj);
+    sok('nlIter: jacOnly — Jacobi\'s iteration matrix is nilpotent', J.rho.jacobi < 1e-6, J.rho.jacobi);
+    sok('nlIter: jacOnly — and Gauss–Seidel diverges on it',
+        J.rho.gs > 1 && J.runs.gs.diverged === true, J.rho.gs);
+    var sg = {}; S.enter(sg, { key:'gsOnly', w:1.5, sweeps:60 });
+    var G = S.cur(sg);
+    sok('nlIter: gsOnly — exactly the other way round',
+        G.rho.jacobi > 1 && G.rho.gs < 1 && G.runs.jacobi.diverged === true &&
+        G.runs.gs.diverged === false,
+        'jacobi ' + G.rho.jacobi + ' gs ' + G.rho.gs);
+    sok('nlIter: neither counterexample is diagonally dominant, so no claim is made for them',
+        J.dominant === false && G.dominant === false);
+    var sd = {}; S.enter(sd, { key:'strict', w:1.5, sweeps:60 });
+    var D = S.cur(sd);
+    sok('nlIter: the dominant preset is dominant, and both methods converge on it',
+        D.dominant === true && D.rho.jacobi < 1 && D.rho.gs < 1,
+        D.rho.jacobi + ' ' + D.rho.gs);
+    sok('nlIter: Young\'s closed form is withheld on every preset it does not apply to',
+        !J.ordered && !G.ordered && !D.ordered && !Number.isFinite(J.wOpt));
+
+    /* ω = 1 must reproduce Gauss–Seidel exactly — a check that the SOR split is
+       the split it claims to be rather than something that merely resembles it */
+    var s1 = {}; S.enter(s1, { key:'poisson', n:10, w:1, sweeps:80 });
+    var O = S.cur(s1);
+    sok('nlIter: SOR at ω = 1 is Gauss–Seidel to round-off',
+        Math.abs(O.rho.sor - O.rho.gs) < 1e-9, O.rho.sor + ' vs ' + O.rho.gs);
+  })();
+
+  /* ---- nlKrylov ----------------------------------------------------------- */
+  (function(){
+    var S = STAGES.nlKrylov, bad = 0;
+    [8, 16, 30].forEach(function(n){
+      var st = {}; S.enter(st, { n:n, steps:120 });
+      var N = S.cur(st);
+      /* the closed-form κ against the SVD — the stage prints both */
+      if(Math.abs(N.kap / N.kapMeas - 1) > 1e-9){
+        bad++; STG_LOG.push('   nlKrylov n=' + n + ': κ ' + N.kap + ' vs measured ' + N.kapMeas);
+      }
+      /* no step outside its own bound */
+      if(N.over > 1e-9){
+        bad++; STG_LOG.push('   nlKrylov n=' + n + ': CG exceeded its bound by ' + N.over);
+      }
+      /* Monotone in the A-norm, ABOVE round-off. The stage's own check stops at
+         1e-13 for a measured reason: after finite termination the iterates
+         differ by noise about the exact answer, so the first version of this
+         reported a rise at step n+1 at every size — the gate hitting its own
+         floor rather than a defect. */
+      if(!N.mono){
+        bad++; STG_LOG.push('   nlKrylov n=' + n + ': A-norm error rose at step ' + N.roseAt);
+      }
+      /* finite termination */
+      if(!(N.atN.err < 1e-9)){
+        bad++; STG_LOG.push('   nlKrylov n=' + n + ': error at step n is ' + N.atN.err);
+      }
+      /* The advantage, measured the only way it is defined on this matrix.
+         "Steps to 10⁻⁶" is null for steepest descent at every size the stage
+         will run — its own bound needs 470 steps at n = 12 — so comparing step
+         counts compared nothing, and the first version of this test passed
+         vacuously on a `null`. Compare instead how many CG steps reach the
+         error steepest descent finishes at. */
+      if(!(N.matchSD !== null && N.matchSD * 2 < N.steps)){
+        bad++; STG_LOG.push('   nlKrylov n=' + n + ': CG matched SD only at step ' + N.matchSD +
+                            ' of ' + N.steps);
+      }
+      /* steepest descent inside its own, different bound */
+      if(!N.SD.hist.every(function(p){ return p.err <= nlSDBound(N.kap, p.k) * (1 + 1e-9); })){
+        bad++; STG_LOG.push('   nlKrylov n=' + n + ': steepest descent left its bound');
+      }
+    });
+    sok('nlKrylov: three sizes — κ two ways, both bounds respected, monotone, and finite termination',
+        bad === 0, bad);
+    /* the advantage must GROW with n, since it is √κ against κ and κ ~ n².
+       Measured as the factor by which CG needs fewer steps to reach the error
+       steepest descent finishes the same run at. */
+    var s1 = {}, s2 = {};
+    S.enter(s1, { n:10, steps:120 }); S.enter(s2, { n:36, steps:120 });
+    var a = S.cur(s1), b = S.cur(s2);
+    /* Measured as the ratio of steps-per-decade, not as "how far each one got":
+       the first version of this divided by steepest descent's finishing error
+       and read 12× at n = 10 against 4.6× at n = 36 — SHRINKING — because the
+       larger problem simply left steepest descent less far along. That is a
+       measurement of the run length, not of the methods, and the assertion was
+       right to fail on it. */
+    sok('nlKrylov: the CG advantage over steepest descent widens as n grows',
+        b.advantage > 2 * a.advantage,
+        a.advantage + '× at n=10, ' + b.advantage + '× at n=36');
+    sok('nlKrylov: and steepest descent needs steps proportional to κ',
+        Math.abs((b.decSD / a.decSD) / (b.kap / a.kap) - 1) < 0.25,
+        'decades ratio ' + (b.decSD / a.decSD) + ' against κ ratio ' + (b.kap / a.kap));
+    /* and CG must beat its own bound, on this spectrum, by a wide margin —
+       superlinear convergence, which the ladder now states rather than the
+       bound being presented as a prediction */
+    sok('nlKrylov: CG beats its Chebyshev bound at step n by more than a hundredfold',
+        nlCGBound(b.kap, b.n) / Math.max(b.atN.err, 1e-300) > 100,
+        nlCGBound(b.kap, b.n) + ' vs ' + b.atN.err);
+  })();
+
+  /* ---- nothing in this wing may print undefined, NaN or Infinity ---------- */
+  (function(){
+    ['nlFact', 'nlQR', 'nlCond', 'nlIter', 'nlKrylov'].forEach(function(id){
+      var S = STAGES[id];
+      var st = {}; S.enter(st, {});
+      var txt = '';
+      try { txt = S.readout(st) + S.chip(st); }
+      catch(e){ sok(id + ' renders without throwing', false, String(e)); return; }
+      sok(id + ' renders without throwing', true);
+      sok('  and prints no undefined/NaN/Infinity',
+          !/undefined|NaN|Infinity/.test(txt), (txt.match(/undefined|NaN|Infinity/) || [''])[0]);
+      var d;
+      try { d = S.derive(st); } catch(e){ sok(id + ' builds its ladder', false, String(e)); return; }
+      sok(id + ' builds its ladder', d && d.steps && d.steps.length > 4, d && d.steps && d.steps.length);
+      sok(id + ' has a legend', S.legend(st).length > 0);
+    });
+  })();
+})();
+/* ============================================================================
+   STATISTICAL INFERENCE (wing C14) — snEst, snLike, snCI, snTest, snBayes
+
+   Everything simulated here is compared against a closed form ON THE SCALE OF
+   THE SIMULATION'S OWN STANDARD ERROR, at 4 se — a 6e-5 event — with every
+   seed fixed, so none of these flicker.
+
+   Two disciplines from MASTER-PLAN §3.3a are applied throughout, because both
+   defects they describe were available in this wing:
+
+   (a) A CONDITION WITH A "NO RESULT" BRANCH MAY NEVER HAVE RUN. The uniform
+       family's blocks below assert that the thing expected to fail actually
+       was evaluated, and the counters are asserted non-zero.
+   (b) THE DEFAULT PRESET IS WHERE A DEFECT HIDES. Every stage is driven
+       through every view and every preset its controls can reach, not through
+       the state its author left it in.
+   ========================================================================== */
+(function(){
+  /* ---- every stage, every view, every preset: renders and says nothing
+     meaningless. This is the sweep that catches a view whose readout was
+     written for a different branch's `cur` shape. ---------------------------- */
+  (function(){
+    var cases = [];
+    Object.keys(SN_FAMS).forEach(function(f){
+      ['dist', 'rate'].forEach(function(v){
+        cases.push(['snEst', { fam:f, est:'mean', view:v, n:6, trials:1500 }]);
+      });
+      /* and every estimator that applies to that family */
+      Object.keys(SN_ESTS).forEach(function(e){
+        if(SN_ESTS[e].only && SN_ESTS[e].only !== f) return;
+        cases.push(['snEst', { fam:f, est:e, n:7, trials:1200 }]);
+      });
+      ['curve', 'info', 'asym'].forEach(function(v){
+        cases.push(['snLike', { fam:f, view:v, n:12, trials:600 }]);
+      });
+    });
+    Object.keys(SN_MEAN_CIS).forEach(function(k){
+      cases.push(['snCI', { mode:'mean', kind:k, n:4, trials:1200 }]);
+      cases.push(['snCI', { mode:'mean', kind:k, n:40, trials:1200 }]);
+    });
+    Object.keys(SN_PROP_CIS).forEach(function(m){
+      cases.push(['snCI', { mode:'prop', method:m, n:12, p:0.1 }]);
+      cases.push(['snCI', { mode:'prop', method:m, n:12, p:0.9 }]);
+    });
+    ['null', 'power', 'multi'].forEach(function(v){
+      cases.push(['snTest', { view:v, n:5, trials:800, m:6 }]);
+    });
+    Object.keys(SN_PAIRS).forEach(function(p){
+      cases.push(['snTest', { view:'perm', pair:p }]);
+      cases.push(['snTest', { view:'perm', pair:p, shift:2.5 }]);
+    });
+    Object.keys(SN_PRIORS).forEach(function(p){
+      cases.push(['snBayes', { view:'post', prior:p, k:3, n:9 }]);
+      /* the two ends of the range, where a likelihood is one-sided and a
+         Wald-style interval collapses — the presets a default never visits */
+      cases.push(['snBayes', { view:'post', prior:p, k:0, n:9 }]);
+      cases.push(['snBayes', { view:'post', prior:p, k:9, n:9 }]);
+    });
+    cases.push(['snBayes', { view:'wash', prior:'sceptic', priorB:'keen', prop:0.5 }]);
+    cases.push(['snBayes', { view:'wash', prior:'flat', priorB:'jeff', prop:0.4 }]);
+    cases.push(['snBayes', { view:'diag', prev:0.001 }]);
+    cases.push(['snBayes', { view:'diag', prev:0.4 }]);
+
+    var bad = 0, ran = 0;
+    cases.forEach(function(c){
+      var S = STAGES[c[0]], st = {};
+      S.enter(st, c[1]);
+      var txt;
+      try { txt = S.readout(st) + S.chip(st); }
+      catch(e){ bad++; sok(c[0] + ' renders at ' + JSON.stringify(c[1]), false, String(e)); return; }
+      ran++;
+      if(/undefined|NaN|Infinity/.test(txt)){
+        bad++;
+        sok(c[0] + ' prints no undefined/NaN/Infinity at ' + JSON.stringify(c[1]), false,
+            (txt.match(/.{0,60}(undefined|NaN|Infinity).{0,40}/) || [''])[0]);
+      }
+      var d;
+      try { d = S.derive(st); }
+      catch(e){ bad++; sok(c[0] + ' builds its ladder at ' + JSON.stringify(c[1]), false, String(e)); return; }
+      if(!(d && d.steps && d.steps.length > 4)){
+        bad++; sok(c[0] + ' ladder has substance at ' + JSON.stringify(c[1]), false,
+                   d && d.steps && d.steps.length);
+      }
+      if(!(S.legend(st).length > 0)){ bad++; sok(c[0] + ' has a legend at ' + JSON.stringify(c[1]), false); }
+    });
+    /* the sweep must actually have swept — a `cases` list that silently came
+       out empty would pass every assertion above without running one */
+    sok('infer: the preset sweep ran on every case', ran === cases.length && cases.length > 60,
+        ran + ' of ' + cases.length);
+    sok('infer: no stage/view/preset combination misbehaves', bad === 0, bad + ' findings');
+  })();
+
+  /* ---- snEst: the simulated sampling distribution against its closed form,
+     for every pair that declares one -------------------------------------- */
+  (function(){
+    var checked = 0, off = 0;
+    Object.keys(SN_FAMS).forEach(function(f){
+      Object.keys(SN_ESTS).forEach(function(e){
+        var E = SN_ESTS[e];
+        if(E.only && E.only !== f) return;
+        if(E.approx) return;                  /* the median's form is asymptotic */
+        var st = {};
+        STAGES.snEst.enter(st, { fam:f, est:e, n:11, trials:12000, seed:20260819 });
+        var N = STAGES.snEst.cur(st);
+        if(!N.D.truth) return;
+        checked++;
+        var okMean = Math.abs(N.D.stats.mean - N.D.truth.mean) < 4 * N.D.biasSE;
+        var okVar = Math.abs(N.D.vari - N.D.truth.vari) < 4 * N.D.varSE;
+        if(!okMean || !okVar){
+          off++;
+          sok('snEst ' + f + '/' + e + ' matches its closed form', false,
+              'mean ' + N.D.stats.mean + ' vs ' + N.D.truth.mean +
+              '  var ' + N.D.vari + ' vs ' + N.D.truth.vari);
+        }
+      });
+    });
+    /* §3.3a(a): the loop must have found pairs to check. A `truth` that
+       returned null everywhere would make the block above vacuously perfect. */
+    sok('snEst: the closed-form comparison ran on a real set of pairs', checked >= 8, checked);
+    sok('snEst: every pair with a closed form agrees with it within 4 se', off === 0, off);
+  })();
+
+  /* ---- snEst: the RATE, which is −1 everywhere except where the bound fails */
+  (function(){
+    var st = {};
+    STAGES.snEst.enter(st, { fam:'normal', est:'mean', n:9, trials:2000, view:'rate' });
+    var reg = STAGES.snEst.cur(st).slope;
+    sok('snEst: a regular family gives a 1/n mean squared error', Math.abs(reg + 1) < 0.2, reg);
+    var st2 = {};
+    STAGES.snEst.enter(st2, { fam:'unif', est:'maxAdj', n:9, trials:2000, view:'rate' });
+    var edge = STAGES.snEst.cur(st2).slope;
+    sok('snEst: the adjusted maximum on a uniform gives 1/n² instead',
+        Math.abs(edge + 2) < 0.25, edge);
+    /* and the two must genuinely differ — asserting each separately would pass
+       if some caching bug returned the same sweep for both */
+    sok('snEst: and the two rates are different by about a whole power of n',
+        reg - edge > 0.6, 'regular ' + reg + '  edge ' + edge);
+    /* 2x̄ is unbiased on the same family and does NOT get the fast rate — the
+       comparison that shows the rate belongs to the estimator, not the family */
+    var st3 = {};
+    STAGES.snEst.enter(st3, { fam:'unif', est:'twice', n:9, trials:2000, view:'rate' });
+    var slow = STAGES.snEst.cur(st3).slope;
+    sok('snEst: but 2x̄ on the SAME family is back to 1/n — the rate is the ' +
+        'estimator’s, not the family’s', Math.abs(slow + 1) < 0.2, slow);
+  })();
+
+  /* ---- snLike: the grid maximum finds the MLE on every family ------------- */
+  (function(){
+    var checked = 0;
+    Object.keys(SN_FAMS).forEach(function(f){
+      var st = {};
+      STAGES.snLike.enter(st, { fam:f, n:30, seed:4242, trials:400 });
+      var N = STAGES.snLike.cur(st);
+      checked++;
+      /* the grid resolves to one step, so that is the tolerance — measured
+         from the grid rather than guessed */
+      sok('snLike ' + f + ': the grid peak finds the closed-form MLE',
+          Math.abs(N.C.gridMax - N.mle) <= 1.5 * N.C.step ||
+          /* the uniform's MLE is the sample maximum, which may sit outside the
+             drawn window; then the grid peak is the window edge nearest it and
+             the honest check is that it is not beyond the MLE */
+          (f === 'unif' && N.C.gridMax >= N.mle - 1.5 * N.C.step),
+          'grid ' + N.C.gridMax + ' closed ' + N.mle + ' step ' + N.C.step);
+    });
+    sok('snLike: every family was driven', checked === Object.keys(SN_FAMS).length, checked);
+  })();
+
+  /* ---- snLike: the information identity holds where its hypothesis does,
+     and FAILS where it does not — both asserted, and both counted ---------- */
+  (function(){
+    var agree = 0, disagree = 0;
+    Object.keys(SN_FAMS).forEach(function(f){
+      var st = {};
+      STAGES.snLike.enter(st, { fam:f, n:25, seed:777, trials:3000, view:'info' });
+      var F = STAGES.snLike.cur(st).Fi;
+      var okScore = Math.abs(F.scoreVar - F.closed) < 4 * F.scoreVarSE;
+      if(SN_FAMS[f].regular){
+        if(okScore) agree++;
+        else sok('snLike ' + f + ': Var[score] equals n·I(θ)', false,
+                 F.scoreVar + ' vs ' + F.closed + ' se ' + F.scoreVarSE);
+      } else {
+        /* the identity must be seen to BREAK. A silent pass here would mean
+           the wing is claiming a failure the arithmetic does not produce. */
+        if(!okScore) disagree++;
+        else sok('snLike ' + f + ': the identity is supposed to FAIL on this family', false,
+                 'it agreed: ' + F.scoreVar + ' vs ' + F.closed);
+      }
+    });
+    sok('snLike: the identity holds on all four regular families', agree === 4, agree);
+    sok('snLike: and demonstrably fails on the one that breaks its hypothesis',
+        disagree === 1, disagree);
+    /* the bound is beaten there, which is the claim the readout makes */
+    var su = {};
+    STAGES.snLike.enter(su, { fam:'unif', n:20, th:2, trials:1500 });
+    var Fu = STAGES.snLike.cur(su).Fi;
+    sok('snLike: and the MLE-based estimator beats the Cramér–Rao bound there',
+        SN_ESTS.maxAdj.truth(20, { th:2 }, 'unif').vari < Fu.crb,
+        SN_ESTS.maxAdj.truth(20, { th:2 }, 'unif').vari + ' vs ' + Fu.crb);
+    sok('snLike: while a regular family sits ON its bound, not under it',
+        (function(){
+          var sn = {};
+          STAGES.snLike.enter(sn, { fam:'normal', n:20, th:0.5, sd:1, trials:3000 });
+          var Fn = STAGES.snLike.cur(sn).Fi;
+          var v = Fn.mleStats.vari;
+          return v > Fn.crb * 0.9 && v < Fn.crb * 1.15;
+        })());
+  })();
+
+  /* ---- snCI: coverage against closed forms, at several n ----------------- */
+  (function(){
+    [3, 5, 12, 30].forEach(function(n){
+      var st = {};
+      STAGES.snCI.enter(st, { mode:'mean', n:n, level:0.95, trials:12000, seed:9001 });
+      var N = STAGES.snCI.cur(st);
+      sok('snCI n=' + n + ': the σ-known interval covers at exactly the stated level',
+          Math.abs(N.runs.zKnown.cover - 0.95) < 4 * N.runs.zKnown.se, N.runs.zKnown.cover);
+      sok('snCI n=' + n + ': the t interval does too',
+          Math.abs(N.runs.t.cover - 0.95) < 4 * N.runs.t.se, N.runs.t.cover);
+      /* the two-route check: the plug-in interval's coverage has a closed form */
+      sok('snCI n=' + n + ': the plug-in interval matches 2F_t(z) − 1',
+          Math.abs(N.runs.zPlugin.cover - N.pluginExact) < 4 * N.runs.zPlugin.se,
+          'sim ' + N.runs.zPlugin.cover + ' exact ' + N.pluginExact);
+      /* and it must actually be SHORT at small n — otherwise the row above is
+         satisfied by an interval that has nothing wrong with it */
+      if(n <= 5)
+        sok('snCI n=' + n + ': and it really is short of the claim',
+            N.pluginExact < 0.93, N.pluginExact);
+      else if(n >= 30)
+        sok('snCI n=' + n + ': while at this n the shortfall has nearly closed',
+            N.pluginExact > 0.94, N.pluginExact);
+    });
+  })();
+
+  /* ---- snCI: exact proportion coverage against a simulation of it -------- */
+  (function(){
+    var seen = 0;
+    Object.keys(SN_PROP_CIS).forEach(function(m){
+      [0.08, 0.3, 0.62].forEach(function(p){
+        var st = {};
+        STAGES.snCI.enter(st, { mode:'prop', method:m, n:18, p:p, level:0.95,
+                                trials:20000, seed:6060 });
+        var N = STAGES.snCI.cur(st);
+        seen++;
+        sok('snCI ' + m + ' at p=' + p + ': the exact sum and the simulation agree',
+            Math.abs(N.exact - N.sim.cover) < 4 * Math.max(N.sim.se, 1e-4),
+            'exact ' + N.exact + ' sim ' + N.sim.cover);
+      });
+    });
+    sok('snCI: the proportion sweep covered every method at every p', seen === 12, seen);
+    /* the guarantee that names the method, and the failure that names the other */
+    var sc = {};
+    STAGES.snCI.enter(sc, { mode:'prop', method:'clopper', n:18, p:0.3, level:0.95 });
+    var NC = STAGES.snCI.cur(sc);
+    sok('snCI: Clopper–Pearson never falls below the level anywhere in p',
+        NC.mins.clopper >= 0.95 - 1e-12, NC.mins.clopper);
+    sok('snCI: Wald does, and badly', NC.mins.wald < 0.5, NC.mins.wald);
+    sok('snCI: Wilson dips too, but an order of magnitude less far',
+        NC.mins.wilson > 0.75 && NC.mins.wilson < 0.95,
+        NC.mins.wilson);
+  })();
+
+  /* ---- snTest: every rate on the stage, against its closed form ---------- */
+  (function(){
+    [0.01, 0.05, 0.1].forEach(function(a){
+      var st = {};
+      STAGES.snTest.enter(st, { view:'null', n:7, alpha:a, trials:12000, seed:4242 });
+      var N = STAGES.snTest.cur(st);
+      sok('snTest α=' + a + ': the false-alarm rate is α',
+          Math.abs(N.R.rate - a) < 4 * N.R.rateSE, N.R.rate);
+      sok('snTest α=' + a + ': and the p-values are uniform, so it is right at every α',
+          N.R.ks < N.R.ksCrit, 'ks ' + N.R.ks + ' crit ' + N.R.ksCrit);
+    });
+    /* power: closed form against simulation, at three effect sizes */
+    [0, 0.6, 1.6].forEach(function(d){
+      var st = {};
+      STAGES.snTest.enter(st, { view:'power', n:14, delta:d, sigma:2, alpha:0.05,
+                                trials:12000, seed:313 });
+      var N = STAGES.snTest.cur(st);
+      sok('snTest power at δ=' + d + ': closed form and run agree',
+          Math.abs(N.here - N.hereSim.power) < 4 * Math.max(N.hereSim.se, 1e-4),
+          'closed ' + N.here + ' sim ' + N.hereSim.power);
+    });
+    var sz = {};
+    STAGES.snTest.enter(sz, { view:'power', n:14, delta:0, sigma:2, alpha:0.05 });
+    sok('snTest: power at zero effect is exactly α — the curve starts at α',
+        Math.abs(STAGES.snTest.cur(sz).here - 0.05) < 1e-9);
+    /* multiplicity: the closed form, and the two corrections holding */
+    var sm = {};
+    STAGES.snTest.enter(sm, { view:'multi', n:6, m:15, alpha:0.05, trials:3000, seed:5511 });
+    var M = STAGES.snTest.cur(sm).at;
+    sok('snTest: the family-wise rate matches 1 − (1−α)^m',
+        Math.abs(M.none.fwer - M.closed) < 4 * M.none.se,
+        'sim ' + M.none.fwer + ' closed ' + M.closed);
+    sok('snTest: Bonferroni holds it at or below α', M.bonf.fwer < 0.05 + 4 * M.bonf.se, M.bonf.fwer);
+    sok('snTest: Holm holds it too and rejects at least as often',
+        M.holm.fwer < 0.05 + 4 * M.holm.se && M.holm.perRun >= M.bonf.perRun,
+        M.holm.fwer + ' / ' + M.holm.perRun + ' vs ' + M.bonf.perRun);
+    /* permutation: exact enumeration against sampling, on every preset */
+    var enumerated = 0;
+    Object.keys(SN_PAIRS).forEach(function(p){
+      var st = {};
+      STAGES.snTest.enter(st, { view:'perm', pair:p });
+      var N = STAGES.snTest.cur(st);
+      if(!N.ex.ok) return;
+      enumerated++;
+      sok('snTest perm/' + p + ': sampled agrees with the full enumeration',
+          Math.abs(N.ex.p - N.sm.p) < 4 * Math.max(N.sm.se, 1 / 20000),
+          'exact ' + N.ex.p + ' sampled ' + N.sm.p);
+      sok('snTest perm/' + p + ': the exact p is a whole multiple of 1/total',
+          Math.abs(N.ex.p * N.ex.total - Math.round(N.ex.p * N.ex.total)) < 1e-9, N.ex.p);
+      sok('snTest perm/' + p + ': and its null distribution was actually built',
+          N.dist && N.dist.length === N.ex.total, N.dist && N.dist.length);
+    });
+    sok('snTest: every permutation preset was small enough to enumerate',
+        enumerated === Object.keys(SN_PAIRS).length, enumerated);
+    /* the preset that exists because the two tests disagree — asserted, so the
+       demo prose cannot quietly stop being true */
+    var so = {};
+    STAGES.snTest.enter(so, { view:'perm', pair:'outlier' });
+    var O = STAGES.snTest.cur(so);
+    sok('snTest: on the outlier preset the permutation test is significant and t is not',
+        O.ex.p < 0.05 && O.tt.p > 0.1, 'perm ' + O.ex.p + ' t ' + O.tt.p);
+    var sc2 = {};
+    STAGES.snTest.enter(sc2, { view:'perm', pair:'clear' });
+    var C = STAGES.snTest.cur(sc2);
+    sok('snTest: while on the clear preset they agree — which is what makes the ' +
+        'disagreement above worth showing', C.ex.p < 0.05 && C.tt.p < 0.05,
+        'perm ' + C.ex.p + ' t ' + C.tt.p);
+  })();
+
+  /* ---- snBayes: the posterior by two routes, on every prior and at the ends
+     of the data range where a likelihood is one-sided --------------------- */
+  (function(){
+    var checked = 0;
+    Object.keys(SN_PRIORS).forEach(function(pr){
+      [[0, 8], [3, 8], [8, 8], [14, 25]].forEach(function(d){
+        var st = {};
+        STAGES.snBayes.enter(st, { view:'post', prior:pr, k:d[0], n:d[1], level:0.95 });
+        var N = STAGES.snBayes.cur(st);
+        checked++;
+        /* the grid is 2000 midpoint cells; its own error on a smooth posterior
+           is ~1e-7, which sets the tolerance rather than a guess */
+        sok('snBayes ' + pr + ' ' + d[0] + '/' + d[1] + ': grid and conjugate means agree',
+            Math.abs(N.G.mean - N.B.mean) < 1e-5,
+            'grid ' + N.G.mean + ' closed ' + N.B.mean);
+        sok('snBayes ' + pr + ' ' + d[0] + '/' + d[1] + ': and their variances',
+            Math.abs(N.G.vari - N.B.vari) < 1e-7, N.G.vari + ' vs ' + N.B.vari);
+        /* the credible interval, two routes, to within a grid cell */
+        sok('snBayes ' + pr + ' ' + d[0] + '/' + d[1] + ': credible interval by two routes',
+            Math.abs(N.Ig[0] - N.Ib[0]) < 3 / N.G.N && Math.abs(N.Ig[1] - N.Ib[1]) < 3 / N.G.N,
+            N.Ig + ' vs ' + N.Ib);
+        /* the blend identity is exact, so it gets an exact tolerance */
+        sok('snBayes ' + pr + ' ' + d[0] + '/' + d[1] + ': the weighted average IS the mean',
+            Math.abs(N.Bl.blend - N.Bl.exact) < 1e-12, N.Bl.blend + ' vs ' + N.Bl.exact);
+      });
+    });
+    sok('snBayes: the posterior sweep covered every prior at every count', checked === 16, checked);
+  })();
+
+  /* ---- snBayes: the two wash-out rates, which are the view's whole subject */
+  (function(){
+    var st = {};
+    STAGES.snBayes.enter(st, { view:'wash', prior:'sceptic', priorB:'keen', prop:0.5 });
+    var N = STAGES.snBayes.cur(st);
+    sok('snBayes wash: the posterior MEANS converge like 1/n',
+        Math.abs(N.meanRate + 1) < 0.06, N.meanRate);
+    sok('snBayes wash: the DISTRIBUTIONS converge only like 1/√n',
+        Math.abs(N.tvRate + 0.5) < 0.06, N.tvRate);
+    sok('snBayes wash: so the two rates genuinely differ',
+        N.meanRate < N.tvRate - 0.35, N.meanRate + ' vs ' + N.tvRate);
+    sok('snBayes wash: every point sits at exactly the proportion requested',
+        N.W.every(function(q){ return q.exact; }),
+        N.W.filter(function(q){ return !q.exact; }).map(function(q){ return q.x; }).join(','));
+    /* a proportion with a different denominator must snap to a different step */
+    var s5 = {};
+    STAGES.snBayes.enter(s5, { view:'wash', prior:'flat', priorB:'keen', prop:0.4 });
+    var N5 = STAGES.snBayes.cur(s5);
+    sok('snBayes wash: at p = 2/5 the sweep steps by 5 and stays exact',
+        N5.W[0].x === 5 && N5.W.every(function(q){ return q.exact; }), N5.W[0].x);
+  })();
+
+  /* ---- snBayes: the diagnostic, by rule and by counting ------------------ */
+  (function(){
+    [[0.001, 0.99, 0.95], [0.01, 0.95, 0.99], [0.3, 0.8, 0.8]].forEach(function(c){
+      var st = {};
+      STAGES.snBayes.enter(st, { view:'diag', prev:c[0], sens:c[1], spec:c[2] });
+      var N = STAGES.snBayes.cur(st);
+      sok('snBayes diag ' + c.join('/') + ': Bayes and the counted cohort agree',
+          Math.abs(N.D.post - N.D.counted) < 1e-5,
+          'bayes ' + N.D.post + ' counted ' + N.D.counted);
+      sok('snBayes diag ' + c.join('/') + ': the cohort adds up to the population',
+          N.D.tp + N.D.fp + N.D.fn + N.D.tn === N.D.pop,
+          N.D.tp + N.D.fp + N.D.fn + N.D.tn);
+    });
+    /* the headline: a positive on an excellent test, on a rare condition */
+    var sr = {};
+    STAGES.snBayes.enter(sr, { view:'diag', prev:0.001, sens:0.99, spec:0.95 });
+    var R = STAGES.snBayes.cur(sr);
+    sok('snBayes diag: a 99%-sensitive test returns a positive that is wrong 98% of the time',
+        R.D.post < 0.03, R.D.post);
+    sok('snBayes diag: and the break-even prevalence is a few percent',
+        R.breakEven > 0.02 && R.breakEven < 0.1, R.breakEven);
+    /* …and at high prevalence the same test is trustworthy — the pair is what
+       shows the answer belongs to the disease rather than to the test */
+    var sh = {};
+    STAGES.snBayes.enter(sh, { view:'diag', prev:0.4, sens:0.99, spec:0.95 });
+    sok('snBayes diag: while at 40% prevalence the same test is over 90% reliable',
+        STAGES.snBayes.cur(sh).D.post > 0.9, STAGES.snBayes.cur(sh).D.post);
+  })();
+
+  /* ---- EVERY CACHE KEY COVERS EVERY FIELD ITS enter() SETS ---------------
+     snTest shipped with `own` and `sheet` missing from its key, because they
+     were added to enter() after the key was written. The result is a control
+     that accepts input and changes nothing — which looks exactly like a
+     control that was never wired, and is what ./auditcustom.ps1 reported it
+     as. The defect is not specific to that stage; it is available to any of
+     the five the moment a field is added, so it is gated for all of them.
+
+     The check perturbs one field at a time and asserts the cache MISSES. */
+  (function(){
+    var stages = ['snEst', 'snLike', 'snCI', 'snTest', 'snBayes'];
+    var missed = 0, probed = 0;
+    stages.forEach(function(id){
+      var S = STAGES[id];
+      var base = {}; S.enter(base, {});
+      Object.keys(base).forEach(function(f){
+        if(f.charAt(0) === '_') return;
+        var v = base[f];
+        var alt;
+        if(typeof v === 'number') alt = v + (Number.isInteger(v) ? 1 : 0.25);
+        else if(typeof v === 'boolean') alt = !v;
+        else if(typeof v === 'string' && f === 'sheet') alt = String(v) + '\n1 2 3';
+        else return;                 /* enum strings are covered by the preset sweep */
+        var st = {}; S.enter(st, {});
+        S.cur(st);
+        var k1 = st._snc && st._snc.key;
+        st[f] = alt;
+        S.cur(st);
+        var k2 = st._snc && st._snc.key;
+        probed++;
+        if(k1 === k2){
+          missed++;
+          sok(id + ': its cache key covers the field “' + f + '”', false,
+              'changing ' + f + ' from ' + v + ' to ' + alt + ' left the key identical');
+        }
+      });
+    });
+    /* §3.3a(a): a probe that examined no fields would pass silently */
+    sok('infer: the cache-key probe examined a real set of fields', probed >= 30, probed);
+    sok('infer: no stage caches on a key that ignores one of its own inputs',
+        missed === 0, missed);
+  })();
+
+  /* ---- the wing's own verdict formatter, as the stages call it ----------- */
+  (function(){
+    /* the property that makes it the right formatter here: it must be able to
+       call a SMALL gap a disagreement and a LARGER one agreement */
+    var small = snAgreeMC(1.0, 1.0004, 1e-5);
+    var large = snAgreeMC(1.0, 1.06, 0.5);
+    sok('infer: snAgreeMC calls a 4e-4 gap at 40σ a disagreement',
+        /larger than sampling/.test(small), small);
+    sok('infer: and a 0.06 gap at 0.12σ agreement — the opposite of their sizes',
+        /inside the noise/.test(large), large);
+    /* No stage may print a DIFFERENCE through a formatter that cannot scale it
+       — the J9 signature, a residual rendered as a bare "0".
+
+       The first version of this check looked for `<span class="v">0</span>`
+       anywhere in the readout and flagged snEst, correctly finding a bare zero
+       and wrongly calling it a defect: the row was "what it is aiming at", and
+       the normal family's default μ IS 0. A parameter that happens to be zero
+       is not an unscaled residual. So the check reads the LABEL and applies
+       only to rows that claim to be a comparison. */
+    var stges = ['snEst', 'snLike', 'snCI', 'snTest', 'snBayes'];
+    var bad = 0, rowsSeen = 0, diffRows = 0;
+    var isDiff = /compared|difference|shortfall|bias|gap|against|the two/i;
+    stges.forEach(function(id){
+      var st = {}; STAGES[id].enter(st, {});
+      var txt = STAGES[id].readout(st);
+      var re = /<span class="k">([\s\S]*?)<\/span><span class="v">([\s\S]*?)<\/span>/g, m;
+      while((m = re.exec(txt))){
+        rowsSeen++;
+        if(!isDiff.test(m[1])) continue;
+        diffRows++;
+        /* a difference row must carry a scale: a verdict phrase, a percentage,
+           or an explicit "×" of the simulation's own error */
+        if(/^\s*(0|−?0(\.0+)?)\s*$/.test(m[2])){
+          bad++;
+          sok(id + ' — “' + m[1] + '” prints an unscaled zero', false, m[2]);
+        }
+      }
+    });
+    /* §3.3a(a) again: a regex that matched no rows would pass this silently */
+    sok('infer: the readout scan actually parsed rows', rowsSeen > 40, rowsSeen);
+    sok('infer: and found difference rows to check', diffRows >= 5, diffRows);
+    sok('infer: no stage prints a bare unscaled zero as a difference', bad === 0, bad);
+  })();
+})();
+
 /* ---- report ---------------------------------------------------------------- */
 (function(){
   var t = document.createElement('div');

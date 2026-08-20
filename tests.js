@@ -15083,5 +15083,1057 @@ ok('and the table itself still has exactly the five orders it always had',
        bad === 0, bad);
   })();
 })();
+
+/* ============================================================================
+   NUMERICAL LINEAR ALGEBRA — 38b-numlin.js   (Programme C wing C16, gap B6)
+
+   Every test here is a second route, not a stored answer. The factorisations
+   are checked by multiplying them back together; the singular values against a
+   matrix whose singular values were CHOSEN; the iterative rates against the
+   closed-form spectrum of the Poisson matrix; and the two Krylov bounds against
+   runs that are supposed to attain them.
+
+   EVERY TOLERANCE BELOW WAS SET FROM A MEASUREMENT. Six of these assertions
+   failed on their first run and not one was fixed by loosening a number: the
+   spectral radius was biased by a polynomial factor Gelfand's formula takes the
+   m-th root of (see nlRhoGelfand), the singular-value tolerance was written
+   against an accuracy no stored float64 matrix can have, and the orthogonality
+   slopes were being fitted through points sitting on the machine-ε floor.
+   ============================================================================ */
+(function(){
+  var A3 = [[2, 1, -1], [-3, -1, 2], [-2, 1, 2]];
+  var b3 = [8, -11, -3];
+
+  /* ---- LU ------------------------------------------------------------------ */
+  (function(){
+    var F = nlLU(A3);
+    var R = nlLUResid(F, A3);
+    ok('nlLU: PA − LU is at round-off, against ‖A‖',
+       R.gap <= 1e-14 * R.scale, R.gap + ' vs scale ' + R.scale);
+    /* L is unit lower triangular and U is upper triangular — asserted because
+       every substitution below silently assumes both */
+    var shape = 0;
+    for(var i = 0; i < 3; i++) for(var j = 0; j < 3; j++){
+      if(j > i && F.L[i][j] !== 0) shape++;
+      if(i === j && F.L[i][j] !== 1) shape++;
+      if(j < i && F.U[i][j] !== 0) shape++;
+    }
+    ok('nlLU: L is unit lower triangular and U upper triangular', shape === 0, shape);
+    /* partial pivoting bounds every multiplier by 1 — that is what it is for */
+    ok('nlLU: every multiplier |ℓᵢⱼ| ≤ 1 under partial pivoting', F.maxMult <= 1 + 1e-14, F.maxMult);
+
+    var x = nlLUSolve(F, b3);
+    var y = laSolve(A3, b3).x;                        // the RREF route, shares nothing
+    close('nlLU: substitution and RREF agree on x₀', x[0], y[0], 1e-11);
+    close('nlLU: substitution and RREF agree on x₁', x[1], y[1], 1e-11);
+    close('nlLU: substitution and RREF agree on x₂', x[2], y[2], 1e-11);
+    close('nlLU: det from the pivots equals laDet', nlDetLU(F), laDet(A3), 1e-11);
+
+    /* the permutation really is a permutation, and PA is the rows in that order */
+    var P = nlPermMat(F.perm);
+    ok('nlLU: P is a permutation matrix, and PA = P·A',
+       laMaxDiff(laMul(P, A3), nlPermRows(A3, F.perm)) === 0);
+
+    /* the case pivoting exists for: without it the answer is destroyed, with it
+       the answer is exact, and the SAME code path produces both */
+    var Ap = [[1e-18, 1], [1, 1]], bp = [1, 2];
+    var xp = nlLUSolve(nlLU(Ap, true), bp);
+    var xn = nlLUSolve(nlLU(Ap, false), bp);
+    ok('nlLU: with pivoting the tiny-pivot system is solved (x ≈ [1, 1])',
+       Math.abs(xp[0] - 1) < 1e-9 && Math.abs(xp[1] - 1) < 1e-9, xp.join(', '));
+    ok('nlLU: without pivoting the same system loses x₀ entirely',
+       Math.abs(xn[0] - 1) > 0.5, xn.join(', '));
+    /* and the reason is the growth factor, not the conditioning: this matrix is
+       perfectly well conditioned, so κ cannot be what went wrong */
+    ok('nlLU: the failing matrix is well conditioned — κ₂ < 3, so κ is not the cause',
+       nlCond2(Ap) < 3, nlCond2(Ap));
+    ok('nlLU: and the unpivoted growth factor is astronomical',
+       nlLU(Ap, false).growth > 1e17, nlLU(Ap, false).growth);
+
+    /* Wilkinson's example: partial pivoting never swaps, and growth is 2ⁿ⁻¹.
+       This is the standing counterexample to "pivoting makes it safe". */
+    var W = nlGrowth(12), FW = nlLU(W);
+    ok('nlLU: Wilkinson growth matrix — partial pivoting performs no swaps at all',
+       FW.swaps === 0, FW.swaps);
+    close('nlLU: and its growth factor is exactly 2ⁿ⁻¹', FW.growth, Math.pow(2, 11), 1e-9);
+  })();
+
+  /* ---- QR ------------------------------------------------------------------ */
+  (function(){
+    var C = nlCondMat(8, 1e6, 4242);
+    var H = nlHouseQR(C.A);
+    ok('nlHouseQR: QR reconstructs A',
+       laMaxDiff(laMul(H.Q, H.R), C.A) < 1e-13, laMaxDiff(laMul(H.Q, H.R), C.A));
+    ok('nlHouseQR: Q is orthogonal to round-off even at κ = 10⁶',
+       nlOrthErr(H.Q) < 1e-14, nlOrthErr(H.Q));
+    var upper = 0;
+    for(var i = 1; i < 8; i++) for(var j = 0; j < i; j++) if(H.R[i][j] !== 0) upper++;
+    ok('nlHouseQR: R is upper triangular', upper === 0, upper);
+
+    var G = nlGSQR(C.A, false), M = nlGSQR(C.A, true);
+    ok('nlGSQR: both spellings reconstruct A',
+       laMaxDiff(laMul(G.Q, G.R), C.A) < 1e-12 && laMaxDiff(laMul(M.Q, M.R), C.A) < 1e-12);
+    /* the whole point of keeping both: at κ = 10⁶ and n = 8 classical
+       Gram–Schmidt has lost about 10⁻⁶ of its orthogonality and modified 10⁻¹² */
+    ok('nlGSQR: classical is far worse than modified, and modified far worse than Householder',
+       nlOrthErr(G.Q) > 1e3 * nlOrthErr(M.Q) && nlOrthErr(M.Q) > 1e3 * nlOrthErr(H.Q),
+       'cgs ' + nlOrthErr(G.Q) + ' mgs ' + nlOrthErr(M.Q) + ' hh ' + nlOrthErr(H.Q));
+
+    /* And the exponents, measured by a fit over five decades of κ rather than
+       asserted. The bounds are εκ² for classical, εκ for modified and ε for
+       Householder, so the predicted slopes of log‖QᵀQ − I‖ against log κ are
+       2, 1 and 0.
+
+       The fit starts at κ = 10³ and not at 10²: below that the classical error
+       is already down at 10⁻¹⁵, which is the machine-ε FLOOR rather than the
+       trend, and including those points dragged the first version of this test
+       to a slope of 1.63 and failed it. A curve that has bottomed out cannot
+       be fitted through.
+
+       The measured spread over n = 5…12 is 1.67–2.09 for classical and
+       0.76–0.98 for modified. The classical bound is therefore tight and the
+       modified one is NOT attained on this family — an upper bound is only an
+       upper bound, and the wing says so rather than quoting 1. */
+    var ks = [1e3, 1e4, 1e5, 1e6, 1e7], slope = {};
+    ['cgs', 'mgs', 'hh'].forEach(function(which){
+      var sx = 0, sy = 0, sxx = 0, sxy = 0, n = 0;
+      ks.forEach(function(kap){
+        var Ck = nlCondMat(8, kap, 4242);
+        var Q = which === 'cgs' ? nlGSQR(Ck.A, false).Q
+              : which === 'mgs' ? nlGSQR(Ck.A, true).Q : nlHouseQR(Ck.A).Q;
+        var X = Math.log10(kap), Y = Math.log10(Math.max(nlOrthErr(Q), 1e-16));
+        sx += X; sy += Y; sxx += X * X; sxy += X * Y; n++;
+      });
+      slope[which] = (n * sxy - sx * sy) / (n * sxx - sx * sx);
+    });
+    ok('nlGSQR: the measured slope of log‖QᵀQ − I‖ vs log κ is 2 for classical',
+       Math.abs(slope.cgs - 2) < 0.35, slope.cgs);
+    ok('nlGSQR: modified grows, but no faster than κ — its bound is not attained here',
+       slope.mgs > 0.55 && slope.mgs < 1.15, slope.mgs);
+    ok('nlHouseQR: and Householder has no dependence on κ at all',
+       Math.abs(slope.hh) < 0.15, slope.hh);
+
+    /* least squares through QR, against the normal equations on a problem where
+       both are fine — the agreement is the check that nlQRSolve is right */
+    var Als = [[1, 1], [1, 2], [1, 3], [1, 4]], bls = [2.1, 2.9, 4.2, 4.9];
+    var xq = nlQRSolve(nlHouseQR(Als), bls);
+    var xn2 = laLeastSquares(Als, bls).x;
+    close('nlQRSolve: QR least squares matches the normal equations, intercept', xq[0], xn2[0], 1e-10);
+    close('nlQRSolve: QR least squares matches the normal equations, slope', xq[1], xn2[1], 1e-10);
+    /* the residual is orthogonal to both columns — the defining property, and a
+       route that uses neither solver */
+    var res = laSub(bls, laMatVec(Als, xq));
+    ok('nlQRSolve: the residual is orthogonal to the column space',
+       Math.abs(laDot(laT(Als)[0], res)) < 1e-12 && Math.abs(laDot(laT(Als)[1], res)) < 1e-12);
+  })();
+
+  /* ---- singular values, and why the normal equation is the wrong route ------ */
+  (function(){
+    /* The first version of this asserted 10⁻¹³ relative accuracy at κ = 10¹⁰ and
+       failed at 1.8×10⁻⁸. It was the ASSERTION that was wrong: rounding the
+       entries of A into float64 already moves σ_min by ε·κ relatively — here
+       2×10⁻⁶ — so a matrix stored in doubles does not HAVE the singular values
+       it was built from to any better accuracy than that. The one-sided Jacobi
+       result is two orders of magnitude inside that floor; nothing can do
+       better, and the tolerance is now the floor rather than a wish. */
+    var C = nlCondMat(6, 1e10, 909);
+    var S = nlSVDJacobi(C.A);
+    var worst = 0;
+    for(var i = 0; i < 6; i++)
+      worst = Math.max(worst, Math.abs(S.sigma[i] - C.sigma[i]) / C.sigma[i]);
+    ok('nlSVDJacobi: every σ at κ = 10¹⁰ is inside the ε·κ floor that storing A imposes',
+       worst < 2.2e-16 * 1e10, worst + ' vs floor ' + 2.2e-6);
+    ok('nlSVDJacobi: and in fact two orders better than that floor', worst < 1e-7, worst);
+
+    var C6 = nlCondMat(6, 1e6, 909), S6 = nlSVDJacobi(C6.A);
+    var w6 = 0;
+    for(var i6 = 0; i6 < 6; i6++)
+      w6 = Math.max(w6, Math.abs(S6.sigma[i6] - C6.sigma[i6]) / C6.sigma[i6]);
+    ok('nlSVDJacobi: at κ = 10⁶ every σ is right to 10⁻¹¹ RELATIVE, smallest included',
+       w6 < 1e-11, w6);
+    close('nlSVDJacobi: and κ agrees with the constructed value', S6.cond / C6.kappa, 1, 1e-9);
+    ok('nlSVDJacobi: U has orthonormal columns', nlOrthErr(S.U) < 1e-13, nlOrthErr(S.U));
+    ok('nlSVDJacobi: V is orthogonal', nlOrthErr(S.V) < 1e-13, nlOrthErr(S.V));
+    /* A = UΣVᵀ, rebuilt */
+    var back = laZeros(6, 6);
+    for(var k = 0; k < 6; k++) for(var a = 0; a < 6; a++) for(var b = 0; b < 6; b++)
+      back[a][b] += S.sigma[k] * S.U[a][k] * S.V[b][k];
+    ok('nlSVDJacobi: UΣVᵀ rebuilds A', laMaxDiff(back, C.A) < 1e-13, laMaxDiff(back, C.A));
+
+    /* the comparison this module exists for. laSVD forms AᵀA, which squares κ,
+       so its smallest σ loses about half the digits it started with — measured
+       here at four condition numbers, and the failure is total by κ = 10¹⁰. */
+    var eJ = Math.abs(S.sigma[5] - C.sigma[5]) / C.sigma[5];
+    var eL = Math.abs(laSVD(C.A).sigma[5] - C.sigma[5]) / C.sigma[5];
+    ok('laSVD via AᵀA loses the smallest σ entirely at κ = 10¹⁰, where Jacobi keeps it',
+       eL > 0.5 && eJ < 1e-7, 'jacobi ' + eJ + ' vs normal-equation ' + eL);
+    var C8 = nlCondMat(6, 1e8, 909);
+    ok('laSVD via AᵀA is already 1% wrong in σ_min at κ = 10⁸',
+       Math.abs(laSVD(C8.A).sigma[5] - C8.sigma[5]) / C8.sigma[5] > 0.01,
+       Math.abs(laSVD(C8.A).sigma[5] - C8.sigma[5]) / C8.sigma[5]);
+
+    /* the Poisson matrix has a closed-form spectrum, so κ is known exactly */
+    var n = 20, P = nlPoisson(n);
+    close('nlPoissonCond: the SVD reproduces the closed-form κ of the Poisson matrix',
+          nlCond2(P) / nlPoissonCond(n), 1, 1e-10);
+    /* and the closed form is itself checked against the eigenvalues of P */
+    var E = laEigSym(P);
+    close('nlPoissonEig: λ₁ from the closed form matches laEigSym',
+          E.values[n - 1], nlPoissonEig(n, 1), 1e-10);
+    close('nlPoissonEig: λₙ likewise', E.values[0], nlPoissonEig(n, n), 1e-10);
+  })();
+
+  /* ---- conditioning: the bound is attained, and a residual is not an error -- */
+  (function(){
+    [1e2, 1e4, 1e6].forEach(function(kap){
+      var C = nlCondMat(5, kap, 31337);
+      var K = nlKappaAttain(C.A, 1e-9);
+      /* the perturbation bound is SHARP: taken along u₁ and uₙ it is attained,
+         so the measured amplification IS κ rather than merely below it */
+      ok('nlKappaAttain: at κ = ' + kap + ' the measured amplification attains the bound',
+         Math.abs(K.amp / K.kappa - 1) < 1e-4, 'amp ' + K.amp + ' κ ' + K.kappa);
+    });
+    /* an arbitrary perturbation may do anything up to κ and no more */
+    var C2 = nlCondMat(5, 1e5, 777), F = nlLU(C2.A);
+    var worst = 0;
+    for(var t = 0; t < 12; t++){
+      var b = C2.U.map(function(row){ return row[t % 5] + 0.3 * row[(t + 2) % 5]; });
+      var db = C2.U.map(function(row){ return 1e-9 * row[(t + 1) % 5]; });
+      var x = nlLUSolve(F, b), x2 = nlLUSolve(F, laAdd(b, db));
+      worst = Math.max(worst, (nlNrm2(laSub(x2, x)) / nlNrm2(x)) / (nlNrm2(db) / nlNrm2(b)));
+    }
+    ok('nlKappaAttain: and no perturbation exceeds κ', worst <= 1e5 * (1 + 1e-6), worst);
+
+    /* the headline distinction. A backward-stable solve has a tiny residual on
+       EVERY matrix; the error is up to κ times bigger, and on a Hilbert matrix
+       that is the difference between 10⁻¹⁶ and 10⁻⁵. */
+    var H = nlHilbert(9);
+    var xTrue = new Array(9).fill(1);
+    var bH = laMatVec(H, xTrue);
+    var xH = nlLUSolve(nlLU(H), bH);
+    var RE = nlResidError(H, bH, xH, xTrue);
+    ok('nlResidError: the residual of the computed solution is at round-off',
+       RE.relResid < 1e-14, RE.relResid);
+    ok('nlResidError: while the error in x is millions of times larger',
+       RE.relErr > 1e6 * RE.relResid, 'resid ' + RE.relResid + ' err ' + RE.relErr);
+    ok('nlResidError: and the error stays under the κ·(backward error) bound',
+       RE.relErr <= nlCond2(H) * RE.relResid * 1.001,
+       'err ' + RE.relErr + ' bound ' + nlCond2(H) * RE.relResid);
+    /* the ∞-norm condition number is a different number in the same class */
+    ok('nlCondInf: κ∞ and κ₂ of the Hilbert matrix agree to within a factor of n²',
+       nlCondInf(H) / nlCond2(H) > 1 / 81 && nlCondInf(H) / nlCond2(H) < 81,
+       'κ∞ ' + nlCondInf(H) + ' κ₂ ' + nlCond2(H));
+  })();
+
+  /* ---- stationary iteration ------------------------------------------------ */
+  (function(){
+    var n = 12, A = nlPoisson(n);
+    var b = laMatVec(A, Array.from({ length:n }, function(_, i){ return Math.sin(i + 1); }));
+
+    /* ρ(G) for Jacobi on the Poisson matrix is cos(π/(n+1)) exactly. The first
+       version of this test read 3.4×10⁻⁴ high, which is the bias nlRhoGelfand
+       now removes with a second difference — the Frobenius norm sees both of
+       ±cos(π/(n+1)), and √2 taken to the 1/2m is not 1. */
+    var GJ = nlIterMatrix(A, 'jacobi').G;
+    var muExact = Math.cos(Math.PI / (n + 1));
+    close('nlRhoGelfand: Jacobi ρ(G) matches cos(π/(n+1)) to round-off', nlRhoGelfand(GJ), muExact, 1e-9);
+    close('nlRhoPower: the power iteration agrees with Gelfand', nlRhoPower(GJ).rho, muExact, 1e-6);
+    /* and the run itself decays at that rate — a route that never forms G */
+    var runJ = nlIterate(A, b, 'jacobi', 1, 400);
+    ok('nlIterate: the observed Jacobi decay per sweep matches ρ(G)',
+       Math.abs(nlRateFit(runJ.hist).rate / muExact - 1) < 0.02,
+       'measured ' + nlRateFit(runJ.hist).rate + ' predicted ' + muExact);
+
+    /* Young: for a consistently ordered matrix ρ(GS) = ρ(Jacobi)² */
+    var GG = nlIterMatrix(A, 'gs').G;
+    close('nlIterMatrix: ρ(Gauss–Seidel) = ρ(Jacobi)² on a consistently ordered matrix',
+          nlRhoGelfand(GG), muExact * muExact, 1e-9);
+    var runG = nlIterate(A, b, 'gs', 1, 400);
+    ok('nlIterate: and Gauss–Seidel is measured converging at that squared rate',
+       Math.abs(nlRateFit(runG.hist).rate / (muExact * muExact) - 1) < 0.03,
+       nlRateFit(runG.hist).rate);
+
+    /* SOR at the optimum: ρ = ω−1. The tolerance here is 10⁻⁴ and not 10⁻⁹ like
+       the two above, and the reason is structural rather than sloppy: at ω_opt
+       the eigenvalues coalesce in DEFECTIVE pairs, so ‖Gᵐ‖ carries a factor
+       linear in m whose next correction is O(1/m). Measured at n = 8, 12 and 20
+       it is 4.9×10⁻⁵, 1.2×10⁻⁵ and −3.7×10⁻⁵. */
+    var wOpt = nlSorOpt(muExact);
+    var GS = nlIterMatrix(A, 'sor', wOpt).G;
+    close('nlSorOpt: at the optimal ω, ρ(SOR) = ω − 1', nlRhoGelfand(GS), nlSorRho(muExact), 1e-4);
+    ok('nlSorOpt: and the optimum really is a minimum — ρ rises on both sides',
+       nlRhoGelfand(nlIterMatrix(A, 'sor', wOpt - 0.12).G) > nlRhoGelfand(GS) &&
+       nlRhoGelfand(nlIterMatrix(A, 'sor', wOpt + 0.12).G) > nlRhoGelfand(GS));
+    var runS = nlIterate(A, b, 'sor', wOpt, 400);
+    ok('nlIterate: SOR at ω_opt reaches 10⁻¹⁰ in far fewer sweeps than Gauss–Seidel',
+       runS.hist.filter(function(p){ return p.err > 1e-10; }).length * 3 <
+       runG.hist.filter(function(p){ return p.err > 1e-10; }).length,
+       'sor ' + runS.hist.filter(function(p){ return p.err > 1e-10; }).length +
+       ' gs ' + runG.hist.filter(function(p){ return p.err > 1e-10; }).length);
+
+    /* Diagonal dominance is SUFFICIENT for Jacobi and not necessary, and the two
+       standard 3×3 examples show the implication failing in both directions.
+       Both spectral radii are measured rather than quoted, and both runs are
+       driven so the radius is never the only witness. */
+    var Aj = [[1, 2, -2], [1, 1, 1], [2, 2, 1]];          // Jacobi converges, GS does not
+    var Ag = [[2, -1, 1], [2, 2, 2], [-1, -1, 2]];        // GS converges, Jacobi does not
+    ok('nlIterMatrix: a matrix that is not diagonally dominant can still give ρ(Jacobi) = 0',
+       nlRhoGelfand(nlIterMatrix(Aj, 'jacobi').G) < 1e-6,
+       nlRhoGelfand(nlIterMatrix(Aj, 'jacobi').G));
+    ok('nlIterMatrix: …while Gauss–Seidel diverges on the very same matrix',
+       nlRhoGelfand(nlIterMatrix(Aj, 'gs').G) > 1.5,
+       nlRhoGelfand(nlIterMatrix(Aj, 'gs').G));
+    ok('nlIterMatrix: and the other way round — Jacobi diverges where Gauss–Seidel converges',
+       nlRhoGelfand(nlIterMatrix(Ag, 'jacobi').G) > 1 &&
+       nlRhoGelfand(nlIterMatrix(Ag, 'gs').G) < 1,
+       'jacobi ' + nlRhoGelfand(nlIterMatrix(Ag, 'jacobi').G) +
+       ' gs ' + nlRhoGelfand(nlIterMatrix(Ag, 'gs').G));
+    ok('nlIterate: the runs on those two matrices diverge and converge exactly as ρ says',
+       nlIterate(Aj, [1, 2, 3], 'gs', 1, 60).diverged === true &&
+       nlIterate(Ag, [1, 2, 3], 'jacobi', 1, 60).diverged === true &&
+       nlIterate(Aj, [1, 2, 3], 'jacobi', 1, 60).diverged === false &&
+       nlIterate(Ag, [1, 2, 3], 'gs', 1, 60).diverged === false);
+
+    /* the underflow trap Gelfand's formula walks into if the norm is not
+       factored out: ρ = 0.1 at m = 512 is 10⁻⁵¹², which is zero in float64 */
+    close('nlRhoGelfand: survives a radius small enough to underflow G^512',
+          nlRhoGelfand([[0.1, 0], [0, 0.05]]), 0.1, 1e-9);
+  })();
+
+  /* ---- Krylov -------------------------------------------------------------- */
+  (function(){
+    var n = 16, A = nlPoisson(n);
+    var xTrue = Array.from({ length:n }, function(_, i){ return Math.cos(0.7 * i); });
+    var b = laMatVec(A, xTrue);
+    var CG = nlCG(A, b, n + 4);
+    ok('nlCG: converges to the direct solution',
+       nlNrm2(laSub(CG.x, xTrue)) / nlNrm2(xTrue) < 1e-10,
+       nlNrm2(laSub(CG.x, xTrue)) / nlNrm2(xTrue));
+    /* finite termination: in exact arithmetic CG is done in n steps, and in
+       float64 on a matrix this well behaved it is still at round-off there */
+    ok('nlCG: the error is at round-off by step n', CG.hist[n].err < 1e-10, CG.hist[n].err);
+    /* the A-norm error decreases MONOTONICALLY — that is what CG minimises */
+    var mono = true;
+    for(var i = 1; i <= n; i++) if(CG.hist[i].err > CG.hist[i - 1].err * (1 + 1e-9)) mono = false;
+    ok('nlCG: the A-norm error falls at every step', mono);
+    /* and it stays under its own bound at every step */
+    var kap = nlPoissonCond(n), bad = 0;
+    for(var k = 1; k <= n; k++) if(CG.hist[k].err > nlCGBound(kap, k) * (1 + 1e-9)) bad++;
+    ok('nlCG: every step is inside the (√κ−1)/(√κ+1) bound', bad === 0, bad);
+
+    var SD = nlSteepest(A, b, 200);
+    ok('nlSteepest: is inside its own (κ−1)/(κ+1) bound at every step',
+       SD.hist.every(function(p){ return p.err <= nlSDBound(kap, p.k) * (1 + 1e-9); }));
+    /* the comparison that is the reason both exist: after n steps CG is done
+       and steepest descent has barely started */
+    ok('nlSteepest: after n steps CG is at round-off and steepest descent is not',
+       SD.hist[n].err > 1e6 * CG.hist[n].err, 'sd ' + SD.hist[n].err + ' cg ' + CG.hist[n].err);
+    /* the bounds are not vacuous — √κ really is the improvement, measured as
+       the ratio of the steps each needs to reach 10⁻⁶ */
+    var kCG = CG.hist.filter(function(p){ return p.err > 1e-6; }).length;
+    var kSD = SD.hist.filter(function(p){ return p.err > 1e-6; }).length;
+    ok('nlCG: CG needs O(√κ) steps where steepest descent needs O(κ)',
+       kSD / kCG > 3, 'cg ' + kCG + ' sd ' + kSD);
+  })();
+})();
+/* ============ statistical inference (43a, 43b) ============================
+   Every simulated quantity below is compared against a closed form on the scale
+   of the SIMULATION'S OWN standard error, never on a fixed tolerance. A fixed
+   tolerance on a Monte Carlo is a test that passes or fails according to how
+   many trials somebody happened to pick, which is not a test of anything. The
+   threshold is 4 standard errors throughout — a 6×10⁻⁵ event — and every seed
+   is fixed, so these do not flicker.
+   ========================================================================== */
+(function(){
+  /* ---- the seeded stream is a stream, and it is reproducible -------------- */
+  (function(){
+    var r1 = snRng(12345), r2 = snRng(12345);
+    var same = true, inRange = true;
+    for(var i = 0; i < 500; i++){
+      var a = r1(), b = r2();
+      if(a !== b) same = false;
+      if(!(a >= 0 && a < 1)) inRange = false;
+    }
+    ok('snRng: the same seed gives the identical stream', same);
+    ok('snRng: every draw is in [0, 1)', inRange);
+    var r3 = snRng(12346), diff = 0;
+    var r4 = snRng(12345);
+    for(var j = 0; j < 500; j++) if(r3() !== r4()) diff++;
+    ok('snRng: a different seed gives a different stream', diff > 480, diff);
+    /* the mean and variance of the stream itself, against 1/2 and 1/12 */
+    var rr = snRng(7), s = 0, s2 = 0, N = 200000;
+    for(var m = 0; m < N; m++){ var v = rr(); s += v; s2 += v * v; }
+    var mu = s / N;
+    ok('snRng: the stream is uniform — mean within 4 se of 1/2',
+       Math.abs(mu - 0.5) < 4 * Math.sqrt(1 / 12 / N), mu);
+    close('snRng: and its variance is 1/12', s2 / N - mu * mu, 1 / 12, 3e-4);
+    /* snRandn is a standard normal */
+    var rn = snRng(99), sn = 0, sn2 = 0, M2 = 200000;
+    for(var q = 0; q < M2; q++){ var g = snRandn(rn); sn += g; sn2 += g * g; }
+    ok('snRandn: mean within 4 se of 0', Math.abs(sn / M2) < 4 / Math.sqrt(M2), sn / M2);
+    close('snRandn: variance is 1', sn2 / M2, 1, 0.02);
+  })();
+
+  /* ---- log Γ, and the ratio Bessel's correction needs -------------------- */
+  (function(){
+    close('snLgamma: Γ(1) = 1', snLgamma(1), 0, 1e-12);
+    close('snLgamma: Γ(5) = 24', Math.exp(snLgamma(5)), 24, 1e-9);
+    close('snLgamma: Γ(1/2) = √π', Math.exp(snLgamma(0.5)), Math.sqrt(Math.PI), 1e-12);
+    /* against the wing below, which returns Γ itself — two implementations */
+    var worst = 0;
+    for(var z = 0.3; z < 20; z += 0.37)
+      worst = Math.max(worst, Math.abs(snLgamma(z) - Math.log(pbGamma(z))));
+    ok('snLgamma: agrees with pbGamma’s logarithm over [0.3, 20]', worst < 1e-11, worst);
+    /* and past where pbGamma cannot go at all — the reason it exists */
+    ok('snLgamma: still finite at z = 400, where Γ itself overflows',
+       Number.isFinite(snLgamma(400)) && !Number.isFinite(pbGamma(400)), snLgamma(400));
+    /* c₄ against published values, and against its own definition */
+    close('snC4: c₄(2) = √(2/π)', snC4(2), Math.sqrt(2 / Math.PI), 1e-12);
+    close('snC4: c₄(5) = 0.93999', snC4(5), 0.9399856, 1e-6);
+    close('snC4: c₄(10) = 0.97270', snC4(10), 0.9726593, 1e-6);
+    ok('snC4: below 1 for every n — the bias never vanishes at finite n',
+       [2, 3, 5, 10, 50, 200, 1000].every(function(n){ return snC4(n) < 1; }));
+    ok('snC4: and rises towards 1', snC4(1000) > snC4(200) && snC4(200) > snC4(50));
+    ok('snC4: survives n = 800, where the naive ratio of gammas overflows',
+       Number.isFinite(snC4(800)) && snC4(800) > 0.999, snC4(800));
+  })();
+
+  /* ---- the incomplete beta, and the three CDFs that are it --------------- */
+  (function(){
+    close('snBetaInc: I_x(1,1) = x', snBetaInc(0.37, 1, 1), 0.37, 1e-12);
+    close('snBetaInc: I_x(a,1) = xᵃ', snBetaInc(0.3, 2, 1), 0.09, 1e-12);
+    close('snBetaInc: I_x(1,b) = 1 − (1−x)ᵇ', snBetaInc(0.3, 1, 2), 0.51, 1e-12);
+    close('snBetaInc: I_½(3,3) = ½ by symmetry', snBetaInc(0.5, 3, 3), 0.5, 1e-12);
+    ok('snBetaInc: monotone in x', (function(){
+      var prev = -1, good = true;
+      for(var x = 0; x <= 1.0001; x += 0.01){ var v = snBetaInc(x, 2.5, 4.5);
+        if(v < prev - 1e-15) good = false; prev = v; }
+      return good;
+    })());
+    /* the identity that ties it to the binomial: I_p(k+1, n−k) = P(X ≥ k+1).
+       The right-hand side is summed term by term — nothing shared with the
+       continued fraction but the numbers going in. */
+    var worst = 0;
+    [[10, 3, 0.4], [20, 7, 0.25], [50, 30, 0.6], [100, 12, 0.1]].forEach(function(c){
+      var n = c[0], k = c[1], p = c[2];
+      worst = Math.max(worst, Math.abs(snBetaInc(p, k + 1, n - k) - snBinomTailGE(k + 1, n, p)));
+    });
+    ok('snBetaInc: matches the summed binomial tail to 1e-12', worst < 1e-12, worst);
+  })();
+
+  /* ---- t: the distribution the small-sample half of the wing rests on ---- */
+  (function(){
+    /* against a printed table — the two-sided 95% points */
+    close('snTQuant: t(0.975, 1) = 12.706', snTQuant(0.975, 1), 12.7062, 1e-3);
+    close('snTQuant: t(0.975, 2) = 4.3027', snTQuant(0.975, 2), 4.30265, 1e-4);
+    close('snTQuant: t(0.975, 4) = 2.7764', snTQuant(0.975, 4), 2.77645, 1e-4);
+    close('snTQuant: t(0.975, 10) = 2.2281', snTQuant(0.975, 10), 2.22814, 1e-4);
+    close('snTQuant: t(0.975, 30) = 2.0423', snTQuant(0.975, 30), 2.04227, 1e-4);
+    close('snZQuant: z(0.975) = 1.959964', snZQuant(0.975), 1.959964, 1e-5);
+    ok('snTQuant: rises above z at every finite df, and falls towards it',
+       snTQuant(0.975, 2) > snTQuant(0.975, 10) &&
+       snTQuant(0.975, 10) > snTQuant(0.975, 200) &&
+       snTQuant(0.975, 200) > snZQuant(0.975));
+    close('snTQuant: t → z as df → ∞', snTQuant(0.975, 200000), snZQuant(0.975), 2e-4);
+    /* the CDF by continued fraction against the CDF by integrating the density
+       — two routes sharing only the density's algebraic form */
+    var worst = 0, seen = 0;
+    [1, 2, 4, 9, 30].forEach(function(df){
+      for(var t = -6; t <= 6.0001; t += 0.5){
+        var q = snTCdfQuad(t, df);
+        if(Number.isFinite(q)){ seen++; worst = Math.max(worst, Math.abs(snTCdf(t, df) - q)); }
+      }
+    });
+    ok('snTCdf: the two routes agree to 1e-10 over 125 points', worst < 1e-10, worst);
+    ok('snTCdfQuad: and it actually ran — 125 points, not zero', seen === 125, seen);
+    ok('snTCdfQuad: refuses past |t| = 20 rather than returning a wrong number',
+       !Number.isFinite(snTCdfQuad(25, 4)) && Number.isFinite(snTCdfQuad(19, 4)));
+    close('snTCdf: symmetric, F(−t) = 1 − F(t)', snTCdf(-1.7, 6) + snTCdf(1.7, 6), 1, 1e-13);
+    /* The density integrates to the probability of the range — which at df = 3
+       is NOT 1 over [−40, 40], and the first version of this test asserted that
+       it was. The t₃ tail falls like t⁻⁴, so 3.4×10⁻⁵ of the mass is still
+       outside |t| = 40; that is a truncation, it has an order, and no amount of
+       quadrature removes it. Comparing the two routes over the SAME finite
+       range is the check that was wanted, and it is a sharper one. */
+    var quad = snSimpson(function(x){ return snTPdf(x, 3); }, -40, 40, 40000);
+    close('snTPdf: integrating the density matches the CDF over the same range',
+      quad, snTCdf(40, 3) - snTCdf(-40, 3), 1e-11);
+    ok('snTPdf: and that range is NOT all of the mass at df = 3 — the tail is t⁻⁴',
+      1 - quad > 3e-5 && 1 - quad < 4e-5, 1 - quad);
+    ok('snTPdf: at df = 30 the same range holds essentially all of it',
+      1 - snSimpson(function(x){ return snTPdf(x, 30); }, -40, 40, 40000) < 1e-12);
+    /* and the null statistic really does follow it — simulation against theory */
+    var R = snNullRun(6, 4000, 20260819, 0.05, 1.7);
+    var below = R.ts.filter(function(t){ return t < 1.2; }).length / R.ts.length;
+    var want = snTCdf(1.2, 5);
+    ok('snTTest: the simulated t statistic follows t(n−1) — F(1.2) within 4 se',
+       Math.abs(below - want) < 4 * Math.sqrt(want * (1 - want) / 4000),
+       'sim ' + below + ' theory ' + want);
+  })();
+
+  /* ---- estimators: bias and variance, simulated against closed forms ----- */
+  (function(){
+    var p = { th:1.3, sd:2.1 }, n = 9, T = 20000;
+    ['mean', 'median', 's2', 's2n', 'sd'].forEach(function(est){
+      var D = snSampDist('normal', p, n, est, T, 424242);
+      var E = SN_ESTS[est];
+      var tr = E.truth(n, p, 'normal');
+      if(E.approx) return;                 /* the median's is asymptotic, tested apart */
+      ok('snSampDist: ' + est + ' — mean matches the closed form within 4 se',
+         Math.abs(D.stats.mean - tr.mean) < 4 * D.stats.se,
+         'sim ' + D.stats.mean + ' exact ' + tr.mean + ' se ' + D.stats.se);
+      ok('snSampDist: ' + est + ' — variance matches the closed form within 4 se',
+         Math.abs(D.vari - tr.vari) < 4 * D.varSE,
+         'sim ' + D.vari + ' exact ' + tr.vari + ' se ' + D.varSE);
+    });
+    /* the four claims the estimator stage is built on, each as a MEASUREMENT */
+    var Ds2 = snSampDist('normal', p, n, 's2', 20000, 424242);
+    var Ds2n = snSampDist('normal', p, n, 's2n', 20000, 424242);
+    ok('s²: unbiased — the bias is inside 4 of its own standard errors',
+       Math.abs(Ds2.bias) < 4 * Ds2.biasSE, Ds2.bias + ' ± ' + Ds2.biasSE);
+    ok('s² ÷ n: biased, and by more than sampling can explain',
+       Math.abs(Ds2n.bias) > 6 * Ds2n.biasSE, Ds2n.bias + ' ± ' + Ds2n.biasSE);
+    close('s² ÷ n: and the bias is exactly −σ²/n', Ds2n.truth.mean - p.sd * p.sd,
+          -p.sd * p.sd / n, 1e-12);
+    ok('s² ÷ n: has the SMALLER variance of the two, which is the trade',
+       Ds2n.truth.vari < Ds2.truth.vari, Ds2n.truth.vari + ' vs ' + Ds2.truth.vari);
+    ok('s² ÷ n: and at n = 9 the smaller mean squared error as well',
+       Ds2n.truth.vari + Math.pow(Ds2n.truth.mean - p.sd * p.sd, 2) < Ds2.truth.vari);
+    /* Jensen: the sd is biased even though the variance is not */
+    var Dsd = snSampDist('normal', p, n, 'sd', 20000, 424242);
+    ok('s = √s²: biased downwards, by more than sampling can explain',
+       Dsd.bias < -6 * Dsd.biasSE, Dsd.bias + ' ± ' + Dsd.biasSE);
+    close('s = √s²: and the factor is exactly c₄(n)', Dsd.truth.mean / p.sd, snC4(n), 1e-12);
+    /* the median throws away a third of a normal sample */
+    var Dmed = snSampDist('normal', p, 41, 'median', 20000, 5150);
+    var Dmn = snSampDist('normal', p, 41, 'mean', 20000, 5150);
+    ok('median: its variance is π/2 times the mean’s, within 8%',
+       Math.abs(Dmed.vari / Dmn.vari - Math.PI / 2) < 0.08 * Math.PI / 2,
+       Dmed.vari / Dmn.vari);
+    /* MSE two ways: the identity, and the definition. They differ by exactly
+       one trial's worth of variance, which is a fact about the denominators
+       rather than a discrepancy — so the tolerance is 3/trials, not a guess. */
+    ok('snSampDist: MSE by the identity equals MSE by definition, to 3/trials',
+       Math.abs(Ds2.mse - Ds2.mseDirect) < 3 * Ds2.vari / Ds2.trials,
+       Ds2.mse + ' vs ' + Ds2.mseDirect);
+  })();
+
+  /* ---- the uniform family, where the regularity hypothesis fails --------- */
+  (function(){
+    var p = { th:2.0 }, n = 8, T = 20000;
+    ['max', 'maxAdj', 'twice'].forEach(function(est){
+      var D = snSampDist('unif', p, n, est, T, 31337);
+      var tr = SN_ESTS[est].truth(n, p, 'unif');
+      ok('snSampDist: unif/' + est + ' — mean matches its closed form within 4 se',
+         Math.abs(D.stats.mean - tr.mean) < 4 * D.stats.se,
+         'sim ' + D.stats.mean + ' exact ' + tr.mean);
+      ok('snSampDist: unif/' + est + ' — variance matches within 4 se',
+         Math.abs(D.vari - tr.vari) < 4 * D.varSE, 'sim ' + D.vari + ' exact ' + tr.vari);
+    });
+    var Dm = snSampDist('unif', p, n, 'max', T, 31337);
+    ok('max: biased downwards — every observation is below θ, so the largest is too',
+       Dm.bias < -6 * Dm.biasSE, Dm.bias);
+    close('max: and the bias is exactly −θ/(n+1)', Dm.truth.mean - p.th, -p.th / (n + 1), 1e-12);
+    /* the adjusted maximum beats 2x̄ by a factor that GROWS with n — the two
+       variances fall at different rates, which is the whole point */
+    var ratio = function(nn){
+      return SN_ESTS.twice.truth(nn, p, 'unif').vari / SN_ESTS.maxAdj.truth(nn, p, 'unif').vari;
+    };
+    /* the ratio of the two variances has a closed form, and asserting the form
+       is worth more than asserting that it grows. The first version of this
+       test guessed the growth was faster than linear — it is exactly linear,
+       because O(1/n) ÷ O(1/n²) is O(n), and the guess failed at n = 64. */
+    close('maxAdj: the variance ratio against 2x̄ is exactly (n+2)/3, at n = 8',
+       ratio(8), 10 / 3, 1e-12);
+    close('maxAdj: and at n = 64', ratio(64), 22, 1e-12);
+    ok('maxAdj: so the advantage grows without bound, linearly in n',
+       ratio(1000) > 300 && Math.abs(ratio(1000) / ratio(100) - 1002 / 102) < 1e-9,
+       ratio(1000));
+    /* and it beats the Cramér–Rao bound, which is legal because the bound's
+       hypothesis is false here. This is the assertion that would be a defect on
+       any other family in the table, so it is pinned deliberately. */
+    var F = snFisher('unif', p, n, 2000, 606, null);
+    ok('unif: the adjusted maximum has variance BELOW the Cramér–Rao bound',
+       SN_ESTS.maxAdj.truth(n, p, 'unif').vari < F.crb,
+       'var ' + SN_ESTS.maxAdj.truth(n, p, 'unif').vari + ' crb ' + F.crb);
+    ok('unif: and the table records that the bound does not apply', F.regular === false);
+    ok('SN_FAMS: every other family is marked regular',
+       ['normal', 'expo', 'bern', 'poisson'].every(function(k){ return SN_FAMS[k].regular; }));
+  })();
+
+  /* ---- likelihood, and the three routes to the information -------------- */
+  (function(){
+    /* the grid maximum finds the closed-form MLE, on a family where one exists */
+    var rng = snRng(2024), xs = [];
+    for(var i = 0; i < 40; i++) xs.push(0.7 + 1.4 * snRandn(rng));
+    var C = snLikCurve('normal', xs, -3, 4, 20000, { sd:1.4 });
+    var mle = SN_FAMS.normal.mle(xs);
+    ok('snLikCurve: the raw grid maximum finds the closed-form MLE to within a step',
+       Math.abs(C.gridMax - mle) <= C.step, 'grid ' + C.gridMax + ' closed ' + mle);
+    /* the parabolic refinement is O(step²), so it must be very much better than
+       one step — asserting only "within a step" would pass whether or not the
+       refinement did anything at all */
+    ok('snLikCurve: and the fitted peak is far better than a step — O(step²)',
+       C.refined && Math.abs(C.peak - mle) < 0.02 * C.step,
+       'peak ' + C.peak + ' closed ' + mle + ' step ' + C.step);
+    /* …and it is deliberately NOT applied where the peak is not smooth */
+    (function(){
+      var r2 = snRng(31337), ys = [];
+      for(var j = 0; j < 30; j++) ys.push(SN_FAMS.unif.sample({ th:2 }, r2));
+      var Cu = snLikCurve('unif', ys, 0.5, 4, 3000, null);
+      ok('snLikCurve: no parabola is fitted to a cliff — it bisects for the edge instead',
+         Cu.how === 'edge', Cu.how);
+      /* and the edge really is the sample maximum, to machine precision — the
+         whole gain over the raw grid maximum, which is only good to a step */
+      ok('snLikCurve: and the edge it finds IS the sample maximum, to 1e-12',
+         Math.abs(Cu.peak - Math.max.apply(null, ys)) < 1e-12,
+         Cu.peak + ' vs ' + Math.max.apply(null, ys));
+      ok('snLikCurve: which is far better than the raw grid maximum it replaced',
+         Math.abs(Cu.gridMax - Math.max.apply(null, ys)) > 100 *
+         Math.abs(Cu.peak - Math.max.apply(null, ys)),
+         'raw ' + Math.abs(Cu.gridMax - Math.max.apply(null, ys)));
+      /* the method is chosen by looking at the curve, not by naming the family */
+      ok('snLikCurve: a smooth family still gets the parabola, not the bisection',
+         snLikCurve('normal', [0.2, -0.4, 0.9, 0.1], -3, 3, 800, { sd:1 }).how === 'parabola');
+    })();
+    /* the exponential MLE is 1/x̄ and it is BIASED — E[λ̂] = nλ/(n−1) */
+    var pe = { th:1.5 }, ne = 12;
+    var rr = snRng(808), vals = [];
+    for(var t = 0; t < 30000; t++){
+      var s = 0;
+      for(var j = 0; j < ne; j++) s += SN_FAMS.expo.sample(pe, rr);
+      vals.push(ne / s);
+    }
+    var S = pbStats(vals), want = ne * pe.th / (ne - 1);
+    ok('expo: the MLE 1/x̄ is biased upwards by exactly λ/(n−1)',
+       Math.abs(S.mean - want) < 4 * S.se, 'sim ' + S.mean + ' exact ' + want + ' λ ' + pe.th);
+    ok('expo: and that bias is real, not noise — it is far from λ itself',
+       Math.abs(S.mean - pe.th) > 6 * S.se, S.mean - pe.th);
+    /* Fisher information three ways on a regular family */
+    var pf = { th:0.6, sd:1.0 }, nf = 20;
+    var F = snFisher('normal', pf, nf, 4000, 777, { sd:1.0 });
+    ok('snFisher: the score has mean zero, within 4 se',
+       Math.abs(F.scoreMean) < 4 * F.scoreMeanSE, F.scoreMean + ' ± ' + F.scoreMeanSE);
+    ok('snFisher: Var[score] matches the closed form within 4 se',
+       Math.abs(F.scoreVar - F.closed) < 4 * F.scoreVarSE,
+       'score ' + F.scoreVar + ' closed ' + F.closed);
+    /* The tolerance carries TWO floors, and the first version carried only one.
+       For a normal mean ℓ″ = −n/σ² does not depend on the data at all, so the
+       sampling standard error of this route is exactly ZERO and 4·se is 4e-9 —
+       while the central second difference that computes it has a round-off
+       floor of about ε·|ℓ|/h², here 1.5e-7. That is not a statistical
+       disagreement and no number of trials touches it; it is the differencing
+       floor, and it has to be in the tolerance or the check is asking the
+       arithmetic for digits it does not have. */
+    var fdFloor = 1e-6 * F.closed;
+    ok('snFisher: the curvature at the TRUE θ matches it too, within 4 se + the ' +
+       'second difference’s own floor',
+       Math.abs(F.obsAtTruth - F.closed) < 4 * F.obsAtTruthSE + fdFloor,
+       'obs ' + F.obsAtTruth + ' closed ' + F.closed + ' se ' + F.obsAtTruthSE);
+    ok('snFisher: all three routes actually produced numbers',
+       F.scoreN > 3900 && F.obsN > 3900 && F.obsAtTruthN > 3900,
+       F.scoreN + ' / ' + F.obsN + ' / ' + F.obsAtTruthN);
+    /* THE OBSERVED INFORMATION IS A DIFFERENT QUANTITY from the Fisher one:
+       the curvature at the ESTIMATE rather than at the truth, biased by
+       O(1/n). This module shipped claiming they were the same, and the claim
+       is exactly true for a normal mean — where ℓ″ = −n/σ² does not depend on
+       where it is evaluated — so testing only the normal found nothing. Both
+       halves are pinned here so neither can drift back. */
+    ok('snFisher: for a NORMAL mean the two coincide exactly, because ℓ″ is constant',
+       Math.abs(F.obs - F.obsAtTruth) < 1e-6 * F.closed,
+       'at MLE ' + F.obs + ' at truth ' + F.obsAtTruth);
+    /* The SIZE of the bias is family-specific — the first version of this test
+       asserted 1 + 1/n for all three and that is the EXPONENTIAL's factor:
+       Poisson gives 1 + 1/(nλ) and Bernoulli something messier still. What
+       generalises is the ORDER, so that is what is asserted, and it is measured
+       by doubling n rather than quoted. Two families whose factor is exactly
+       known get their closed forms as well. */
+    [['expo', { th:1.4 }], ['poisson', { th:3 }], ['bern', { th:0.35 }]].forEach(function(c){
+      var nn = 20;
+      var G = snFisher(c[0], c[1], nn, 8000, 5150, null);
+      var G2 = snFisher(c[0], c[1], 2 * nn, 8000, 5150, null);
+      var b1 = G.obs / G.closed - 1, b2 = G2.obs / G2.closed - 1;
+      ok('snFisher: on ' + c[0] + ' the curvature at the MLE is biased HIGH',
+         b1 > 4 * G.obsSE / G.closed, 'ratio ' + G.obs / G.closed);
+      ok('snFisher: and that bias halves when n doubles — it is O(1/n), not a constant',
+         Math.abs(b2 / b1 - 0.5) < 0.3, 'n ' + b1 + ' → 2n ' + b2);
+      /* while the curvature at the TRUE θ is unbiased at every n */
+      ok('snFisher: while the curvature at the true θ is unbiased on ' + c[0] + ' too',
+         Math.abs(G.obsAtTruth - G.closed) < 4 * G.obsAtTruthSE + 1e-6 * G.closed,
+         G.obsAtTruth + ' vs ' + G.closed);
+    });
+    /* the one family whose factor is exactly known: ℓ″ = −n/λ², so at λ̂ the
+       average is (n+1)/λ² against a Fisher information of n/λ² */
+    (function(){
+      var nn = 20, G = snFisher('expo', { th:1.4 }, nn, 20000, 4242, null);
+      ok('snFisher: on the exponential the factor is exactly (n+1)/n',
+         Math.abs(G.obs / G.closed - (nn + 1) / nn) < 4 * G.obsSE / G.closed,
+         G.obs / G.closed + ' vs ' + (nn + 1) / nn);
+    })();
+    close('snFisher: information is n × the per-observation value', F.closed, nf / 1.0, 1e-12);
+    /* the MLE of a normal mean attains the bound — variance equals 1/(nI) */
+    ok('snFisher: the sample mean attains the Cramér–Rao bound, within 4 se',
+       Math.abs(F.mleStats.vari - F.crb) < 4 * F.mleStats.vari * Math.sqrt(2 / 4000),
+       'var ' + F.mleStats.vari + ' crb ' + F.crb);
+  })();
+
+  /* ---- intervals for a mean --------------------------------------------- */
+  (function(){
+    var n = 5, lev = 0.95, T = 20000, mu = 2.0, sg = 3.0;
+    var Cz = snCoverMean('zKnown', n, lev, T, 9001, mu, sg);
+    var Cp = snCoverMean('zPlugin', n, lev, T, 9001, mu, sg);
+    var Ct = snCoverMean('t', n, lev, T, 9001, mu, sg);
+    ok('zKnown: covers at exactly the stated level, within 4 se',
+       Math.abs(Cz.cover - lev) < 4 * Cz.se, Cz.cover);
+    ok('t: covers at exactly the stated level too, at n = 5',
+       Math.abs(Ct.cover - lev) < 4 * Ct.se, Ct.cover);
+    /* the plug-in interval's true coverage has a CLOSED FORM — it is the
+       probability that |t(n−1)| stays under the NORMAL quantile — so this is a
+       second route rather than "it looks lower" */
+    var exact = 2 * snTCdf(snZQuant(0.5 + lev / 2), n - 1) - 1;
+    ok('zPlugin: coverage matches 2F_t(z) − 1 within 4 se',
+       Math.abs(Cp.cover - exact) < 4 * Cp.se, 'sim ' + Cp.cover + ' exact ' + exact);
+    ok('zPlugin: and that is about ten points short of the claim at n = 5',
+       exact < 0.90 && exact > 0.85, exact);
+    ok('t: is wider than the plug-in interval — the widening IS the fix',
+       Ct.width > Cp.width * 1.15, Ct.width + ' vs ' + Cp.width);
+    /* the shortfall closes as n grows, and the closed form says how fast */
+    var far = 2 * snTCdf(snZQuant(0.975), 199) - 1;
+    ok('zPlugin: the shortfall vanishes by n = 200, which is why it survives',
+       far > 0.9485, far);
+  })();
+
+  /* ---- intervals for a proportion, by EXACT coverage --------------------- */
+  (function(){
+    var n = 20, lev = 0.95;
+    /* the sample space really is exhausted */
+    var tot = 0;
+    for(var k = 0; k <= n; k++) tot += snBinomPmf(k, n, 0.3);
+    close('snBinomPmf: the outcomes sum to 1', tot, 1, 1e-12);
+    var mins = {}, means = {};
+    ['wald', 'wilson', 'agresti', 'clopper'].forEach(function(m){
+      var S = snCoverPropSweep(m, n, lev, 400);
+      mins[m] = S.reduce(function(a, q){ return Math.min(a, q.y); }, 1);
+      means[m] = S.reduce(function(a, q){ return a + q.y; }, 0) / S.length;
+    });
+    ok('Wald: its coverage falls far below the stated 95% somewhere in p',
+       mins.wald < 0.90, mins.wald);
+    ok('Clopper–Pearson: never below the stated level anywhere — that is what "exact" means',
+       mins.clopper >= lev - 1e-12, mins.clopper);
+    ok('Clopper–Pearson: and pays for it, averaging well above the level',
+       means.clopper > lev + 0.01, means.clopper);
+    ok('Wilson: stays much closer to the level than Wald does',
+       Math.abs(means.wilson - lev) < Math.abs(means.wald - lev) &&
+       mins.wilson > mins.wald, 'wilson ' + means.wilson + ' wald ' + means.wald);
+    ok('Wald: at k = 0 its interval is a single point and covers nothing',
+       SN_PROP_CIS.wald.make(0, n, lev)[1] - SN_PROP_CIS.wald.make(0, n, lev)[0] === 0);
+    ok('Wilson: never leaves [0, 1], at any k',
+       (function(){
+         for(var k = 0; k <= n; k++){
+           var I = SN_PROP_CIS.wilson.make(k, n, lev);
+           if(I[0] < -1e-12 || I[1] > 1 + 1e-12) return false;
+         }
+         return true;
+       })());
+    /* the exact sum against a simulation of the same thing */
+    var p0 = 0.17;
+    var ex = snCoverPropExact('wald', n, p0, lev);
+    var sim = snCoverPropSim('wald', n, p0, lev, 40000, 6060);
+    ok('coverage: the exact finite sum and a 40 000-run simulation agree within 4 se',
+       Math.abs(ex - sim.cover) < 4 * sim.se, 'exact ' + ex + ' sim ' + sim.cover);
+    /* the sawtooth is real structure, not noise: neighbouring p differ a lot */
+    var jump = 0, S2 = snCoverPropSweep('wald', n, lev, 400);
+    for(var i = 1; i < S2.length; i++) jump = Math.max(jump, Math.abs(S2[i].y - S2[i - 1].y));
+    ok('Wald: the coverage curve genuinely jumps — it is a step function in p',
+       jump > 0.02, jump);
+  })();
+
+  /* ---- testing ----------------------------------------------------------- */
+  (function(){
+    var R = snNullRun(8, 6000, 4242, 0.05, 1.0);
+    ok('null run: the type I error rate is α, within 4 se',
+       Math.abs(R.rate - 0.05) < 4 * R.rateSE, R.rate + ' ± ' + R.rateSE);
+    /* the stronger statement: the p-values are uniform, so the rate is right at
+       EVERY α at once and not merely at the one that was checked */
+    ok('null run: the p-values are uniform — KS distance inside its 5% critical value',
+       R.ks < R.ksCrit, 'ks ' + R.ks + ' crit ' + R.ksCrit);
+    /* power, closed form against simulation */
+    var pc = snPowerClosed(25, 2.0, 1.0, 0.05);
+    var ps = snPowerSim(25, 2.0, 1.0, 0.05, 20000, 313);
+    ok('power: the closed form and the run agree within 4 se',
+       Math.abs(pc - ps.power) < 4 * ps.se, 'closed ' + pc + ' sim ' + ps.power);
+    ok('power: at zero effect it is exactly α — a test with no signal still fires at α',
+       Math.abs(snPowerClosed(25, 2.0, 0, 0.05) - 0.05) < 1e-9,
+       snPowerClosed(25, 2.0, 0, 0.05));
+    ok('power: rises with n and with the effect size',
+       snPowerClosed(50, 2, 1, 0.05) > pc && snPowerClosed(25, 2, 1.5, 0.05) > pc);
+    /* the sample size calculation brackets: n works, n−1 does not */
+    var nn = snPowerN(2.0, 1.0, 0.05, 0.8);
+    ok('snPowerN: the returned n reaches the target power and n−1 does not',
+       snPowerClosed(nn, 2, 1, 0.05) >= 0.8 && snPowerClosed(nn - 1, 2, 1, 0.05) < 0.8, nn);
+    /* the ONE-sample formula, (z_{α/2}+z_β)²σ²/δ². The factor of 2 in the
+       version first written here belongs to the two-sample test, where each
+       group carries its own error — a different experiment, and twice the n. */
+    close('snPowerN: and it is the textbook (z_{α/2}+z_β)²σ²/δ² ≈ 32', nn,
+      Math.ceil(Math.pow(snZQuant(0.975) + snZQuant(0.8), 2) * 4), 1);
+    /* many tests at once */
+    var M = snMultiRun(20, 0.05, 8, 3000, 5511);
+    ok('multiple testing: the family-wise rate matches 1 − (1−α)^m within 4 se',
+       Math.abs(M.none.fwer - M.closed) < 4 * M.none.se,
+       'sim ' + M.none.fwer + ' closed ' + M.closed);
+    ok('multiple testing: and it is about 64%, not 5%', M.closed > 0.6 && M.closed < 0.68,
+       M.closed);
+    ok('Bonferroni: brings the family-wise rate back to at most α',
+       M.bonf.fwer < 0.05 + 4 * M.bonf.se, M.bonf.fwer);
+    ok('Holm: does too — the same guarantee', M.holm.fwer < 0.05 + 4 * M.holm.se, M.holm.fwer);
+    ok('Holm: and rejects at least as often as Bonferroni, on the same data',
+       M.holm.perRun >= M.bonf.perRun, M.holm.perRun + ' vs ' + M.bonf.perRun);
+    ok('multiple testing: uncorrected fires far more often than either correction',
+       M.none.perRun > 5 * M.bonf.perRun, M.none.perRun + ' vs ' + M.bonf.perRun);
+    /* the permutation test: exact enumeration against sampling */
+    var A = [5.1, 6.3, 4.8, 7.2, 5.9, 6.6], B = [4.2, 3.9, 5.0, 4.4, 4.9, 3.6];
+    var Pe = snPermExact(A, B), Psamp = snPermSampled(A, B, 40000, 171717);
+    ok('snPermExact: enumerated all C(12,6) = 924 relabellings', Pe.ok && Pe.total === 924,
+       Pe.total);
+    ok('snPermExact: its p-value is a multiple of 1/924, as an exact count must be',
+       Math.abs(Pe.p * 924 - Math.round(Pe.p * 924)) < 1e-9, Pe.p);
+    ok('snPermSampled: agrees with the exact enumeration within 4 se',
+       Math.abs(Pe.p - Psamp.p) < 4 * Math.max(Psamp.se, 1 / 40000),
+       'exact ' + Pe.p + ' sampled ' + Psamp.p);
+    ok('snPermSampled: never returns exactly zero — no finite test can',
+       snPermSampled([9, 9, 9], [0, 0, 0], 2000, 5).p > 0);
+    /* the enumeration is BOUNDED — a slider cannot turn it into a hang */
+    var big = [];
+    for(var i = 0; i < 13; i++) big.push(i);
+    var Pb = snPermExact(big, big);
+    ok('snPermExact: refuses above its cap rather than enumerating 10 million',
+       Pb.ok === false && Pb.total > SN_PERM_CAP, Pb.total);
+  })();
+
+  /* ---- Bayes ------------------------------------------------------------- */
+  (function(){
+    var a0 = 2, b0 = 5, k = 14, n = 25;
+    var G = snPostGrid(a0, b0, k, n, 4000), Bt = snBetaPost(a0, b0, k, n);
+    ok('snPostGrid: the grid posterior mean matches the conjugate form to 1e-6',
+       Math.abs(G.mean - Bt.mean) < 1e-6, 'grid ' + G.mean + ' closed ' + Bt.mean);
+    ok('snPostGrid: and so does its variance',
+       Math.abs(G.vari - Bt.vari) < 1e-8, 'grid ' + G.vari + ' closed ' + Bt.vari);
+    ok('snPostGrid: the density is normalised — it integrates to 1',
+       Math.abs(G.dens.reduce(function(s, v, i){ return s + v * G.w[i]; }, 0) - 1) < 1e-9);
+    /* THE ENDPOINT SINGULARITY, which the first version of the grid got wrong
+       by 2.2% while raising nothing. Beta(½,½) behaves like x^(−½) at 0, so a
+       posterior at k = 0 is unbounded there — integrable, and fatal to a rule
+       that does not resolve it. The arcsine substitution is what fixes it, and
+       these are the cases that fail without it. */
+    [[0, 8], [8, 8], [0, 1], [1, 40]].forEach(function(d){
+      var Gj = snPostGrid(0.5, 0.5, d[0], d[1], 2000);
+      var Bj = snBetaPost(0.5, 0.5, d[0], d[1]);
+      ok('snPostGrid: Jeffreys at ' + d[0] + '/' + d[1] + ' — an unbounded posterior ' +
+         'is still integrated correctly',
+         Math.abs(Gj.mean - Bj.mean) < 1e-6, 'grid ' + Gj.mean + ' closed ' + Bj.mean);
+    });
+    /* THE OTHER END: a posterior narrower than the grid's own cells. The cell
+       count grows with √n for this reason, and `cells` reports what was used. */
+    [100, 5000, 200000].forEach(function(nn){
+      var Gn = snPostGrid(1, 1, Math.round(nn / 2), nn, 700);
+      var Bn = snBetaPost(1, 1, Math.round(nn / 2), nn);
+      ok('snPostGrid: n = ' + nn + ' — the grid still resolves a posterior of width ' +
+         '1/(2√n)', Math.abs(Gn.mean - Bn.mean) < 1e-7 &&
+         Math.abs(Gn.vari / Bn.vari - 1) < 1e-4,
+         'cells ' + Gn.cells + ' mean ' + Gn.mean + ' vs ' + Bn.mean +
+         ' var ratio ' + Gn.vari / Bn.vari);
+      ok('snPostGrid: and it grew its cell count to do so, rather than trusting 700',
+         Gn.cells >= Math.min(20000, 120 * Math.sqrt(nn)), Gn.cells);
+    });
+    close('snBetaPost: the posterior is Beta(a+k, b+n−k)', Bt.a, a0 + k, 1e-12);
+    /* the credible interval, two routes */
+    var Ig = snCredibleGrid(G, 0.95), Ib = snCredibleBeta(Bt.a, Bt.b, 0.95);
+    /* the grid's cells are no longer uniform — the arcsine substitution makes
+       them widest in the middle — so the tolerance is the widest cell rather
+       than a single step. Reading it off G.w is what keeps it a measurement. */
+    var cell = Math.max.apply(null, G.w);
+    /* the crossing is interpolated inside the cell, so the endpoints are
+       O(cell²) rather than O(cell). A tolerance of one cell would pass with or
+       without the interpolation and so would test nothing. */
+    ok('credible interval: grid and closed form agree to a small fraction of a cell',
+       Math.abs(Ig[0] - Ib[0]) < 0.2 * cell && Math.abs(Ig[1] - Ib[1]) < 0.2 * cell,
+       Ig + ' vs ' + Ib + '  cell ' + cell);
+    ok('credible interval: contains the posterior mean, and is inside [0,1]',
+       Ib[0] < Bt.mean && Bt.mean < Ib[1] && Ib[0] > 0 && Ib[1] < 1);
+    close('credible interval: carries exactly 95% of the posterior',
+       snBetaCdf(Ib[1], Bt.a, Bt.b) - snBetaCdf(Ib[0], Bt.a, Bt.b), 0.95, 1e-6);
+    /* the posterior mean is a weighted average, exactly */
+    var Bl = snPostBlend(a0, b0, k, n);
+    close('snPostBlend: the blend equals the exact posterior mean', Bl.blend, Bl.exact, 1e-12);
+    close('snPostBlend: the weights sum to 1', Bl.wPrior + Bl.wData, 1, 1e-12);
+    ok('snPostBlend: the posterior mean lies between the prior mean and the MLE',
+       (Bl.blend - Bl.priorMean) * (Bl.blend - Bl.mle) < 0,
+       Bl.priorMean + ' < ' + Bl.blend + ' < ' + Bl.mle);
+    /* a flat prior makes the posterior mean the Laplace rule, not the MLE */
+    close('flat prior: the posterior mean is (k+1)/(n+2), not k/n',
+       snBetaPost(1, 1, 3, 10).mean, 4 / 12, 1e-12);
+    /* two priors that disagree stop mattering, and the wash-out is monotone */
+    var W = snPriorWash(SN_PRIORS.sceptic, SN_PRIORS.keen, 0.5, 4000, 600);
+    ok('snPriorWash: the two posteriors start far apart', W[0].y > 0.5, W[0].y);
+    ok('snPriorWash: and end together', W[W.length - 1].y < 0.05, W[W.length - 1].y);
+    ok('snPriorWash: every point sits at exactly the proportion asked for',
+       W.every(function(q){ return q.exact; }),
+       W.filter(function(q){ return !q.exact; }).map(function(q){ return q.x; }).join(','));
+    ok('snPriorWash: the distance then falls monotonically in n', (function(){
+      for(var i = 1; i < W.length; i++) if(W[i].y > W[i - 1].y + 1e-9) return false;
+      return true;
+    })());
+    /* and the snapping is what bought that: at p = ½ the odd n are skipped,
+       because two whole successes out of three is not a half */
+    ok('snPriorWash: at p = ½ the sweep steps by 2, not by 1',
+       W[0].x === 2 && W[1].x === 4, W[0].x + ',' + W[1].x);
+    /* a proportion with a denominator of 5 steps by 5 */
+    var W5 = snPriorWash(SN_PRIORS.flat, SN_PRIORS.keen, 0.4, 200, 400);
+    ok('snPriorWash: at p = 2/5 it steps by 5, and every point is exact',
+       W5[0].x === 5 && W5.every(function(q){ return q.exact; }), W5[0].x);
+    /* the diagnostic test: Bayes against a counted cohort */
+    var D = snDiagnostic(0.001, 0.99, 0.95, 10000000);
+    ok('snDiagnostic: Bayes and the counted cohort agree to 1e-6',
+       Math.abs(D.post - D.counted) < 1e-6, 'bayes ' + D.post + ' counted ' + D.counted);
+    ok('snDiagnostic: and the answer is nowhere near the sensitivity',
+       D.post < 0.03 && D.sens > 0.98, 'P(ill | positive) = ' + D.post);
+    close('snDiagnostic: the cohort adds up', D.tp + D.fp + D.fn + D.tn, D.pop, 1);
+  })();
+
+  /* ---- the prior washes out of the ESTIMATE and the POSTERIOR at DIFFERENT
+     rates, and the pair is the point ---------------------------------------- */
+  (function(){
+    var W = snPriorWash(SN_PRIORS.sceptic, SN_PRIORS.keen, 0.5, 200000, 700);
+    var fit = function(key){
+      var sx = 0, sy = 0, sxx = 0, sxy = 0, m = 0;
+      W.forEach(function(q){
+        var v = key === 'tv' ? q.y : Math.abs(q.meanA - q.meanB);
+        if(q.x < 20 || !(v > 0)) return;
+        var X = Math.log(q.x), Y = Math.log(v);
+        sx += X; sy += Y; sxx += X * X; sxy += X * Y; m++;
+      });
+      return { slope:(m * sxy - sx * sy) / (m * sxx - sx * sx), n:m };
+    };
+    var tv = fit('tv'), mg = fit('mean');
+    ok('priorWash: both rates were fitted over a real range of n, not one point',
+       tv.n > 15 && mg.n > 15, tv.n + ' / ' + mg.n);
+    /* the prior's pull on the MEAN dies like 1/n — the weights (a+b)/(a+b+n)
+       say so, and this measures it rather than trusting them */
+    ok('priorWash: the gap between the posterior MEANS falls like 1/n',
+       Math.abs(mg.slope + 1) < 0.06, mg.slope);
+    /* but the DISTRIBUTIONS separate only like 1/√n, because both are narrowing
+       at that rate too. This is the finding the stage is built on, and the two
+       exponents differing is the whole of it. */
+    ok('priorWash: the distance between the POSTERIORS falls only like 1/√n',
+       Math.abs(tv.slope + 0.5) < 0.06, tv.slope);
+    ok('priorWash: so the two rates genuinely differ — the prior leaves the ' +
+       'estimate faster than it leaves the posterior',
+       mg.slope < tv.slope - 0.35, 'mean ' + mg.slope + ' vs tv ' + tv.slope);
+    /* and the consequence, in observations rather than exponents */
+    var settled = W.filter(function(q){ return q.y < 0.01; })[0];
+    ok('priorWash: reaching a hundredth apart takes tens of thousands of observations',
+       settled && settled.x > 20000 && settled.x < 200000, settled ? settled.x : 'none');
+    /* A SECOND ROUTE TO THE DISTANCE, so the grid's resolution is checked
+       rather than assumed. At large n both posteriors are nearly normal with
+       nearly equal spread, and the total variation between two normals whose
+       means differ by Δ is exactly 2Φ(Δ/2σ) − 1 — no quadrature anywhere. The
+       grid was under-resolved before the cell count was made to grow with √n,
+       and this is the check that would have caught it. */
+    var worst = 0, tested = 0;
+    W.forEach(function(q){
+      if(q.x < 500) return;
+      var A = snBetaPost(SN_PRIORS.sceptic.a, SN_PRIORS.sceptic.b, q.k, q.x);
+      var B = snBetaPost(SN_PRIORS.keen.a, SN_PRIORS.keen.b, q.k, q.x);
+      var sg = Math.sqrt((A.vari + B.vari) / 2);
+      var normalTV = 2 * pbNormCdf(Math.abs(A.mean - B.mean) / (2 * sg), 0, 1) - 1;
+      worst = Math.max(worst, Math.abs(q.y - normalTV));
+      tested++;
+    });
+    ok('priorWash: the grid distance matches the normal-approximation form at large n',
+       tested > 8 && worst < 0.004, 'worst ' + worst + ' over ' + tested + ' points');
+    ok('priorWash: while their means agree to a hundredth far sooner',
+       W.filter(function(q){ return Math.abs(q.meanA - q.meanB) < 0.01; })[0].x < 2000,
+       W.filter(function(q){ return Math.abs(q.meanA - q.meanB) < 0.01; })[0].x);
+  })();
+
+  /* ---- the figures the demo prose quotes, pinned so they cannot go stale -- */
+  (function(){
+    /* SITE-RULES §2.3 asks every `out` to carry a real number. These are those
+       numbers, so a change in the engine breaks the test rather than quietly
+       making a sentence in the wing false. */
+    close('quoted: c₄(9) = 0.9693, so s runs about 3% low at n = 9', snC4(9), 0.96931, 1e-5);
+    close('quoted: the plug-in interval covers 87.8% at n = 5',
+       2 * snTCdf(snZQuant(0.975), 4) - 1, 0.87844, 1e-4);
+    close('quoted: and 91.8% at n = 10', 2 * snTCdf(snZQuant(0.975), 9) - 1, 0.91835, 1e-4);
+    close('quoted: t(0.975, 4) is 41.7% larger than z', snTQuant(0.975, 4) / snZQuant(0.975) - 1,
+       0.4166, 1e-3);
+    close('quoted: the Wald interval’s worst coverage at n = 20 is 2.0%',
+       snCoverPropSweep('wald', 20, 0.95, 400).reduce(function(a, q){ return Math.min(a, q.y); }, 1),
+       0.0198, 5e-4);
+    close('quoted: Wilson’s worst at the same n is 84.3%',
+       snCoverPropSweep('wilson', 20, 0.95, 400).reduce(function(a, q){ return Math.min(a, q.y); }, 1),
+       0.8433, 5e-4);
+    close('quoted: Clopper–Pearson averages 97.7%', snCoverPropMean('clopper', 20, 0.95, 400),
+       0.9769, 5e-4);
+    close('quoted: twenty tests at 5% give 64.2% at least one false alarm',
+       1 - Math.pow(0.95, 20), 0.6415, 1e-4);
+    /* the outlier preset: the two tests disagree, and by how much */
+    var oa = [5.1, 6.3, 4.8, 7.2, 5.9, 26.0], ob = [4.2, 3.9, 5.0, 4.4, 4.9, 3.6];
+    close('quoted: on the outlier preset the permutation test gives p = 0.0087',
+       snPermExact(oa, ob).p, 0.00866, 1e-4);
+    close('quoted: and Welch’s t test gives p = 0.208', snTTest2(oa, ob).p, 0.2079, 2e-3);
+    ok('quoted: so the two disagree by more than an order of magnitude there',
+       snTTest2(oa, ob).p / snPermExact(oa, ob).p > 20,
+       snTTest2(oa, ob).p / snPermExact(oa, ob).p);
+    /* the clear preset: they agree, which is what makes the outlier one worth showing */
+    var ca = [5.1, 6.3, 4.8, 7.2, 5.9, 6.6], cb = [4.2, 3.9, 5.0, 4.4, 4.9, 3.6];
+    ok('quoted: on the clear preset both are significant and within a factor of 2',
+       snPermExact(ca, cb).p < 0.01 && snTTest2(ca, cb).p < 0.01,
+       snPermExact(ca, cb).p + ' / ' + snTTest2(ca, cb).p);
+    /* the diagnostic numbers, which the wing quotes in three places */
+    var D = snDiagnostic(0.001, 0.99, 0.95, 1000000);
+    close('quoted: a positive result means 1.94% at 0.1% prevalence', D.post, 0.019426, 1e-5);
+    ok('quoted: 990 true positives against 49 950 false ones',
+       D.tp === 990 && D.fp === 49950, D.tp + ' / ' + D.fp);
+    close('quoted: a positive is more likely right than wrong only above 4.8% prevalence',
+       snBisect(function(p){ return snDiagnostic(p, 0.99, 0.95, 1e6).post - 0.5; }, 1e-9, 1),
+       0.048077, 1e-5);
+    close('quoted: 32 observations for 80% power at δ = σ/2', snPowerN(2, 1, 0.05, 0.8), 32, 0);
+    close('quoted: Laplace’s rule gives 1/12 after 0 of 10', snBetaPost(1, 1, 0, 10).mean,
+       1 / 12, 1e-12);
+    close('quoted: the uniform maximum is 11.1% low at n = 8',
+       SN_ESTS.max.truth(8, { th:2 }, 'unif').mean / 2 - 1, -1 / 9, 1e-12);
+    close('quoted: and the adjusted maximum beats 2x̄ by 3.33× there',
+       SN_ESTS.twice.truth(8, { th:2 }, 'unif').vari /
+       SN_ESTS.maxAdj.truth(8, { th:2 }, 'unif').vari, 10 / 3, 1e-12);
+    close('quoted: the exponential MLE runs 9.1% high at n = 12', 1 / 11, 0.0909, 1e-4);
+  })();
+
+  /* ---- the verdict formatter this wing prints through -------------------- */
+  (function(){
+    /* the property that makes it worth having: a SMALL gap that is many
+       standard errors is reported as a disagreement, and a LARGER gap that is
+       inside the noise is not. fmtAgree cannot tell those apart, which is why
+       it is the wrong formatter here. */
+    var farButSmall = snAgreeMC(1.0000, 1.0004, 0.00001);
+    var nearButBig  = snAgreeMC(1.00, 1.05, 0.5);
+    ok('snAgreeMC: a 4×10⁻⁴ gap at 40 σ reads as a disagreement',
+       /larger than sampling/.test(farButSmall), farButSmall);
+    ok('snAgreeMC: a 0.05 gap at 0.1 σ reads as inside the noise',
+       /inside the noise/.test(nearButBig), nearButBig);
+    ok('snAgreeMC: which is the opposite verdict to the one the sizes suggest',
+       /larger than sampling/.test(farButSmall) && /inside the noise/.test(nearButBig));
+    ok('snAgreeMC: with no standard error it degrades to the round-off verdict',
+       snAgreeMC(1, 1, 0) === fmtAgree(1, 1));
+    ok('snAgreeMC: a NaN route is reported, not swallowed',
+       /not computable/.test(snAgreeMC(NaN, 1, 0.1)));
+    ok('snAgreeSamp: derives the scale from the draws',
+       /inside the noise/.test(snAgreeSamp([1, 2, 3, 2, 1, 2, 3, 1], 2)));
+    ok('snAgreeMCTight: same verdict, no prose, fits a canvas column',
+       snAgreeMCTight(1.0, 1.05, 0.5).length < 22, snAgreeMCTight(1.0, 1.05, 0.5));
+    ok('snZgap: reports usable=false rather than a NaN verdict when se is 0',
+       snZgap(1, 2, 0).usable === false);
+  })();
+})();
 document.getElementById('out').textContent =
   '===TESTS=== ' + pass + ' passed, ' + fail + ' failed\n' + out.join('\n');

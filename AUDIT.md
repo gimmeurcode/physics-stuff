@@ -7297,3 +7297,178 @@ pi a^2, agTriangle's law-of-cosines chain, qm uncertainty products.
    ftConv, rlLens, smIsing): palettes correct, all fixes hold there.
    auditcontrast passes both themes with worst ratios 4.51:1 against the
    4.5:1 target.
+
+## 2026-08-19 · Programme C wing C16 — numerical linear algebra (and syllabus gap B6)
+
+The first of Tier 2. Five stages (`nlFact`, `nlQR`, `nlCond`, `nlIter`,
+`nlKrylov`), 23 experiments, one engine module `38b-numlin.js`, prefix `nl`.
+The wing's subject is the distinction a first course never draws: an algorithm
+that is CORRECT and an algorithm that is STABLE are different things, and a
+problem that is ill-conditioned is a third thing neither of them can fix. Every
+experiment is built to keep those apart by measurement rather than by assertion.
+
+**What was checked, and against what.**
+
+1. **LU.** PA = LU reconstructed and compared with A on all six presets with
+   pivoting on and off (max relative residual 1e-14 with pivoting). x by
+   forward/back substitution against `laSolve`'s RREF route — two routes sharing
+   only the matrix. det from the pivots against `laDet`. Every multiplier
+   |l_ij| <= 1 under partial pivoting, asserted rather than assumed. The right
+   hand side is built as b = A*(1,1,...,1) so the true ERROR is available and
+   not only the residual; the bound relErr <= kappa*max(relResid, eps) is
+   checked on every preset.
+2. **Wilkinson's growth matrix, exactly.** Partial pivoting performs ZERO swaps
+   on it, every multiplier is exactly 1, and the growth factor is 2^(n-1) to
+   1e-9 at n = 7 and n = 12. This is the standing counterexample to "pivoting
+   makes elimination safe" and it is measured, not quoted.
+3. **QR three ways, with the exponents FITTED.** Householder, modified
+   Gram-Schmidt and classical Gram-Schmidt all reconstruct A to 1e-13 at every
+   condition number tested (this is the property that does NOT separate them,
+   and a check stopping there finds nothing). The orthogonality error
+   ||Q^T Q - I|| was fitted against log kappa over five decades: measured slopes
+   2.09 / 0.79 / -0.035 at n = 8 against predicted 2 / 1 / 0. Swept over
+   n = 5, 8, 10, 12 the classical slope is 1.67-2.09 and the modified 0.76-0.98.
+   **The classical bound is tight and the modified one is NOT attained on this
+   family** — the site says so rather than quoting 1, because an upper bound
+   being met is a fact about the example.
+   The fit deliberately starts at kappa = 1e3: below that the classical error is
+   at the machine-eps floor, and including those points read 1.63 instead of 2.
+   A curve that has bottomed out cannot be fitted through.
+4. **A one-sided Jacobi SVD, and why `laSVD` is the wrong route here.** `laSVD`
+   reaches sigma through the eigenproblem of A^T A, which squares the condition
+   number. Measured against a matrix whose singular values are known by
+   construction (A = U Sigma V^T with U, V from Givens rotations — NOT from
+   either QR routine under test): at kappa = 1e10 the one-sided Jacobi route
+   gives sigma_min to 1.8e-8 relative and the normal-equation route loses it
+   ENTIRELY (relative error 1.0); at kappa = 1e8 the latter is already 2.8% out.
+   **The tolerance on the Jacobi route is the eps*kappa perturbation floor, not
+   a wish**: rounding A's entries into float64 already moves sigma_min by
+   2.2e-6 relatively at that kappa, so no method can do better, and the first
+   version of that assertion (1e-13) was wrong about what is achievable rather
+   than about the code.
+5. **The perturbation bound is SHARP, driven rather than argued.** With b along
+   u_1 and db along u_n the measured amplification equals kappa to within 1e-4
+   at kappa = 1e2, 1e4, 1e6, and twelve arbitrary directions never exceed it.
+6. **Residual against error, on Hilbert.** Relative residual < 1e-14 at every
+   size from 2 to 13; relative error 1.0e-5 at n = 9, 1.6e-4 at 10, 4.6e-3 at
+   11, 1.7e-1 at 12 and 2.0 at 13 — larger than the answer. Every one stays
+   under the kappa*eps ceiling. This is the wing's headline and it is a
+   measurement.
+7. **Iterative rates, twice each.** rho(G) by Gelfand's formula on the iteration
+   matrix, and by fitting ln||e_k|| over a run that never forms G. On the
+   Poisson matrix rho(Jacobi) = cos(pi/(n+1)) to 1e-9, rho(GS) is its square to
+   1e-9, SOR at Young's omega_opt gives rho = omega_opt - 1 to 1e-4, and the
+   omega located by golden section on the measured rho(omega) curve agrees with
+   Young's closed form to five figures. The fitted rate from the run agrees with
+   rho(G) to 0.09% (Jacobi, n = 12).
+8. **Diagonal dominance is sufficient and not necessary, both ways.** Two 3x3
+   matrices: one where Jacobi's iteration matrix is nilpotent (rho = 0, finished
+   in three sweeps) and Gauss-Seidel diverges, and one where exactly the reverse
+   holds. Both radii measured AND both runs driven, so neither is the only
+   witness.
+9. **Conjugate gradients.** Converges to the direct solution; the A-norm error
+   falls at every step down to round-off; no step exceeds
+   2((sqrt(k)-1)/(sqrt(k)+1))^k at n = 8, 16, 30; steepest descent stays inside
+   its own (k-1)/(k+1)^k; finite termination at step n confirmed (error 3e-16 to
+   7e-16 at n = 12, 20, 30, 40). **And the measurement overruled the bound**: CG
+   beats its own Chebyshev bound by more than 100x at every size, because the
+   bound is written in terms of kappa alone while CG responds to the whole
+   spectrum. That is superlinear convergence, and the ladder now says so rather
+   than presenting the bound as a prediction.
+
+**Nine defects. Not one was found by reading the code.**
+
+1. **FIXED, site-wide - `mxHtml` filled twelve editable matrix boxes with
+   `fmtNum`.** A display formatter in a box the reader types back into: an entry
+   of 1e-17 was written as "1.00x10^-17" and `parseFloat` read it back as 1.
+   Thirteen call sites across five stage files, and no existing preset carried an
+   entry extreme enough to show it. Now `fmtEdit(v, 8)` — eight figures because a
+   preset can turn on a difference in the seventh (4.000001 against 4). Found by
+   the screenshot, and it is the fifth instance of the class `src/js/CLAUDE.md`
+   has carried since the permalink work.
+2. **FIXED - a factorisation that does not exist, printed as infinity.** With
+   pivoting off, the zero-first-pivot preset leaves U singular and back
+   substitution returns Inf. `runall` greps for the WORD "Infinity" and `fmtNum`
+   renders it as the glyph, so the sweep passed. The stage now withholds x, the
+   determinant, the residual and the error together and says the factorisation
+   does not exist. Found by `runstagetests` driving each preset with pivoting off.
+3. **FIXED - three test assertions that passed vacuously.** `nlKrylov`'s headline
+   comparison read `kSD === null || kSD/kCG > 2`, and `kSD` — the step at which
+   steepest descent reaches 1e-6 — is null at every size the stage can run,
+   because that needs about 470 steps and the slider stops at 200. The claim had
+   never been evaluated. See MASTER-PLAN 3.3a: this took three attempts to
+   measure honestly, and the second attempt read 12x at n = 10 against 4.6x at
+   n = 36 — SHRINKING, on a quantity that must grow, because it divided by how
+   far steepest descent happened to get. The measure is now steps-per-decade,
+   fitted over a run long enough to be asymptotic.
+4. **FIXED - Gelfand's formula converges from above, with a bias the m-th root
+   does not remove.** ||G^m|| ~ C*m^p*rho^m: the Frobenius norm sees both of
+   +/-cos(pi/(n+1)) so C = sqrt(2) and the Jacobi radius read 3.4e-4 high, and
+   at SOR's optimum the eigenvalues coalesce into defective pairs so p = 1 and it
+   read 8e-3 high. A tolerance loose enough for both would have hidden a
+   genuinely wrong radius. Cured by a second difference in the logarithm
+   (L3 - 2L2 + L1 kills ln C and p*ln 2^j together, because doubling makes ln m
+   uniformly spaced), which is exact whatever C and p are. The stage's
+   golden-section refinement uses twelve doublings for the same reason: at eight,
+   the residual O(1/m) bias put the located omega 0.01 past omega_opt, which
+   `runstagetests` caught.
+5. **FIXED - a zero residual made an error bound vacuous.** One preset returned a
+   computed residual of exactly 0, so `relErr <= kappa*relResid` read as
+   `<= 0` and was violated by any error at all. The backward error can never be
+   below eps whatever the arithmetic returns; the bound is now read against
+   `kappa*max(relResid, eps)` and the panel says so where the residual vanishes.
+   Same family as `fmtAgreeGross`, one layer up.
+6. **FIXED - a power iteration printing a 21% disagreement instead of admitting
+   it had not converged.** On the preset where Gauss-Seidel's dominant eigenvalue
+   is a complex pair, the ratio ||Gv||/||v|| oscillates forever. The panel
+   compared it with Gelfand's answer regardless. It now reports its own drift and
+   withholds its number. Found by `auditsides`.
+7. **FIXED - rho(GS) compared with rho(Jacobi)^2 on a matrix Young's theorem does
+   not cover.** The identity needs a consistently ordered matrix; on the
+   strictly-dominant preset the two legitimately differ by 9%. The panel prints
+   both and states that no comparison is claimed. Found by `auditsides`.
+8. **FIXED - the CG monotonicity check reported its own floor.** After finite
+   termination the iterates differ by noise about the exact answer, and the noise
+   can rise, so the readout printed "no - and that would be a defect" at every
+   size. Both the panel and the test now stop the check at 1e-13.
+9. **FIXED - a preset labelled "kappa ~ 20" whose kappa is 39**, and five demo
+   figures quoted from estimates rather than measurements (the Poisson growth
+   factor, the Hilbert error, two spectral radii at the wrong n, and sqrt(kappa)
+   at n = 40). All re-measured and corrected; `auditclaims` now recomputes the
+   named number in that label from the matrix beside it.
+
+**Gates.** `auditclaims` gained 80 rows across four new tables (NL_LU,
+NL_COND_2, NL_ITER, NL_QR_METHODS) — 1713 claims total, bad=0 — and was
+corrupt-checked twice, by declaring the growth factor 65 instead of 64 and the
+label kappa 20 instead of 19, both of which it reported BAD before being
+reverted. `tests.js` gained 65 engine assertions and `tests-stages.js` a block
+per stage (1978 total, 0 failed). `auditsides` carries three new ALLOW rows, all
+three from ONE demo whose entire purpose is to show unpivoted elimination
+failing, and both its ratchets are back at 0. Six of this session's engine tests
+FAILED on their first run and not one was fixed by loosening a tolerance.
+
+**Green on:** smoke (wings=47, stages=221, seelinks=130), runtests 6747/0,
+runstagetests 1978/0, runall demos=792 controls=9036 caught=0, auditclaims 1713
+bad=0, auditsides falsescale=0 presetgap=0, auditresid findings=0 (noscale=8,
+read by hand), auditcustom bad=0, auditlink findings=0, auditpanel bad=0,
+auditzoom findings=0, auditframe cut=3 all allowed, auditticks findings=0,
+auditsize findings=0, auditviewport 16 sizes bad=0, auditderive flagged=0,
+auditperf (the five new stages are all under the "moderate" threshold; 2-D mean
+115 paint calls, heavy stages still 2), auditkeys bad=0, audittext + auditscan
+0 HIGH, auditdocs bad=0.
+
+**Two things `auditprose` and a dead-code scan added afterwards.** The essay
+invoked **Young's theorem** by name with no statement card behind it — the one
+NAKED row in the prose inventory — which matters more here than usually, because
+the wing's whole argument about that theorem is that its hypothesis is
+load-bearing. It now has a definition card for *consistently ordered* and a
+theorem card carrying the functional equation `(lambda + w - 1)^2 = lambda w^2
+mu^2`, both branches of its solution, and the note that the panel WITHHOLDS
+omega_opt on every preset the hypothesis fails. And three norm helpers written
+into `38b` were never called by anything: deleted rather than left, with a line
+saying to add one back when something calls it rather than because the set looks
+incomplete.
+
+**Not run, and why:** auditcontrast (no colour changed), auditmarks (no
+`pvFeatures` call), auditartifact (the wrapper is untouched). MASTER-PLAN 4.3a
+rule 5.

@@ -66,6 +66,12 @@ one-liner and it will find yours.
   `parseFloat`: every negative component of û and n̂ became `0` through a `|| 0`,
   silently, the moment a neighbouring box was edited. **Use `fmtEdit(v, sig)`
   (`10-math.js`) for anything typed into**, `fmtNum` only for what is read.
+  **`mxHtml` (59) was the fourth instance and it covered twelve boxes at once**
+  — every matrix editor on the site, on five stage files. It went unseen for as
+  long as it did because no preset carried an entry extreme enough: a `1e-17`
+  became the string `1.00×10⁻¹⁷` and `parseFloat` read it back as **1**. A hole
+  of this shape is invisible until a preset walks into it, which is an argument
+  for presets that walk into things.
 - **A difference gets a difference formatter.** `fmtAgree(a, b, unit)` when both
   routes are in scope — it *derives* the scale, so it cannot be given the wrong
   one — `fmtGap(gap, scale, unit)` when only the gap is, and
@@ -469,3 +475,114 @@ one-liner and it will find yours.
   `stageNote` writes at eight, so on a short canvas they print through each
   other. `dspPanes` (64d) reserves the band instead; the Fourier wing gets away
   with it only because its lower axis labels are short.
+- **A test whose condition can be met by "no result" has never run.** Three
+  assertions in the first `nlKrylov` block passed vacuously: the headline one
+  read `kSD === null || kSD/kCG > 2`, and `kSD` — the step at which steepest
+  descent reaches 10⁻⁶ — is `null` at every size the stage can reach, because
+  on that matrix it needs about 470 steps and the slider stops at 200. When an
+  assertion has a null-tolerant branch, check that it is not the only branch
+  ever taken.
+- **…and its first two replacements measured the wrong thing, each in a way
+  only a SECOND preset showed.** "How many CG steps match where steepest
+  descent finished" is always defined and still wrong: it divides by how far
+  steepest descent happened to get, so it read 12× at n = 10 and 4.6× at
+  n = 36 — *shrinking*, on a quantity that must grow. The honest measure is a
+  **rate** (steps per decade), and fitting that needed a third correction,
+  because the plotted run is too short to be asymptotic and the opening steps
+  of any descent method are fast. An asymptotic rate has to be fitted where the
+  method is asymptotic, which may mean a longer run than the one drawn.
+- **An estimator that converges is not an estimator that has converged.**
+  Gelfand's `‖Gᵐ‖^(1/m) → ρ(G)` carries a polynomial factor the m-th root does
+  not remove: `‖Gᵐ‖ ≈ C·m^p·ρᵐ`. The Frobenius norm sees *both* of
+  ±cos(π/(n+1)), so C = √2 and the Jacobi radius read 3.4×10⁻⁴ high; at SOR's
+  optimum the eigenvalues coalesce into **defective** pairs, so p = 1 and it
+  read 8×10⁻³ high. A tolerance loose enough for both would have hidden a
+  genuinely wrong radius. `nlRhoGelfand` (38b) takes a **second difference in
+  the logarithm** — `L₃ − 2L₂ + L₁` kills `ln C` and `p·ln 2ʲ` together,
+  because doubling makes `ln m` uniformly spaced — and is exact whatever C and
+  p are. A caller comparing against a closed form needs twelve doublings, not
+  eight; eight leaves an O(1/m) residual that moved a located optimum by 0.01.
+- **A residual of exactly zero makes an error bound vacuous, and it is the
+  BOUND that needs the floor.** `relErr ≤ κ·relResid` is the theorem, and one
+  preset returned a computed residual of exactly 0, so the right-hand side was
+  0 and any error at all violated it. The backward error can never be below ε
+  whatever the arithmetic returns: read the bound against
+  `κ·max(relResid, ε)`. Same family as `fmtAgreeGross` — a quantity that can
+  legitimately vanish must not be a denominator — one layer up.
+- **Do not build a test matrix with the routine under test.** `nlCondMat` (38b)
+  assembles `A = UΣVᵀ` with U and V from **Givens rotations**, not from a QR of
+  something random, because the QR routines are exactly what the stage is
+  measuring. And a matrix stored in float64 does not HAVE the singular values it
+  was built from to better than ε·κ relatively — at κ = 10¹⁰ that floor is
+  2×10⁻⁶, so an assertion of 10⁻¹³ there is wrong about what is achievable
+  rather than about the code.
+- **`fmtNum` renders Infinity as "∞", so `runall`'s grep cannot see one.**
+  Back substitution through a U with an exact zero on its diagonal returns ∞,
+  and the readout printed it as a solution vector. A stage whose computation can
+  fail to exist must withhold **every** quantity derived from it together and
+  say so — `nlFact`'s `broke` flag covers x, the determinant, the residual and
+  the error at once. Only `runstagetests` driving the non-default preset saw it.
+- **A Monte Carlo comparison needs a Monte Carlo formatter.** `fmtAgree` asks
+  whether a gap is at round-off; a simulated quantity sits a distance of order
+  `sd/√trials` from the truth and is supposed to, so `fmtAgree` reports every
+  correct simulation as a few percent wrong, and a fixed tolerance instead
+  measures how many trials somebody picked. **`snAgreeSamp(vals, theory, unit)`
+  (43a) takes the DRAWS** and derives both the estimate and its standard error
+  from them, so the scale cannot be passed wrongly; `snAgreeMC(sim, theory, se)`
+  is for when the draws are out of scope, and `snAgreeMCTight` is the canvas
+  form. The property that makes it the right one: it calls a gap of 4×10⁻⁴ at
+  40 σ a disagreement and one of 0.05 at 0.1 σ agreement — the opposite verdict
+  to the one the sizes suggest.
+- **Nothing in an inference stage may call `Math.random()`.** A readout whose
+  numbers move while nobody touches anything cannot be compared against
+  anything, and a simulated claim re-rolled every frame has never been checked
+  twice. `snRng(seed)` is the stream, the seed lives in the state and therefore
+  in the permalink, and `snRandn` deliberately does NOT cache the Box–Muller
+  pair — a cache is state between calls, and two runs drawing a different count
+  would diverge.
+- **"The rule never evaluates the singularity" is not "the rule resolves the
+  singularity".** A midpoint grid over a Beta(½,½) posterior returns a finite,
+  wrong answer at k = 0 — 2.2% out, nothing raised, no NaN. The cure is the
+  substitution `x = sin²(πt/2)`, whose Jacobian vanishes exactly as fast as an
+  inverse square root diverges. And the opposite end of the same defect: a fixed
+  cell count stops resolving a posterior of width 1/(2√n) around n = 10⁵, so
+  `snPostGrid` grows its count with √n and returns `cells` so a caller can check
+  rather than assume.
+- **A running CDF accumulated to each cell's RIGHT EDGE cannot be paired with
+  the cell's CENTRE.** That is a systematic half-cell offset, so every quantile
+  read from it is half a cell low — and interpolating between the points does
+  not remove it, because it displaces the points themselves. Add half the
+  current cell (`snPostGrid`). Found only by comparing the grid's credible
+  interval against the closed-form one at a second preset.
+- **The observed information is not the Fisher information.** `−ℓ″(θ̂)` at the
+  estimate is what a package can compute; `−E[ℓ″(θ)]` at the truth is what the
+  identity is about. They agree in the limit and differ by O(1/n) — and for a
+  **normal mean** `ℓ″ = −n/σ²` is constant, so they coincide exactly and a wing
+  tested only on the normal sees nothing. The size of the bias is
+  family-specific ((n+1)/n for the exponential, 1 + 1/(nλ) for Poisson); only
+  the ORDER generalises, so assert that, by doubling n.
+- **A grid search's answer is only as good as its grid, and a comparison against
+  a closed form then reports the grid.** `auditsides` reads that correctly as a
+  claim exact at one preset and poor at another. Refine instead of widening the
+  tolerance: a **parabola** through three points at a smooth maximum, and
+  **bisection for the edge** where the maximum is a cliff and one neighbour is
+  −∞. `snLikCurve` picks between them by LOOKING at the curve — a finite
+  neighbour or an infinite one — not by naming the family, so a new family with
+  a moving support is handled without being told.
+- **A cache key missing a field looks exactly like an unwired control.**
+  `snTest` gained `own` and `sheet` after its key was written, so its textarea
+  took keystrokes and changed nothing, and `auditcustom` reported "rendered but
+  apparently not wired" — the right symptom, the wrong cause. `tests-stages.js`
+  now perturbs every field of every stage in that wing and asserts the cache
+  misses; copy that block when adding a stage with more than three inputs.
+- **A typed box the DEFAULT state cannot reach is exercised by no gate.**
+  `auditcustom` enters each stage in its default state and then sweeps the
+  segmented controls, so a box reachable only through a demo's `opts:{own:true}`
+  is rendered by no pass at all. Carry the typed route as an **option on a
+  picker** (`ctSeg`, with a label matching `/your own/i`) and it becomes
+  reachable by pointer, by keyboard and by the gate at once.
+- **An enumeration whose size is a reader-controlled quantity must refuse, not
+  truncate.** `snPermExact` caps at `SN_PERM_CAP` relabellings and reports
+  `ok:false` with the count, because a partial enumeration returns a wrong
+  *exact* answer that looks exactly like a right one. Same family as
+  `rlMotFrameTwin` and `ctUnitMarks`.

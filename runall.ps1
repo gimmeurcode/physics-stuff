@@ -53,7 +53,7 @@ setTimeout(function(){
       runShrink(); if (!planar()) runSweep();
     } catch (e) { log.push(where + ' :: ' + (e && e.stack ? e.stack.split('\n')[0] : e)); }
   }
-  ['proof','algebra','functions','trig','cnum','limits','deriv','series','prob','numer','linsys','vecspace','eigen','discrete','laplace','systems','phase','complex','forms','potential','vectors','curves','partial','coords','integral','vector','ode','units','mechanics','rotation','rotenergy','waves','fluids','thermo','optics','em','relativity','circuit','fourier','signal','quantum','atom','nuclear','solid','statmech','string'].forEach(function(wing){
+  ['proof','algebra','functions','trig','cnum','limits','deriv','series','prob','numer','linsys','vecspace','eigen','discrete','infer','numlin','laplace','systems','phase','complex','forms','potential','vectors','curves','partial','coords','integral','vector','ode','units','mechanics','rotation','rotenergy','waves','fluids','thermo','optics','em','relativity','circuit','fourier','signal','quantum','atom','nuclear','solid','statmech','string'].forEach(function(wing){
     try { setWing(wing, true); } catch (e) { log.push('setWing ' + wing + ' :: ' + e); return; }
     for (var g = 0; g < DEMOS.length; g++) {
       for (var i = 0; i < DEMOS[g].items.length; i++) {
@@ -525,7 +525,7 @@ setTimeout(function(){
     //      frame has blown up on some setting the guided demos never visit.
     try {
       var calcBad = 0;
-      ['proof','algebra','functions','trig','cnum','limits','deriv','series','prob','numer','linsys','vecspace','eigen','discrete','laplace','systems','phase','complex','forms','potential','vectors','curves','partial','coords','integral','vector','ode','units','mechanics','rotation','rotenergy','waves','fluids','thermo','optics','nuclear','solid','statmech','string'].forEach(function(wing){
+      ['proof','algebra','functions','trig','cnum','limits','deriv','series','prob','numer','linsys','vecspace','eigen','discrete','infer','numlin','laplace','systems','phase','complex','forms','potential','vectors','curves','partial','coords','integral','vector','ode','units','mechanics','rotation','rotenergy','waves','fluids','thermo','optics','nuclear','solid','statmech','string'].forEach(function(wing){
         setWing(wing, true);
         for (var cg = 0; cg < DEMOS.length; cg++) {
           for (var ci = 0; ci < DEMOS[cg].items.length; ci++) {

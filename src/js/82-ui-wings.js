@@ -18,7 +18,9 @@ const WING_SECTIONS = {
   algebra:  [], functions:[], trig:     [], cnum:     [],
   /* every discrete-maths demo is a stage, so no field-engine panel applies */
   discrete: [],
-  prob:     [], numer:    [],
+  prob:     [], infer:    [], numer:    [],
+  /* every numerical-linear-algebra demo is a stage, so no field-engine panel applies */
+  numlin:   [],
   nuclear:  [], solid:    [], statmech: [], string:   [],
   linsys:   [], vecspace: [], eigen:    [],
   laplace:  [], systems:  [], phase:    [], complex: [],
@@ -202,7 +204,9 @@ const THEORY_BY_WING = {
   cnum:     () => [THEORY_CNUM,     'Complex numbers — the mathematics, in full'],
   discrete: () => [THEORY_DISCRETE, 'Discrete mathematics & combinatorics — the mathematics, in full'],
   prob:     () => [THEORY_PROB,    'Probability & statistics — the mathematics, in full'],
+  infer:    () => [THEORY_INFER,   'Statistical inference — the mathematics, in full'],
   numer:    () => [THEORY_NUMER,   'Numerical methods — the mathematics, in full'],
+  numlin:   () => [THEORY_NUMLIN,  'Numerical linear algebra — the mathematics, in full'],
   nuclear:  () => [THEORY_NUCLEAR, 'Nuclear physics — the mathematics, in full'],
   solid:    () => [THEORY_SOLID,   'Condensed matter & semiconductors — the mathematics, in full'],
   statmech: () => [THEORY_STATMECH,'Statistical mechanics — the mathematics, in full'],

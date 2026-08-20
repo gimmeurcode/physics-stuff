@@ -14,7 +14,7 @@ settling any question of what is allowed; read this before typing.
 ## 1. What this is
 
 A single self-contained page — no build step beyond concatenation, no
-dependencies, no network. 46 wings, 769 guided experiments, 216 canvas stages,
+dependencies, no network. 48 wings, 820 guided experiments, 226 canvas stages,
 4249 unit tests (measured 2026-08-14 — **re-measure rather than quote**;
 `./auditdocs.ps1` fails the build when a figure here drifts from the site).
 Everything on screen is computed live from the actual mathematics: symbolic
@@ -25,7 +25,7 @@ Schwarzschild geodesics, exact wavefunctions.
 src/head.html      <- <meta>, title
 src/styles.css     <- the whole design system
 src/shell.html     <- the DOM skeleton (header, canvas, dock, rail, palette)
-src/js/*.js        <- 295 modules, concatenated in filename order
+src/js/*.js        <- 308 modules, concatenated in filename order
         |
         v  ./build.ps1
 vector-calculus.html   (5 409 933 bytes on 2026-08-14, the deployable artifact)
@@ -41,7 +41,7 @@ vector-calculus.html   (5 409 933 bytes on 2026-08-14, the deployable artifact)
 ```powershell
 ./build.ps1        # src/ -> vector-calculus.html          (~1 s)
 ./smoke.ps1        # does the bundle parse and boot at all?              (~10 s)
-./runtests.ps1     # 6682 engine unit tests, must say "0 failed"   (~30 s)
+./runtests.ps1     # 6941 engine unit tests, must say "0 failed"   (~30 s)
 ./runstagetests.ps1 # stage helpers called directly, two routes each (~30 s)
 ./measure.ps1      # the headline counts, from the booted app         (~15 s)
 ./auditdocs.ps1    # do these documents still describe the site?     (~1 min)
@@ -77,7 +77,7 @@ there are, and `./auditdocs.ps1` fails if a script exists that this list, or
 `MASTER-PLAN.md` §1.6 and §4.2, does not mention.
 
 `runall.ps1` proves every demo *runs*. `audittext.ps1` + `auditscan.ps1` prove
-every demo is *readable* — they drive all 769 experiments, harvest the
+every demo is *readable* — they drive all 820 experiments, harvest the
 `textContent` of every panel a student reads, and scan for ASCII stand-ins,
 leaked markup, empty panels and `NaN`. Run them on **rendered output**, never on
 source: grepping `src/` for `sqrt` drowns in `Math.sqrt(` and `theta` drowns in
@@ -356,7 +356,7 @@ Notes that matter:
 ### The plot viewport — pan, zoom, clip, overlay
 
 `59c-plot-view.js`. Every flat picture is laid out by `mkPlot`, and there are
-308 calls to it, so the viewport lives there and all of them get it at once.
+331 calls to it, so the viewport lives there and all of them get it at once.
 
 **The identity property is the whole design.** With no reader interaction,
 `mkPlot` returns *exactly* the four numbers it was handed. That is what makes
@@ -400,7 +400,7 @@ polynomials diverging outside the radius of convergence *is* the experiment.
 
 ### The derivation ladder
 
-**Every one of the 216 stages defines `derive(st)`**, returning
+**Every one of the 226 stages defines `derive(st)`**, returning
 `{title, steps, note}`. It renders into the "Where this comes from" dock
 section. Two rung types:
 
@@ -538,7 +538,7 @@ demo headlessly and scan `textContent` of `#chip`, `#stageReadout`, `#stageBody`
 - The 40 wings sit in seven dropdown menus. `#wingNav` contains every
   `button[data-w]`, so `markWingNav()` and the boot wiring work regardless of
   nesting; the four menu triggers carry no `data-w` and are skipped.
-- **Ctrl/⌘K** opens the command palette, which searches all 46 wings and all 744
+- **Ctrl/⌘K** opens the command palette, which searches all 48 wings and all 744
   experiments, including their outcome prose.
 
 ### Responsive
@@ -639,3 +639,16 @@ checked. Add to it rather than starting a new file.
   `${pm}1`.
 
 
+- **A test can pass by never running, and it reads exactly like a test that
+  ran.** Three assertions in the numerical-linear-algebra stage block were
+  vacuous on their first day: the headline one compared two step counts, and
+  one of them was `null` at every input the stage can produce. Any assertion
+  written as `x === null || <the real check>` needs proof that the second half
+  is ever reached. See `src/js/CLAUDE.md` for the two further attempts it took
+  to measure that particular quantity honestly — the second was well defined
+  and still measured the wrong thing.
+- **`fmtNum(Infinity)` is `"∞"`, so `runall`'s grep for the word cannot see
+  one.** Nor can it see `NaN`, which renders as `"—"`. A computation that can
+  fail to exist has to say so itself: withhold every quantity derived from it
+  at once (`nlFact`'s `broke`) rather than letting a formatter make an
+  infinity look like an answer.

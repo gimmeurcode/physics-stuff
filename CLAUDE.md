@@ -1,6 +1,6 @@
 # Working in this repository
 
-An interactive mathematics and physics laboratory: 46 wings, 769 guided experiments,
+An interactive mathematics and physics laboratory: 48 wings, 820 guided experiments,
 built from `src/` into one self-contained `vector-calculus.html`.
 
 **Read `SITE-RULES.md` first.** It is the constitutional layer — the nine laws
@@ -51,6 +51,16 @@ broken by accident:
    one site back and run it: a gate never seen to fail is not known to work.
    `auditresid.ps1` was written this way and found a chip surface its first
    version could not see at all.
+3a. **A check can also pass by never being evaluated, and that looks identical
+   to passing.** On 2026-08-19 three assertions in a new wing's stage-test block
+   were vacuous; the headline one read `kSD === null || kSD/kCG > 2`, and `kSD`
+   was `null` at every input the stage can produce, so the comparison had never
+   once run. **Any condition with a "no result" branch needs proof that the
+   branch is not the only one taken** — the same discipline as corrupting the
+   claim, applied to the test's own control flow rather than to its subject.
+   The two replacements for it were then wrong in turn, each visible only at a
+   second preset: `MASTER-PLAN` §3.3a has the sequence, and the general shape is
+   §1.7's — a quantity that is defined is not thereby the quantity you want.
 4. **Attribute before you fix, and let the measurement overrule you.** The same
    sweep found `qmShoot` normalising a fourth-order Numerov solution with a
    second-order trapezoid — visually identical to J9. It is not: a bound state
@@ -128,9 +138,9 @@ presets with the widest dynamic range, which is why only a preset sweep finds it
    `./build.ps1`. The same goes for `MAP.md` — run `./map.ps1`.
 2. **Module load order is the filename order.** `build.ps1` concatenates
    `src/js/*.js` by *ordinal* filename sort into one script scope. A file named
-   `60b-` loads after `60a-` and before `61-`. All 295 modules share one global
+   `60b-` loads after `60a-` and before `61-`. All 308 modules share one global
    namespace, so **name collisions are silent** — prefix new engine functions
-   (`nq`, `ga`, `pc`, `mv`, `ig`, `vc`, `od`, `ct`, `ck`, `rl`, `qm`, `dy`, `tm`, `la`,`sk`, `lp`, `mx`, `fn`, `lt`, `sy`, `ph`, `cx`, `df`, `ag`, `pb`, `nm`, `nc`, `sl`,`sm`, `pv`, `gw`)
+   (`nq`, `ga`, `pc`, `mv`, `ig`, `vc`, `od`, `ct`, `ck`, `rl`, `qm`, `dy`, `tm`, `la`,`sk`, `lp`, `mx`, `fn`, `lt`, `sy`, `ph`, `cx`, `df`, `ag`, `pb`, `nm`, `nc`, `sl`,`sm`, `pv`, `gw`, `sn`)
    and grep case-sensitively before choosing a name. **The same applies to
    element ids** — one document, `getElementById` is first-wins, and two panels
    both using `ciR` meant a `wireSlider` call reached whichever came first.
@@ -139,7 +149,7 @@ presets with the widest dynamic range, which is why only a preset sweep finds it
    scope means a single stray character takes the whole app down, and the unit
    suite only sees the engine section (10-49) and would not notice. Then
    `./runtests.ps1` must print `0 failed`
-   (6682 unit tests), and `./runstagetests.ps1` must print `0 failed` — it calls
+   (6941 unit tests), and `./runstagetests.ps1` must print `0 failed` — it calls
    stage helpers **directly** inside the booted bundle, which is the only way the
    stages' own arithmetic (modules ≥ 50, invisible to `runtests`) is tested; a
    stage defect class fixed adds its two-route test to `tests-stages.js` the
@@ -185,7 +195,7 @@ presets with the widest dynamic range, which is why only a preset sweep finds it
 
    **For anything touching `mkPlot`, `plotCurve` or the viewport, also
    `./auditzoom.ps1` (`findings=0`) and `./auditframe.ps1`.** `auditzoom` proves
-   the pan/zoom layer works on all 216 stages *and* that with no interaction
+   the pan/zoom layer works on all 226 stages *and* that with no interaction
    `mkPlot` still returns exactly the window it was handed — the invariant that
    keeps the viewport invisible to stages that know nothing about it.
    `auditframe` measures how much of each curve falls outside its own window and
@@ -232,7 +242,7 @@ presets with the widest dynamic range, which is why only a preset sweep finds it
    `./auditviewport.ps1` (`bad=0`).** Every other script runs at one window size,
    so a layout that only breaks at a different aspect ratio is invisible to all
    of them — and a label drawn off the canvas is drawn, discarded and reported by
-   nothing. `auditsize` sweeps eight canvas shapes across all 216 stages;
+   nothing. `auditsize` sweeps eight canvas shapes across all 226 stages;
    `auditviewport` launches Chrome at sixteen real window sizes and checks the
    page around the canvas. They found 161 findings on their first run.
 

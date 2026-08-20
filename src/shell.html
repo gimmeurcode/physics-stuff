@@ -15,7 +15,7 @@
          every button[data-w], so markWingNav() and the boot wiring keep working
          unchanged. -->
     <nav class="wingnav" id="wingNav" aria-label="Laboratory wings">
-      <button class="navhome" data-w="home" aria-pressed="false" title="Overview — all forty-six wings, in order">⌂</button>
+      <button class="navhome" data-w="home" aria-pressed="false" title="Overview — all forty-eight wings, in order">⌂</button>
 
       <div class="navgroup" data-g="pre">
         <button class="navgrp" aria-haspopup="true" aria-expanded="false">Precalculus<i class="caret"></i></button>
@@ -50,7 +50,9 @@
           <button data-w="eigen" role="menuitem"><span class="mg">λ</span><span class="mtx"><b>Eigenvalues, Diagonalisation &amp; SVD</b><i>Av = λv · PDP⁻¹ · spectral theorem · UΣVᵀ</i></span></button>
           <button data-w="discrete" role="menuitem"><span class="mg">C</span><span class="mtx"><b>Discrete Maths &amp; Combinatorics</b><i>counting, checked by counting · Pascal · recurrences</i></span></button>
           <button data-w="prob" role="menuitem"><span class="mg">P</span><span class="mtx"><b>Probability &amp; Statistics</b><i>densities · the CLT, run · regression and r²</i></span></button>
+          <button data-w="infer" role="menuitem"><span class="mg">ℒ</span><span class="mtx"><b>Statistical Inference</b><i>estimators · likelihood · coverage · Bayes</i></span></button>
           <button data-w="numer" role="menuitem"><span class="mg">≈</span><span class="mtx"><b>Numerical Methods</b><i>convergence order · stability · floating point</i></span></button>
+          <button data-w="numlin" role="menuitem"><span class="mg">κ</span><span class="mtx"><b>Numerical Linear Algebra</b><i>PA = LU · QR three ways · κ · CG</i></span></button>
         </div>
       </div>
 
@@ -322,7 +324,7 @@
     <div class="home-head">
       <div class="home-glyphs"><span>∫</span><span>∂</span><span>∇</span><span>⚡</span><span>ψ</span><span>⚛</span></div>
       <h1>Calculus, Fields &amp; the Atom</h1>
-      <p class="home-tag">One laboratory, forty-six floors, and they are laid out in the order you should
+      <p class="home-tag">One laboratory, forty-eight floors, and they are laid out in the order you should
       climb them: the seven sections below are the seven menus in the top bar, left to right, and every
       wing's prerequisites are already behind it. Start on the precalculus floor and the quadratic
       formula gets derived rather than recited; finish on the top floor and a black hole's microstates
@@ -486,6 +488,20 @@
         anything there to find.</span>
         <span class="hc-foot">least squares is the vector-space wing again · correlation is not causation</span>
       </button>
+      <button class="home-card" data-w="infer">
+        <span class="hc-glyph" style="color:var(--c-pos)">ℒ</span>
+        <span class="hc-title">Statistical Inference</span>
+        <span class="hc-desc">The wing below draws samples from a distribution you are given; this one is
+        given the samples and asked about the distribution. Its organising idea is that an estimator is a
+        random quantity, so the first picture is not data but the spread of one number over thousands of
+        repetitions of a whole experiment — which is where bias, standard error and every claim about
+        being wrong actually live. Then likelihood, whose curvature at the peak is the standard error your
+        software prints from a single sample; the two sentences most misquoted in mathematics, with a 95%
+        interval that delivers 87.8% and a proportion interval whose worst case is 2%; testing run in a
+        world where the null is true by construction; and finally the question everyone believed they were
+        asking — a probability about the parameter itself.</span>
+        <span class="hc-foot">every sample is seeded, so every number is reproducible · exact coverage is a finite sum, not a simulation</span>
+      </button>
       <button class="home-card" data-w="numer">
         <span class="hc-glyph" style="color:var(--c-neg)">≈</span>
         <span class="hc-title">Numerical Methods</span>
@@ -496,6 +512,18 @@
         rather than a guarantee. Then the measured order of a quadrature rule, and the floor floating point
         puts under every numerical derivative.</span>
         <span class="hc-foot">orders measured by halving h, never quoted · why 1e−16 is a wall</span>
+      </button>
+      <button class="home-card" data-w="numlin">
+        <span class="hc-glyph" style="color:var(--c-neg)">κ</span>
+        <span class="hc-title">Numerical Linear Algebra</span>
+        <span class="hc-desc">What the answer to a linear system is worth once the arithmetic is done
+        in sixteen digits. Two failures are pulled apart and told from each other by measurement: a
+        matrix with κ = 3 on which unpivoted elimination loses every digit — the algorithm — and a
+        Hilbert matrix on which a flawless factorisation still returns nothing — the problem. Then
+        three ways of building an orthogonal Q, all of which rebuild A to round-off and whose
+        orthogonality spans twelve orders of magnitude, with the exponents fitted rather than quoted.
+        Then the iterative half, where every rate is obtained twice.</span>
+        <span class="hc-foot">a small residual is not a small error · pivoting bounds the multipliers, not the matrix · √κ, not κ</span>
       </button>
     </div>
     <h2 class="home-sec">Differential equations</h2>

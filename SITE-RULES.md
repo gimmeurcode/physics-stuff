@@ -394,6 +394,18 @@ instance cannot ship silently.** One of:
 Set a new gate's tolerances from a second route's own **measured** error, never
 from a guess.
 
+**And "proved able to fail" has a second half: proved able to RUN.** Corrupting
+the subject catches a gate that cannot see; it does not catch a gate that is
+never evaluated. On 2026-08-19 three assertions in a new stage suite passed
+because the quantity they compared was `null` at every input the stage can
+produce — the condition read `x === null || <the real check>`, and the real
+check had never once been reached. Nothing was corrupted, because there was
+nothing there to corrupt. **A check with a "no result" branch needs evidence
+that the branch is not the only one taken**, and the cheapest evidence is to
+print what it measured beside its verdict. Two of that gate's replacements were
+then wrong in turn, each visible only at a second input; the record is
+`MASTER-PLAN.md` §3.3a.
+
 ## 2.6 Scope-of-fix checklist
 
 Before calling any fix done:

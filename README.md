@@ -1,6 +1,6 @@
 # Calculus, Fields & the Atom — an interactive mathematics and physics laboratory
 
-One self-contained web app, forty-six wings covering AP Calculus AB and BC, linear algebra, differential equations, complex analysis, AP
+One self-contained web app, forty-eight wings covering AP Calculus AB and BC, linear algebra, differential equations, complex analysis, AP
 Physics 1 and 2, AP Physics C (Mechanics and E&M), and the whole of multivariable
 calculus and vector calculus beyond them. Every
 control panel sits in a resizable dock beneath the canvas; drag the border
@@ -297,10 +297,10 @@ Published copy: https://claude.ai/code/artifact/289811c9-07a8-4419-87cc-b4b55e04
 
 ## Layout
 
-- `src/` — the source modules. There are 295 of them, one concern each, and
+- `src/` — the source modules. There are 308 of them, one concern each, and
   `build.ps1` concatenates them in ordinal filename order into a single script
   scope. **The generated `MAP.md` is the authoritative index**: it lists every
-  module with its size, what it defines, which of the 216 canvas stages it holds,
+  module with its size, what it defines, which of the 226 canvas stages it holds,
   and which file carries each wing's demos, stages and prose. Regenerate it with
   `./map.ps1` after adding or renaming anything. `AI-GUIDE.md` explains how to
   make changes; `CLAUDE.md` carries the rules that must not be broken.
@@ -335,7 +335,7 @@ Published copy: https://claude.ai/code/artifact/289811c9-07a8-4419-87cc-b4b55e04
 - `js/49b-signal-filter.js` — and what it takes to CHANGE one: difference-equation
   filters with two routes to their response, FIR design by windowed sinc, group delay
   three ways, and stability from the roots of the denominator — pure, unit-tested.
-- `tests.js` — 6682 unit tests: parser, symbolic differentiation, the operators,
+- `tests.js` — 6941 unit tests: parser, symbolic differentiation, the operators,
   physics writers, RK4 mechanics, quantum eigen-relations, the Schrödinger equation
   checked numerically against the plotted packet, barrier unitarity/continuity,
   SEMF landmarks, field-tensor invariants, and all four Maxwell equations verified
@@ -387,7 +387,7 @@ Published copy: https://claude.ai/code/artifact/289811c9-07a8-4419-87cc-b4b55e04
   A final group pins every published
   constant (CODATA 2022, PDG 2024) so a stale value cannot creep back in.
 - `map.ps1` — regenerates `MAP.md`, the index of modules, stages and wings.
-- `auditperf.ps1` — where a frame actually goes. For all 216 stages it counts
+- `auditperf.ps1` — where a frame actually goes. For all 226 stages it counts
   rasterising calls, path operations, 3D primitives sorted and the bytes of HTML
   the panel regenerates four times a second. Nothing else measures cost, and the
   one guess made without it — that the 3D stages were the expensive ones — was
@@ -412,7 +412,7 @@ Published copy: https://claude.ai/code/artifact/289811c9-07a8-4419-87cc-b4b55e04
   came back empty and `runall.ps1` still reported `caught=0`** — it visits each
   demo once and never returns to one, so the second visit, the only thing that
   can show this, never happened.
-- `runall.ps1` — the exhaustive harness: every demo in all forty-six wings (field and
+- `runall.ps1` — the exhaustive harness: every demo in all forty-eight wings (field and
   stage), every physics preset, a full control audit, and functional physics checks.
   The circuit wing gets its own pass: every instrument, every placement tool, the
   editor paths (place, wire, rotate, drag, delete, clear) and the field overlay.
